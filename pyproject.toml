@@ -1,0 +1,66 @@
+[project]
+name = "starconsumers"
+version = "0.1.0"
+description = "A high performance FastAPI-based message consumer framework for PubSub"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "click>=8.2.1",
+    "fastapi>=0.116.1",
+    "google-api-core>=2.25.1",
+    "google-cloud-pubsub>=2.31.1",
+    "orjson>=3.11.2",
+    "psutil>=7.0.0",
+    "pydantic-settings>=2.10.1",
+    "rich-toolkit>=0.15.0",
+    "typer>=0.16.0",
+    "uvicorn>=0.35.0",
+]
+
+[project.optional-dependencies]
+newrelic = [
+    "newrelic[infinite-tracing]>=10.15.0",
+]
+datadog = [
+    "ddtrace>=3.11.3",
+]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.10.3",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-mock>=3.14.1",
+    "ruff>=0.12.8",
+]
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+python_files = ["test_*.py", "tests_*.py"]
+verbosity_test_cases = 3
+
+[tool.coverage.run]
+parallel = true
+source = ["starconsumers"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+fail_under = 80
+
+[tool.mypy]
+strict = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = ["E", "W", "I", "C4", "UP", "F", "B", "ARG"]
+extend-ignore = ["B008", "B006"]
