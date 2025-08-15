@@ -8,7 +8,8 @@ class MessageHandler:
     target: DecoratedCallable
 
     def on_message(self, *args, **kwargs):
-        self.target(*args, **kwargs)
+        if self.target:
+            self.target(*args, **kwargs)
 
 
 @dataclass(frozen=True)
@@ -18,7 +19,7 @@ class DeadLetterPolicy:
 
 
 @dataclass(frozen=True)
-class Subscription:
+class TopicSubscription:
     name: str
     project_id: str
     topic_name: str
@@ -33,5 +34,5 @@ class Subscription:
 class Task:
     autocreate: bool
     handler: MessageHandler
-    subscription: Subscription
+    subscription: TopicSubscription
 

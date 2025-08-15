@@ -1,3 +1,7 @@
+[build-system]
+requires = ["uv_build>=0.8.11,<0.9.0"]
+build-backend = "uv_build"
+
 [project]
 name = "starconsumers"
 version = "0.1.0"
@@ -16,6 +20,9 @@ dependencies = [
     "typer>=0.16.0",
     "uvicorn>=0.35.0",
 ]
+
+[project.scripts]
+starconsumers = "starconsumers.cli.main:cli_app"
 
 [project.optional-dependencies]
 newrelic = [
@@ -64,3 +71,9 @@ docstring-code-format = true
 [tool.ruff.lint]
 select = ["E", "W", "I", "C4", "UP", "F", "B", "ARG"]
 extend-ignore = ["B008", "B006"]
+
+[tool.uv]
+package = true
+
+[tool.uv.build-backend]
+module-root = ""

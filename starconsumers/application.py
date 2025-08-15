@@ -1,4 +1,5 @@
 from typing import Any, AsyncGenerator
+from weakref import ProxyType
 from fastapi import FastAPI
 from starconsumers.consumer import TopicConsumer
 from starconsumers.datastructures import Task
@@ -19,11 +20,12 @@ class StarConsumers:
         await self.server(scope, receive, send)
 
     async def start(self, _: FastAPI) -> AsyncGenerator[Any]:
-        print("Do something")
+        print("Starting the processes")
         self.process_manager.spawn(self.active_tasks)
         yield
+        print("Terminating the processes")
         self.process_manager.terminate()
-        print("Do something after teardown")
+        print("Terminated the processes")
 
     def add_consumer(self, consumer: TopicConsumer):
         if not isinstance(consumer, TopicConsumer):
@@ -45,7 +47,12 @@ class StarConsumers:
         for task_name in tasks_names:
             selected_tasks.add(task_name.casefold())
 
+        if not selected_tasks:
+            print("No task selected. We will run all existing tasks")
+            self.active_tasks.extend(self.all_tasks_map.values())
+
         print(f"We selected the tasks {selected_tasks}")
         for task_name in selected_tasks:
             if task_name in self.all_tasks_map:
                 self.active_tasks.append(self.all_tasks_map[task_name])
+

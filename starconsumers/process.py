@@ -4,14 +4,15 @@ import multiprocessing
 import psutil
 
 from starconsumers.consumer import Task
+from starconsumers.pubsub.publisher import PubSubPublisher
+from starconsumers.pubsub.subscriber import PubSubSubscriber
 
 
 
 def spawn(task: Task):
-    subscriber = PubSubSubscriber()
-    subscriber.create_subscription(subscription=task.subscription, autocreate=task.autocreate)
-    subscriber.subscribe(task.handler)
-
+    subscriber = PubSubSubscriber(task.subscription)
+    subscriber.create_subscription()
+    subscriber.subscribe(task.handler.on_message)
 
 class ProcessManager:
 
@@ -20,10 +21,29 @@ class ProcessManager:
         self.processes: dict[str, multiprocessing.Process] = {}
 
     def spawn(self, tasks: list[Task]):
+        self._create_topics(tasks)
         for task in tasks:
-            process = multiprocessing.Process(target=spawn, args=(task,), daemon=True)
-            self.processes[task] = process
+            process = multiprocessing.Process(target=self._spawn, args=(task,), daemon=True)
+            self.processes[task.subscription.name] = process
+            self.processes[task.subscription.name].start()
 
+    @staticmethod
+    def _spawn(task: Task):
+        subscriber = PubSubSubscriber()
+        subscriber.create_subscription(task.subscription)
+        subscriber.subscribe(task.subscription.project_id, task.subscription.name, task.handler.on_message)
+
+    @staticmethod
+    def _create_topics(tasks: list[Task]):
+        created_topics = set()
+        for task in tasks:
+            key = task.subscription.project_id + "/" + task.subscription.topic_name
+            if not task.autocreate or key in created_topics:
+                continue
+            
+            created_topics.add(key)
+            publisher = PubSubPublisher(project_id=task.subscription.project_id, topic_name=task.subscription.topic_name)
+            publisher.create_topic()    
 
     def terminate(self):
         children_processes = psutil.Process().children(recursive=True)

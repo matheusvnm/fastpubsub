@@ -1,0 +1,2 @@
+class StarConsumersCLIException(Exception):
+    pass
