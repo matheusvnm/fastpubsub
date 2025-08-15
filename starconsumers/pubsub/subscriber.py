@@ -1,14 +1,21 @@
-
-
-
+from dataclasses import dataclass
+from starconsumers.observability import apm
 from starconsumers.datastructures import TopicSubscription
 from starconsumers.types import DecoratedCallable
 from google.api_core.exceptions import AlreadyExists, GoogleAPICallError
 from google.cloud.pubsub_v1 import SubscriberClient
 from google.pubsub_v1.types import DeadLetterPolicy, RetryPolicy, Subscription
+from google.cloud.pubsub_v1.subscriber.message import Message
 
 
+@dataclass(frozen=True)
+class CallbackHandler:
+    target: DecoratedCallable
 
+    def __call__(self, message: Message):
+        with apm.background_transaction(name="transaction"):
+            apm.set_distributed_trace_context(message.attributes)
+            self.target(message)
 
 class PubSubSubscriber:
 
@@ -69,6 +76,7 @@ class PubSubSubscriber:
         client = SubscriberClient()
         with client:
             print(f"Listening for messages on {subscription_path}")
+            callback = CallbackHandler(target=callback)
             streaming_pull_future = client.subscribe(subscription_path, callback=callback)
             try:
                 streaming_pull_future.result()

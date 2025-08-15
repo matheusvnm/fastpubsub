@@ -1,10 +1,10 @@
+from email import header
+import orjson
 from concurrent.futures import Future
 from google.api_core.exceptions import AlreadyExists
 from google.cloud.pubsub_v1 import PublisherClient
 from google.cloud.pubsub_v1.types import PublisherOptions 
-
-import orjson
-
+from starconsumers.observability import apm
 
 class PubSubPublisher:
 
@@ -28,6 +28,9 @@ class PubSubPublisher:
         Publishes some data on a configured Pub/Sub topic.
         It considers that the topic is already created
         """
+        attributes = {} if attributes is None else attributes
+        headers = apm.get_distributed_trace_context()
+        headers.update(attributes)
 
         ordered = True if ordering_key else False
         publisher_options = PublisherOptions(enable_message_ordering=ordered)
@@ -35,7 +38,7 @@ class PubSubPublisher:
         
         try:
             encoded_data = orjson.dumps(data)
-            future: Future = client.publish(topic=self.topic, data=encoded_data, ordering_key=ordering_key, **attributes)
+            future: Future = client.publish(topic=self.topic, data=encoded_data, ordering_key=ordering_key, **headers)
             message_id = future.result()
             print(f"Message published for topic {self.topic} with id {message_id}")
             print(f"We sent {data} with metadata {attributes}")

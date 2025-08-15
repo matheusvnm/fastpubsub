@@ -28,9 +28,6 @@ starconsumers = "starconsumers.cli.main:cli_app"
 newrelic = [
     "newrelic[infinite-tracing]>=10.15.0",
 ]
-datadog = [
-    "ddtrace>=3.11.3",
-]
 
 [dependency-groups]
 dev = [

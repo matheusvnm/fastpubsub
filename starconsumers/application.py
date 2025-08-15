@@ -1,21 +1,25 @@
-from typing import Any, AsyncGenerator
-from weakref import ProxyType
+from typing import Any, AsyncGenerator, Literal
 from fastapi import FastAPI
+from starconsumers import observability
 from starconsumers.consumer import TopicConsumer
 from starconsumers.datastructures import Task
 from starconsumers.process import ProcessManager
 from starlette.types import Scope, Receive, Send
 
+
 class StarConsumers:
 
-    def __init__(self, title: str = "StarConsumers", summary: str = None, description: str = ""):
+    def __init__(self, 
+                 title: str = "StarConsumers", 
+                 summary: str = None, 
+                 description: str = "",
+                ):
+
         self.process_manager = ProcessManager()
         self.active_tasks: list[Task] = []
         self.all_tasks_map: dict[str, Task] = {}
-
         self.server = FastAPI(title=title, summary=summary, description=description, lifespan=self.start)
         
-
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         await self.server(scope, receive, send)
 
@@ -50,9 +54,9 @@ class StarConsumers:
         if not selected_tasks:
             print("No task selected. We will run all existing tasks")
             self.active_tasks.extend(self.all_tasks_map.values())
+            return
 
         print(f"We selected the tasks {selected_tasks}")
         for task_name in selected_tasks:
             if task_name in self.all_tasks_map:
                 self.active_tasks.append(self.all_tasks_map[task_name])
-
