@@ -1,15 +1,18 @@
 
 from dataclasses import dataclass
+from typing import Union
 from starconsumers.types import DecoratedCallable
 
 
-@dataclass(frozen=True)
-class MessageHandler:
-    target: DecoratedCallable
+@dataclass
+class MessageMiddleware:
+    next_call: Union["MessageMiddleware", DecoratedCallable] = None
 
-    def on_message(self, *args, **kwargs):
-        if self.target:
-            self.target(*args, **kwargs)
+    def __call__(self, *args, **kwargs):
+        if not self.next_call:
+            return 
+
+        return self.next_call(*args, **kwargs)
 
 
 @dataclass(frozen=True)
@@ -33,6 +36,6 @@ class TopicSubscription:
 @dataclass(frozen=True)
 class Task:
     autocreate: bool
-    handler: MessageHandler
+    handler: MessageMiddleware
     subscription: TopicSubscription
 

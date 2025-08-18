@@ -1,6 +1,6 @@
 from typing import Callable
 
-from starconsumers.datastructures import DeadLetterPolicy, MessageHandler, TopicSubscription, Task
+from starconsumers.datastructures import DeadLetterPolicy, MessageMiddleware, TopicSubscription, Task
 from starconsumers.types import DecoratedCallable
 
 
@@ -32,7 +32,7 @@ class TopicConsumer:
                                                       max_delivery_attempts=max_delivery_attempts)
 
 
-            handler = MessageHandler(target=func)
+            handler = MessageMiddleware(next_call=func)
             subscription = TopicSubscription(name=subscription_name, 
                                         project_id=self.project_id,
                                         topic_name=self.topic_name,

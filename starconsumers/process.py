@@ -12,7 +12,7 @@ from starconsumers.pubsub.subscriber import PubSubSubscriber
 def spawn(task: Task):
     subscriber = PubSubSubscriber(task.subscription)
     subscriber.create_subscription()
-    subscriber.subscribe(task.handler.on_message)
+    subscriber.subscribe(task.handler)
 
 class ProcessManager:
 
@@ -31,7 +31,7 @@ class ProcessManager:
     def _spawn(task: Task):
         subscriber = PubSubSubscriber()
         subscriber.create_subscription(task.subscription)
-        subscriber.subscribe(task.subscription.project_id, task.subscription.name, task.handler.on_message)
+        subscriber.subscribe(task.subscription.project_id, task.subscription.name, task.handler)
 
     @staticmethod
     def _create_topics(tasks: list[Task]):
