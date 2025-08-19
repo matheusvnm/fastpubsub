@@ -30,7 +30,7 @@ class PubSubSubscriber:
                 max_delivery_attempts=subscription.dead_letter_policy.delivery_attempts,
             )
 
-        subscription = Subscription(
+        subscription_request = Subscription(
                 name=name,
                 topic=topic,
                 retry_policy=RetryPolicy(),
@@ -41,20 +41,19 @@ class PubSubSubscriber:
                 enable_exactly_once_delivery=subscription.enable_exactly_once_delivery,
             )
 
-
-        try:
-            print(f"Attempting to create subscription: {subscription.name}")
-            client = SubscriberClient()
-            client.create_subscription(request=subscription)
-            print(f"Successfully created subscription: {subscription.name}")
-        except AlreadyExists:
-            print(f"Subscription '{subscription.name}' already exists. Skipping creation.")
-        except GoogleAPICallError as e:
-            print(f"Failed to create subscription '{subscription.name}': {e}")
-            raise
-        except Exception as e:
-            print(f"An unexpected error occurred during subscription creation: {e}")
-            raise
+        with SubscriberClient() as client:
+            try:
+                print(f"Attempting to create subscription: {subscription_request.name}")
+                client.create_subscription(request=subscription_request)
+                print(f"Successfully created subscription: {subscription_request.name}")
+            except AlreadyExists:
+                print(f"Subscription '{subscription_request.name}' already exists. Skipping creation.")
+            except GoogleAPICallError as e:
+                print(f"Failed to create subscription '{subscription_request.name}': {e}")
+                raise
+            except Exception as e:
+                print(f"An unexpected error occurred during subscription creation: {e}")
+                raise
 
 
     def subscribe(self, project_id: str, subscription_name: str, callback: MessageMiddleware):
@@ -64,8 +63,7 @@ class PubSubSubscriber:
         """
         subscription_path = SubscriberClient.subscription_path(project_id, subscription_name)
 
-        client = SubscriberClient()
-        with client:
+        with SubscriberClient() as client:
             print(f"Listening for messages on {subscription_path}")
             streaming_pull_future = client.subscribe(subscription_path, callback=callback)
             try:

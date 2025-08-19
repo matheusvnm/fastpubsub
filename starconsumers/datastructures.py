@@ -1,6 +1,8 @@
 
 from dataclasses import dataclass
 from typing import Union
+
+from pydantic import BaseModel
 from starconsumers.types import DecoratedCallable
 
 
@@ -29,8 +31,8 @@ class TopicSubscription:
     filter_expression: str
     ack_deadline_seconds: int
     enable_message_ordering: bool
-    enable_exactly_once_delivery: str
-    dead_letter_policy: DeadLetterPolicy
+    enable_exactly_once_delivery: bool
+    dead_letter_policy: Union[DeadLetterPolicy, None]
 
 
 @dataclass(frozen=True)
@@ -39,3 +41,30 @@ class Task:
     handler: MessageMiddleware
     subscription: TopicSubscription
 
+
+@dataclass(frozen=True)
+class TopicMessage:
+    id: str
+    size: int
+    data: bytes
+    attributes: dict
+    delivery_attempt: int
+
+
+
+class ProcessSocketConnectionAddress(BaseModel):
+    ip: str
+    port: int
+    hostname: str
+    
+
+class ProcessSocketConnection(BaseModel):
+    status: str
+    address: ProcessSocketConnectionAddress | None
+
+
+class ProcessInfo(BaseModel):
+    name: str
+    num_threads: int = 0
+    running: bool = False
+    connections: list[ProcessSocketConnection] = []

@@ -2,16 +2,16 @@
 
 
 import asyncio
-from dataclasses import dataclass
 import traceback
 from typing import Union
 
 from fastapi.types import DecoratedCallable
-from starconsumers.exceptions import AckException, NackException
-from starconsumers.observability import apm
+from starconsumers import observability
+from starconsumers.exceptions import DropException, RetryException
 
-from starconsumers.datastructures import MessageMiddleware
+from starconsumers.datastructures import MessageMiddleware, TopicMessage
 from google.cloud.pubsub_v1.subscriber.message import Message
+
 
 
 
@@ -19,17 +19,16 @@ class BasicExceptionHandler(MessageMiddleware):
 
     def __call__(self, message: Message):
         try:
-            print("I'm BasicExceptionHandlerMiddleware")
             response = super().__call__(message)
             message.ack()
             print(f"Message {message.message_id} successfully processed.")
             return response
-        except AckException as ex:
-            print(f"ACK: Message {message.message_id} ended as processed")
+        except DropException as ex:
+            print(f"DROP: Message {message.message_id} will be dropped")
             message.ack()
             return
-        except NackException:
-            print(f"NACK: Message {message.message_id} processing failed")
+        except RetryException:
+            print(f"RETRY: Message {message.message_id} will be retried")
             message.nack()
             return
         except Exception:
@@ -41,15 +40,23 @@ class BasicExceptionHandler(MessageMiddleware):
 class APMTransactionMiddleware(MessageMiddleware):
 
     def __call__(self, message: Message):
-        with apm.background_transaction(name="transaction"):
+        apm = observability.get_apm_provider()
+        with apm.background_transaction(name="MessageMiddleware"):
             apm.set_distributed_trace_context(message.attributes)
             return super().__call__(message)
 
-class APMTracePropagationMiddleware(MessageMiddleware):
-    def __call__(self, message: Message):
-        apm.set_distributed_trace_context(message.attributes)
-        return super().__call__(message)
 
+class MessageSerializerMiddleware(MessageMiddleware):
+    def __call__(self, message: Message):
+        serialized_message = TopicMessage(
+            id=message.message_id,
+            size=message.size,
+            data=message.data,
+            attributes=message.attributes,
+            delivery_attempt=message.delivery_attempt,
+        )
+
+        return super().__call__(serialized_message)
 
 class AsyncContextMiddleware(MessageMiddleware):
 
@@ -57,7 +64,7 @@ class AsyncContextMiddleware(MessageMiddleware):
         self.next_call = next_call
         self.is_coroutine = asyncio.iscoroutinefunction(next_call) 
 
-    def __call__(self, message: Message):
+    def __call__(self, message: TopicMessage):
         print("Hi I'm AsyncContextMiddleware")
         if not self.is_coroutine:
             return super().__call__(message)

@@ -24,4 +24,7 @@ class ApplicationRunner:
         server_configuration = asdict(configuration)
         app.activate_tasks(server_configuration.pop("tasks"))
 
-        uvicorn.run(app=app, lifespan="on", log_level="warning", **server_configuration)
+        #if configuration.reload:
+        #    app = str(application)
+
+        uvicorn.run(app=app, lifespan="on", log_level="debug", **server_configuration)

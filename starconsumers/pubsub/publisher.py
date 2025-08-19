@@ -1,10 +1,10 @@
-from email import header
 import orjson
 from concurrent.futures import Future
 from google.api_core.exceptions import AlreadyExists
 from google.cloud.pubsub_v1 import PublisherClient
-from google.cloud.pubsub_v1.types import PublisherOptions 
-from starconsumers.observability import apm
+from google.cloud.pubsub_v1.types import PublisherOptions
+
+from starconsumers import observability
 
 class PubSubPublisher:
 
@@ -18,7 +18,7 @@ class PubSubPublisher:
 
         client = PublisherClient()
         try:
-            client.create_topic(name=self.topic, )
+            client.create_topic(name=self.topic,)
             print("Created topic sucessfully.")
         except AlreadyExists:
             print("The topic already exists.")
@@ -28,6 +28,7 @@ class PubSubPublisher:
         Publishes some data on a configured Pub/Sub topic.
         It considers that the topic is already created
         """
+        apm = observability.get_apm_provider()
         attributes = {} if attributes is None else attributes
         headers = apm.get_distributed_trace_context()
         headers.update(attributes)

@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 
-from starconsumers.application import StarConsumers
 from starconsumers.exceptions import StarConsumersCLIException
 
 
@@ -98,12 +97,12 @@ class ApplicationDiscover:
         for preferred_name in ["app", "api"]:
             if preferred_name in set(object_names):
                 obj = getattr(module, preferred_name)
-                if isinstance(obj, StarConsumers):
+                if obj.__class__.__name__ == "StarConsumers":
                     return preferred_name
 
         for name in object_names:
             obj = getattr(module, name)
-            if isinstance(obj, StarConsumers):
+            if obj.__class__.__name__ == "StarConsumers":
                 return name
 
         raise StarConsumersCLIException(
@@ -119,7 +118,7 @@ class ApplicationDiscover:
             return False
 
         app = getattr(module, app_name)
-        if not isinstance(app, StarConsumers):
+        if not app.__class__.__name__ == "StarConsumers":
             print(
                 f"The app name {app_name} in {module.path} doesn't seem to be a StarConsumers app"
             )

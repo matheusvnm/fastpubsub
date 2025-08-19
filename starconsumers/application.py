@@ -1,40 +1,32 @@
-from typing import Any, AsyncGenerator, Literal
-from xml.sax import handler
+from typing import Any, AsyncGenerator
+
 from fastapi import FastAPI
 from fastapi.middleware import Middleware
-from starconsumers import observability
 from starconsumers.consumer import TopicConsumer
 from starconsumers.datastructures import MessageMiddleware, Task
-from starconsumers.middlewares import AsyncContextMiddleware, BasicExceptionHandler
+from starconsumers.exceptions import StarConsumersException
+from starconsumers.middlewares import APMTransactionMiddleware, AsyncContextMiddleware, BasicExceptionHandler, MessageSerializerMiddleware
 from starconsumers.process import ProcessManager
 from starlette.types import Scope, Receive, Send
 
 
-
-
-
-
 class StarConsumers:
 
-    def __init__(self, 
-                 title: str = "StarConsumers", 
-                 summary: str = None, 
-                 description: str = "",
-                ):
-
+    def __init__(self):
         self.tasks: dict[str, Task] = {}
         self.active_tasks: list[Task] = []
         self.middlewares: list[Middleware] = []
 
         self._process_manager = ProcessManager()
-        self._asgi_app = FastAPI(title=title, summary=summary, description=description, lifespan=self.start)
+        self._asgi_app = FastAPI(title="StarConsumers", lifespan=self.start)
+        self._asgi_app.add_api_route(path="/health", endpoint=self._health_route, methods=["GET"])
         
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         await self._asgi_app(scope, receive, send)
 
     async def start(self, _: FastAPI) -> AsyncGenerator[Any]:
         print("Starting the processes")
-        
+
         self._process_manager.spawn(self.active_tasks)
         yield
         print("Terminating the processes")
@@ -71,7 +63,7 @@ class StarConsumers:
             self._activate_all_tasks()
             return
 
-        self._activate_all_tasks(selected_tasks)
+        self._activate_selected_tasks(selected_tasks)
 
     def _activate_all_tasks(self):
         print("No task selected. We will run all existing tasks")
@@ -89,10 +81,15 @@ class StarConsumers:
             task = self.tasks[task_name]
             new_task = self._build_task_middleware_stack(task)
             self.active_tasks.append(new_task)
+        
+        if not self.active_tasks:
+            raise StarConsumersException("No task found to execute. Please check the names in --tasks argument")
 
     def _build_task_middleware_stack(self, task: Task):
         middlewares = (
-            [Middleware(BasicExceptionHandler)]
+            [Middleware(APMTransactionMiddleware),
+             Middleware(BasicExceptionHandler),
+             Middleware(MessageSerializerMiddleware)]
             + self.middlewares
             + [Middleware(AsyncContextMiddleware)]
         )
@@ -107,4 +104,8 @@ class StarConsumers:
             subscription=task.subscription
         )
 
+    async def _health_route(self):
+        return {}
+        #return self._process_manager.probe_processes()
+        
         

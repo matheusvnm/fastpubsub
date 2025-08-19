@@ -1,8 +1,8 @@
 
+from starconsumers import observability
 from starconsumers.application import StarConsumers
 from starconsumers.consumer import TopicConsumer
-from starconsumers.datastructures import MessageMiddleware
-from starconsumers.observability import apm
+from starconsumers.datastructures import MessageMiddleware, TopicMessage
 
 
 class LogSomethingMiddleware(MessageMiddleware):
@@ -17,13 +17,16 @@ consumer = TopicConsumer(project_id="starconsumers-pubsub-local", topic_name="to
 
 
 @consumer.task(name="some_handler", subscription_name="some_subscription")
-async def some_handler(message):
+async def some_handler(message: TopicMessage):
+    apm = observability.get_apm_provider()
     print(f"Some async message received for some_handler {apm.get_trace_id()}")
 
 
-@consumer.task(name="some_other_handler", subscription_name="some_subscription2")
-def some_other_handler(message):
-    print(f"Some async message received for some_other_handler {apm.get_trace_id()}")
+
+@consumer.task(name="other_handler", subscription_name="some_subscription2")
+def other_handler(message: TopicMessage):
+    apm = observability.get_apm_provider()
+    print(f"Some async message received for other_handler {apm.get_trace_id()}")
 
 
 app.add_consumer(consumer)

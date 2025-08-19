@@ -3,7 +3,7 @@ import os
 import sys
 
 from abc import ABC, abstractmethod
-from functools import wraps
+from functools import cache, wraps
 from typing import Optional
 
 
@@ -53,6 +53,12 @@ class ApmProvider(ABC):
         """Gets the span id from the current transaction."""
         pass
 
+    @abstractmethod
+    def active(self) -> bool:
+        """Returns if the provider is active and ready."""
+        return False
+
+
 
 
 class _NoOpContextDecorator:
@@ -99,6 +105,10 @@ class NoOpProvider(ApmProvider):
 
     def get_span_id(self) -> str:
         return ""
+    
+    def active(self) -> bool:
+        return False
+
 
 class NewRelicProvider(ApmProvider):
     """APM provider for New Relic."""
@@ -111,7 +121,7 @@ class NewRelicProvider(ApmProvider):
         print("New Relic agent not running. Performing initialization...")
         try:
             self._agent.initialize()
-            self._agent.register_application(timeout=10.0)
+            self._agent.register_application(timeout=1.0)
             print("New Relic initialization and registration successful.")
         except Exception as e:
             print(f"Error during New Relic initialization: {e}", file=sys.stderr)
@@ -156,30 +166,20 @@ class NewRelicProvider(ApmProvider):
     def get_span_id(self) -> str:
         return self._agent.current_span_id()
 
-class ApmFactory:
-    """Factory for creating and managing the singleton APM provider instance."""
-    _instance: Optional[ApmProvider] = None
+    def active(self) -> bool:
+        application = self._agent.application(activate=False)
+        return application and application.active
+    
+@cache
+def get_apm_provider():
+    name = os.getenv("STARCONSUMERS_APM_PROVIDER", "")
+    name = name.lower()
+    
+    provider_map = {
+        'newrelic': NewRelicProvider,
+    }
+    provider_cls = provider_map.get(name, NoOpProvider)
+    provider = provider_cls()
 
-    @classmethod
-    def _get_provider(cls) -> ApmProvider:
-        """
-        Retrieves the APM provider instance. Initializes it on first call.
-        Can be configured programmatically or via 'STARCONSUMERS_APM_PROVIDER' environment variable.
-        """
-        if cls._instance is None:
-            name = os.getenv("STARCONSUMERS_APM_PROVIDER", "")
-            name = name.lower()
-            
-            provider_map = {
-                'newrelic': NewRelicProvider,
-            }
-            ProviderClass = provider_map.get(name, NoOpProvider)
-            cls._instance = ProviderClass()
-
-            print(f"Initializing observability method: {name} {ProviderClass.__name__}")
-            cls._instance.initialize()
-
-        return cls._instance
-
-
-apm: ApmProvider = ApmFactory._get_provider()
+    print(f"The observability method choosen is: {name} {provider_cls.__name__}")
+    return provider

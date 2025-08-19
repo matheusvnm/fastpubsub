@@ -1,10 +1,11 @@
+class StarConsumersException(Exception):
+    pass
+
 class StarConsumersCLIException(Exception):
     pass
 
-
-class NackException(Exception):
+class RetryException(Exception):
     pass
 
-
-class AckException(Exception):
+class DropException(Exception):
     pass
