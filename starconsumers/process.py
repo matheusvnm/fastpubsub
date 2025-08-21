@@ -5,6 +5,7 @@ import socket
 import psutil
 
 from starconsumers import observability
+from starconsumers.logger import logger 
 from starconsumers.consumer import Task
 from starconsumers.datastructures import ProcessInfo, ProcessSocketConnection, ProcessSocketConnectionAddress
 from starconsumers.pubsub.publisher import PubSubPublisher
@@ -44,10 +45,10 @@ class ProcessManager:
         for task in tasks:
             key = task.subscription.project_id + ":" + task.subscription.topic_name
             if not task.autocreate or key in created_topics:
-                print(f"No auto topic create or already created topic for {task.subscription.name}")
+                logger.debug(f"No auto topic create or already created topic for {task.subscription.name}")
                 continue
             
-            print(f"We will try to create the topic {key}")
+            logger.info(f"We will try to create the topic {key}")
             created_topics.add(key)
             publisher = PubSubPublisher(project_id=task.subscription.project_id, topic_name=task.subscription.topic_name)
             publisher.create_topic()    
@@ -106,7 +107,7 @@ class ProcessManager:
 
                 connections.append(connection)
         except psutil.AccessDenied:
-            print("We lack the permissions to get connection infos.")
+            logger.warning("We lack the permissions to get connection infos.")
 
         return ProcessInfo(
             name=name,

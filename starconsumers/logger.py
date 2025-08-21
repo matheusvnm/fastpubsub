@@ -134,7 +134,7 @@ class LoggerManager:
 
         formatter = JsonFormatter()
         if not serialize:
-            fmt = "%(asctime)s | %(levelname)-8s | %(process)d:%(thread)d | %(name)s:%(funcName)s:%(lineno)d | %(message)s"
+            fmt = "%(asctime)s | %(levelname)-8s | %(process)d:%(thread)d | %(module)s:%(funcName)s:%(lineno)d | %(message)s"
             formatter = TextFormatter(fmt)
             
         handler.setFormatter(formatter)

@@ -4,7 +4,8 @@ import sys
 
 from abc import ABC, abstractmethod
 from functools import cache, wraps
-from typing import Optional
+
+from starconsumers.logger import logger
 
 
 class ApmProvider(ABC):
@@ -118,13 +119,13 @@ class NewRelicProvider(ApmProvider):
 
     def initialize(self):
         """Initializes and registers the agent if not already active."""
-        print("New Relic agent not running. Performing initialization...")
+        logger.info("Performing New Relic agent initialization.")
         try:
             self._agent.initialize()
             self._agent.register_application(timeout=1.0)
-            print("New Relic initialization and registration successful.")
+            logger.info("New Relic initialization and registration successful.")
         except Exception as e:
-            print(f"Error during New Relic initialization: {e}", file=sys.stderr)
+            logger.exception(f"Failed to initialize New Relic.")
 
     @contextmanager
     def background_transaction(self, name: str):
@@ -158,7 +159,7 @@ class NewRelicProvider(ApmProvider):
         try:
             self._agent.record_custom_event(event_type, params)
         except Exception as e:
-            print(f"Failed to record New Relic custom event: {e}", file=sys.stderr)
+            logger.exception("Failed to record New Relic custom event", stacklevel=5)
 
     def get_trace_id(self) -> str:
         return self._agent.current_trace_id()
@@ -181,5 +182,5 @@ def get_apm_provider():
     provider_cls = provider_map.get(name, NoOpProvider)
     provider = provider_cls()
 
-    print(f"The observability method choosen is: {name} {provider_cls.__name__}")
+    logger.debug(f"The observability method choosen is: {name} {provider_cls.__name__}")
     return provider

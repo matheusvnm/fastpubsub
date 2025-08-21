@@ -5,8 +5,10 @@ from fastapi.middleware import Middleware
 from starconsumers.consumer import TopicConsumer
 from starconsumers.datastructures import MessageMiddleware, Task
 from starconsumers.exceptions import StarConsumersException
-from starconsumers.middlewares import APMTransactionMiddleware, AsyncContextMiddleware, BasicExceptionHandler, MessageSerializerMiddleware
+from starconsumers.middlewares import APMLogContextMiddleware, APMTransactionMiddleware, AsyncContextMiddleware, BasicExceptionHandler, MessageSerializerMiddleware
 from starconsumers.process import ProcessManager
+from starconsumers.logger import logger
+
 from starlette.types import Scope, Receive, Send
 
 
@@ -25,13 +27,13 @@ class StarConsumers:
         await self._asgi_app(scope, receive, send)
 
     async def start(self, _: FastAPI) -> AsyncGenerator[Any]:
-        print("Starting the processes")
+        logger.info("Starting the processes")
 
         self._process_manager.spawn(self.active_tasks)
         yield
-        print("Terminating the processes")
+        logger.info("Terminating the processes")
         self._process_manager.terminate()
-        print("Terminated the processes")
+        logger.info("Terminated the processes")
 
     def add_consumer(self, consumer: TopicConsumer):
         if not isinstance(consumer, TopicConsumer):
@@ -66,16 +68,16 @@ class StarConsumers:
         self._activate_selected_tasks(selected_tasks)
 
     def _activate_all_tasks(self):
-        print("No task selected. We will run all existing tasks")
+        logger.info("No task selected. We will run all existing tasks")
         for task in self.tasks.values():
             new_task = self._build_task_middleware_stack(task)
             self.active_tasks.append(new_task)
 
     def _activate_selected_tasks(self, selected_tasks: set):
-        print(f"We selected the tasks {selected_tasks}")
+        logger.info(f"We selected the tasks {selected_tasks}")
         for task_name in selected_tasks:
             if not task_name in self.tasks:
-                print(f"The task {task_name} not found in tasklist")
+                logger.warning(f"The task {task_name} not found in tasklist")
                 continue
 
             task = self.tasks[task_name]
@@ -83,15 +85,20 @@ class StarConsumers:
             self.active_tasks.append(new_task)
         
         if not self.active_tasks:
-            raise StarConsumersException("No task found to execute. Please check the names in --tasks argument")
+            raise StarConsumersException("No task found to execute. Please check their names and use the --tasks argument to call them")
 
     def _build_task_middleware_stack(self, task: Task):
+        pre_user_middlewares = [Middleware(APMTransactionMiddleware),
+                                Middleware(APMLogContextMiddleware),
+                                Middleware(BasicExceptionHandler),
+                                Middleware(MessageSerializerMiddleware)]
+
+        pos_user_middlewares = [Middleware(AsyncContextMiddleware)]
+
         middlewares = (
-            [Middleware(APMTransactionMiddleware),
-             Middleware(BasicExceptionHandler),
-             Middleware(MessageSerializerMiddleware)]
-            + self.middlewares
-            + [Middleware(AsyncContextMiddleware)]
+            pre_user_middlewares
+            + self.middlewares +
+            pos_user_middlewares
         )
 
         handler = task.handler.next_call

@@ -1,10 +1,11 @@
-import orjson
+import json
 from concurrent.futures import Future
 from google.api_core.exceptions import AlreadyExists
 from google.cloud.pubsub_v1 import PublisherClient
 from google.cloud.pubsub_v1.types import PublisherOptions
 
 from starconsumers import observability
+from starconsumers.logger import logger
 
 class PubSubPublisher:
 
@@ -19,9 +20,9 @@ class PubSubPublisher:
         client = PublisherClient()
         try:
             client.create_topic(name=self.topic,)
-            print("Created topic sucessfully.")
+            logger.info("Created topic sucessfully.")
         except AlreadyExists:
-            print("The topic already exists.")
+            logger.info("The topic already exists.")
 
     def publish(self, *, data: dict, attributes: dict = {}, ordering_key: str = ""):
         """
@@ -38,11 +39,11 @@ class PubSubPublisher:
         client = PublisherClient(publisher_options=publisher_options)
         
         try:
-            encoded_data = orjson.dumps(data)
+            encoded_data = json.dumps(data).encode()
             future: Future = client.publish(topic=self.topic, data=encoded_data, ordering_key=ordering_key, **headers)
             message_id = future.result()
-            print(f"Message published for topic {self.topic} with id {message_id}")
-            print(f"We sent {data} with metadata {attributes}")
+            logger.info(f"Message published for topic {self.topic} with id {message_id}")
+            logger.debug(f"We sent {data} with metadata {attributes}")
         except Exception as e:
-            print(f"Publisher failure: {str(e)}")
+            logger.exception(f"Publisher failure", stacklevel=5)
             raise

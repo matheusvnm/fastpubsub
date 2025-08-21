@@ -1,6 +1,6 @@
 from dataclasses import dataclass
+from starconsumers.logger import logger
 from starconsumers.datastructures import MessageMiddleware, TopicSubscription
-from starconsumers.types import DecoratedCallable
 from google.api_core.exceptions import AlreadyExists, GoogleAPICallError
 from google.cloud.pubsub_v1 import SubscriberClient
 from google.pubsub_v1.types import DeadLetterPolicy, RetryPolicy, Subscription
@@ -43,16 +43,16 @@ class PubSubSubscriber:
 
         with SubscriberClient() as client:
             try:
-                print(f"Attempting to create subscription: {subscription_request.name}")
+                logger.info(f"Attempting to create subscription: {subscription_request.name}")
                 client.create_subscription(request=subscription_request)
-                print(f"Successfully created subscription: {subscription_request.name}")
+                logger.info(f"Successfully created subscription: {subscription_request.name}")
             except AlreadyExists:
-                print(f"Subscription '{subscription_request.name}' already exists. Skipping creation.")
+                logger.info(f"Subscription '{subscription_request.name}' already exists. Skipping creation.")
             except GoogleAPICallError as e:
-                print(f"Failed to create subscription '{subscription_request.name}': {e}")
+                logger.exception(f"Failed to create subscription '{subscription_request.name}'", stacklevel=5)
                 raise
             except Exception as e:
-                print(f"An unexpected error occurred during subscription creation: {e}")
+                logger.exception(f"An unexpected error occurred during subscription creation", stacklevel=5)
                 raise
 
 
@@ -64,17 +64,17 @@ class PubSubSubscriber:
         subscription_path = SubscriberClient.subscription_path(project_id, subscription_name)
 
         with SubscriberClient() as client:
-            print(f"Listening for messages on {subscription_path}")
+            logger.info(f"Listening for messages on {subscription_path}")
             streaming_pull_future = client.subscribe(subscription_path, callback=callback)
             try:
                 streaming_pull_future.result()
             except KeyboardInterrupt:
-                print("Subscriber stopped by user")
+                logger.info("Subscriber stopped by user")
             except Exception as e:
-                print(f"Subscription stream terminated unexpectedly: {e}")
+                logger.exception(f"Subscription stream terminated unexpectedly", stacklevel=5)
             finally:
-                print("Sending cancel streaming pull command.")
+                logger.info("Sending cancel streaming pull command.")
                 streaming_pull_future.cancel()
-                print("Waiting the cancel command to finish.")
+                logger.info("Waiting the cancel command to finish.")
                 streaming_pull_future.result()
-                print("Subscriber has shut down.")
+                logger.info("Subscriber has shut down.")

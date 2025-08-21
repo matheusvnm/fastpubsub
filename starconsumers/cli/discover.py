@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 
+from starconsumers.logger import logger
+from starconsumers.application import StarConsumers
 from starconsumers.exceptions import StarConsumersCLIException
 
 
@@ -86,8 +88,8 @@ class ApplicationDiscover:
         try:
             return importlib.import_module(module.path)
         except (ImportError, ValueError) as e:
-            print(f"Import error: {e}")
-            print("Ensure all the package directories have an __init__.py file")
+            logger.error(f"Import error: {e}")
+            logger.error("Ensure all the package directories have an __init__.py file")
             raise
 
     def _search_probable_names(self, *, module: Module) -> str:
@@ -97,12 +99,12 @@ class ApplicationDiscover:
         for preferred_name in ["app", "api"]:
             if preferred_name in set(object_names):
                 obj = getattr(module, preferred_name)
-                if obj.__class__.__name__ == "StarConsumers":
+                if isinstance(obj, StarConsumers):
                     return preferred_name
 
         for name in object_names:
             obj = getattr(module, name)
-            if obj.__class__.__name__ == "StarConsumers":
+            if isinstance(obj, StarConsumers):
                 return name
 
         raise StarConsumersCLIException(
@@ -114,14 +116,12 @@ class ApplicationDiscover:
         object_names = dir(module)
 
         if app_name not in set(object_names):
-            print(f"Could not find app name {app_name} in {module.path}")
+            logger.debug(f"Could not find app name {app_name} in {module.path}")
             return False
 
         app = getattr(module, app_name)
-        if not app.__class__.__name__ == "StarConsumers":
-            print(
-                f"The app name {app_name} in {module.path} doesn't seem to be a StarConsumers app"
-            )
+        if not isinstance(app, StarConsumers):
+            logger.debug(f"The app name {app_name} in {module.path} doesn't seem to be a StarConsumers app")
             return False
 
         return True
@@ -141,22 +141,23 @@ class ApplicationDiscover:
         self, *, path: Path | None = None, app_name: str | None = None
     ) -> Application:
         if not path:
-            print(f"Using path default {path}")
+            logger.debug(f"Using path default {path}")
             path = self._get_default_path()
 
-        print("Searching for package file structure from directories with __init__.py files")
+        logger.debug("Searching for package file structure from directories with __init__.py files")
 
-        print(f"Resolved absolute path {path.resolve()}")
+        logger.debug(f"Resolved absolute path {path.resolve()}")
         if not path.exists():
             raise StarConsumersCLIException(f"Path does not exist {path}")
 
         module = self._get_module(path=path)
 
-        print(f"Importing module {module.path}")
-        print(f"Importing from {module.directory}")
+        logger.debug(f"Importing module {module.path}")
+        logger.debug(f"Importing from {module.directory}")
 
         name = self._get_app_name(module=module, app_name=app_name)
         application = Application(name=name, module=module)
 
-        print(f"from {application.module.path} import {application.name}")
+        logger.info(f"The Starconsumers application was found")
+        logger.info(f"from {application.module.path} import {application.name}")
         return application
