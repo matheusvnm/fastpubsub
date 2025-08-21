@@ -105,7 +105,6 @@ class StarConsumers:
         )
 
     async def _health_route(self):
-        return {}
-        #return self._process_manager.probe_processes()
+        return self._process_manager.probe_processes()
         
         
