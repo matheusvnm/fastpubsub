@@ -1,10 +1,7 @@
-# --- 1. Context Management ---
-# This remains the same, providing a thread-safe way to store context.
-
 import json
 import logging
 import os
-from re import I
+
 import sys
 import threading
 from typing import Any
@@ -95,7 +92,7 @@ class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         log_object = {
             "timestamp": self.formatTime(record, self.datefmt),
-            "level": record.levelname,
+            "severity": record.levelname,
             "name": record.name,
             "message": record.getMessage(),
             "module": record.module,
