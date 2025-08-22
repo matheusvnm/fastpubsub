@@ -1,5 +1,4 @@
 from collections.abc import Callable
-import os
 from typing import Any
 
 from google.api_core.exceptions import AlreadyExists, GoogleAPICallError
@@ -8,9 +7,7 @@ from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 from google.pubsub_v1.types import DeadLetterPolicy, RetryPolicy, Subscription
 
 from starconsumers.datastructures import TopicSubscription
-from starconsumers.exceptions import StarConsumersException
 from starconsumers.logger import logger
-from starconsumers.pubsub.auth import check_credentials
 
 
 class PubSubSubscriber:
@@ -19,7 +16,7 @@ class PubSubSubscriber:
         Creates the Pub/Sub subscription if it doesn't exist.
         Handles AlreadyExists errors gracefully.
         """
-        
+
         name = SubscriberClient.subscription_path(subscription.project_id, subscription.name)
         topic = SubscriberClient.topic_path(subscription.project_id, subscription.topic_name)
 
@@ -44,7 +41,6 @@ class PubSubSubscriber:
             enable_message_ordering=subscription.enable_message_ordering,
             enable_exactly_once_delivery=subscription.enable_exactly_once_delivery,
         )
-
 
         with SubscriberClient() as client:
             try:

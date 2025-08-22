@@ -10,7 +10,6 @@ from starconsumers.datastructures import (
 )
 
 
-
 class TopicConsumer:
     def __init__(self, project_id: str, topic_name: str, autocreate: bool = True):
         self.project_id = project_id
@@ -52,7 +51,7 @@ class TopicConsumer:
                     topic_name=dead_letter_topic, max_delivery_attempts=max_delivery_attempts
                 )
 
-            handler = MessageMiddleware(next_call=func)
+            handler = MessageMiddleware(next_call=func) # type: ignore
             subscription = TopicSubscription(
                 name=subscription_name,
                 project_id=self.project_id,
