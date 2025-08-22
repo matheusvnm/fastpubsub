@@ -61,7 +61,7 @@ class StarConsumers:
         self, middleware: type[MessageMiddleware], *args: list[str], **kwargs: dict[str, str]
     ) -> None:
         if not (isinstance(middleware, type) and issubclass(middleware, MessageMiddleware)):
-            raise ValueError(f"The consumer must implement {MessageMiddleware.__name__} class")
+            raise ValueError(f"The middleware must implement {MessageMiddleware.__name__} class")
 
         self.middlewares.append(MiddlewareFactory(middleware, *args, **kwargs))
 
