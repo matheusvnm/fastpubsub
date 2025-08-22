@@ -5,6 +5,7 @@ from starconsumers.datastructures import (
     DecoratedCallable,
     MessageMiddleware,
     Task,
+    TopicMessage,
     TopicSubscription,
 )
 
@@ -31,6 +32,20 @@ class TopicConsumer:
         enable_exactly_once_delivery: bool = False,
     ) -> Callable[[DecoratedCallable], DecoratedCallable]:
         def decorator(func: DecoratedCallable) -> DecoratedCallable:
+            if func.__code__.co_argcount != 1:
+                raise TypeError(
+                    f"Task function '{func.__name__}' must accept exactly one argument."
+                )
+
+            arg_name = func.__code__.co_varnames[0]
+            arg_type = func.__annotations__.get(arg_name)
+
+            if arg_type is not TopicMessage:
+                raise TypeError(
+                    f"Task function '{func.__name__}' argument must be of type {TopicMessage}, "
+                    f"but it is {arg_type}."
+                )
+
             dead_letter_policy = None
             if dead_letter_topic:
                 dead_letter_policy = DeadLetterPolicy(
