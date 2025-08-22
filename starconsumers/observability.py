@@ -1,18 +1,19 @@
-from contextlib import contextmanager
 import os
-import sys
-
 from abc import ABC, abstractmethod
-from functools import cache, wraps
+from collections.abc import Generator
+from contextlib import contextmanager
+from functools import cache
+from typing import Any
 
+from starconsumers.exceptions import StarConsumersException
 from starconsumers.logger import logger
 
 
 class ApmProvider(ABC):
     """Abstract base class defining the contract for any APM provider."""
-    
+
     @abstractmethod
-    def initialize(self):
+    def initialize(self) -> None:
         """
         Initializes the APM agent if it's not already running.
         This is for environments without an auto-starting wrapper.
@@ -20,37 +21,39 @@ class ApmProvider(ABC):
         pass
 
     @abstractmethod
-    def background_transaction(self, name: str):
+    @contextmanager
+    def background_transaction(self, name: str) -> Generator[Any]:
         """Decorator for a background transaction (a top-level trace)."""
         pass
 
     @abstractmethod
-    def span(self, name: str):
+    @contextmanager
+    def span(self, name: str) -> Generator[Any]:
         """Decorator for a span (a nested operation within a transaction)."""
         pass
 
     @abstractmethod
-    def set_distributed_trace_context(self, headers: dict):
+    def set_distributed_trace_context(self, headers: dict[str, str]) -> None:
         """Sets the current trace context from incoming distributed trace headers."""
         pass
-    
+
     @abstractmethod
-    def get_distributed_trace_context(self) -> dict:
+    def get_distributed_trace_context(self) -> dict[str, str]:
         """Gets the current trace context as headers for downstream propagation."""
         pass
 
     @abstractmethod
-    def record_custom_event(self, event_type: str, params: dict):
+    def record_custom_event(self, event_type: str, params: dict[str, str]) -> None:
         """Records a custom event with associated attributes."""
         pass
-    
+
     @abstractmethod
-    def get_trace_id(self) -> str:
+    def get_trace_id(self) -> str | None:
         """Gets the trace id from the current transaction."""
         pass
 
     @abstractmethod
-    def get_span_id(self) -> str:
+    def get_span_id(self) -> str | None:
         """Gets the span id from the current transaction."""
         pass
 
@@ -60,124 +63,124 @@ class ApmProvider(ABC):
         return False
 
 
-
-
-class _NoOpContextDecorator:
-    """A helper that works as a no-op decorator and context manager."""
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def __call__(self, func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-        return wrapper
-
-    def __enter__(self):
-        # Required for context manager, does nothing.
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        # Required for context manager, does nothing.
-        pass
-
 class NoOpProvider(ApmProvider):
     """A provider that performs no operations."""
-    def initialize(self):
-        pass # Nothing to do
 
-    def background_transaction(self, name: str):
-        return _NoOpContextDecorator()
-
-    def span(self, name: str):
-        return _NoOpContextDecorator()
-
-    def set_distributed_trace_context(self, headers: dict):
+    def initialize(self) -> None:
         pass
 
-    def get_distributed_trace_context(self) -> dict:
+    @contextmanager
+    def background_transaction(self, _: str) -> Generator[Any]:
+        yield
+
+    @contextmanager
+    def span(self, _: str) -> Generator[Any]:
+        yield
+
+    def set_distributed_trace_context(self, _: dict[str, str]) -> None:
+        pass
+
+    def get_distributed_trace_context(self) -> dict[str, str]:
         return {}
-        
-    def record_custom_event(self, event_type: str, params: dict):
+
+    def record_custom_event(self, _: str, __: dict[str, str]) -> None:
         pass
 
-    def get_trace_id(self) -> str:
+    def get_trace_id(self) -> str | None:
         return ""
 
-    def get_span_id(self) -> str:
+    def get_span_id(self) -> str | None:
         return ""
-    
+
     def active(self) -> bool:
         return False
 
 
 class NewRelicProvider(ApmProvider):
     """APM provider for New Relic."""
-    def __init__(self):
-        import newrelic.agent
-        self._agent = newrelic.agent
 
-    def initialize(self):
+    def __init__(self) -> None:
+        try:
+            import newrelic.agent
+
+            self._agent = newrelic.agent
+        except ModuleNotFoundError as e:
+            logger.exception("No newrelic module found.")
+            raise StarConsumersException(
+                "No newrelic module found. "
+                "Please install it using 'pip install starconsumers[newrelic]'."
+            ) from e
+
+    def initialize(self) -> None:
         """Initializes and registers the agent if not already active."""
         logger.info("Performing New Relic agent initialization.")
         try:
             self._agent.initialize()
             self._agent.register_application(timeout=1.0)
             logger.info("New Relic initialization and registration successful.")
-        except Exception as e:
-            logger.exception(f"Failed to initialize New Relic.")
+        except Exception:
+            logger.exception("Failed to initialize New Relic.")
 
     @contextmanager
-    def background_transaction(self, name: str):
+    def background_transaction(self, name: str) -> Generator[Any]:
         app = self._agent.application(activate=False)
         with self._agent.BackgroundTask(application=app, name=name):
             yield
 
-    def span(self, name: str):
-        return self._agent.function_trace(name=name)
+    @contextmanager
+    def span(self, name: str) -> Generator[Any]:
+        with self._agent.FunctionTrace(name=name):
+            yield
 
-    def set_distributed_trace_context(self, headers: dict):
+    def set_distributed_trace_context(self, headers: dict[str, str]) -> None:
         """Sets the distributed trace for headers"""
         if not headers:
-            return 
+            return
 
-        context: list[tuple[str, str]] = list()
+        context: list[tuple[str, str]] = []
         for k, v in headers.items():
             context.append((str(k).lower(), str(v)))
 
-        self._agent.accept_distributed_trace_headers(context, transport_type='Queue')
+        self._agent.accept_distributed_trace_headers(context, transport_type="Queue")
 
-    def get_distributed_trace_context(self) -> dict:
+    def get_distributed_trace_context(self) -> dict[str, str]:
         """Get the distributed trace for headers from current context"""
-        
-        headers: list[tuple] = []
+
+        headers: list[tuple[str, str]] = []
         self._agent.insert_distributed_trace_headers(headers)
         return dict(headers)
 
-    def record_custom_event(self, event_type: str, params: dict):
+    def record_custom_event(self, event_type: str, params: dict[str, str]) -> None:
         """Records a New Relic custom event. Must be called within a transaction."""
         try:
             self._agent.record_custom_event(event_type, params)
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to record New Relic custom event", stacklevel=5)
 
-    def get_trace_id(self) -> str:
-        return self._agent.current_trace_id()
-    
-    def get_span_id(self) -> str:
-        return self._agent.current_span_id()
+    def get_trace_id(self) -> str | None:
+        trace_id = self._agent.current_trace_id()
+        if trace_id:
+            return str(trace_id)
+        return None
+
+    def get_span_id(self) -> str | None:
+        span_id = self._agent.current_span_id()
+        if span_id:
+            return str(span_id)
+        return None
 
     def active(self) -> bool:
         application = self._agent.application(activate=False)
-        return application and application.active
-    
+        return bool(application) and bool(application.active)
+
+
 @cache
-def get_apm_provider():
+def get_apm_provider() -> ApmProvider:
     name = os.getenv("STARCONSUMERS_APM_PROVIDER", "")
     name = name.lower()
-    
+
     provider_map = {
-        'newrelic': NewRelicProvider,
+        "newrelic": NewRelicProvider,
     }
     provider_cls = provider_map.get(name, NoOpProvider)
     provider = provider_cls()

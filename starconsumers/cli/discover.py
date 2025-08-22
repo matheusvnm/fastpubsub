@@ -3,15 +3,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 
-from starconsumers.logger import logger
-from starconsumers.application import StarConsumers
+from starconsumers.applications import StarConsumers
 from starconsumers.exceptions import StarConsumersCLIException
+from starconsumers.logger import logger
 
 
 @dataclass
 class Module:
     path: str
-    directory: str
+    directory: Path
 
 
 @dataclass
@@ -81,8 +81,8 @@ class ApplicationDiscover:
             modules.insert(0, parent)
             directory = parent.parent
 
-        path = ".".join([p.stem for p in modules])
-        return Module(path=path, directory=directory.resolve())
+        module_path = ".".join([p.stem for p in modules])
+        return Module(path=module_path, directory=directory.resolve())
 
     def _import_module(self, *, module: Module) -> ModuleType:
         try:
@@ -93,17 +93,17 @@ class ApplicationDiscover:
             raise
 
     def _search_probable_names(self, *, module: Module) -> str:
-        module = self._import_module(module=module)
-        object_names = dir(module)
+        loaded_module = self._import_module(module=module)
+        object_names = dir(loaded_module)
 
         for preferred_name in ["app", "api"]:
             if preferred_name in set(object_names):
-                obj = getattr(module, preferred_name)
+                obj = getattr(loaded_module, preferred_name)
                 if isinstance(obj, StarConsumers):
                     return preferred_name
 
         for name in object_names:
-            obj = getattr(module, name)
+            obj = getattr(loaded_module, name)
             if isinstance(obj, StarConsumers):
                 return name
 
@@ -112,16 +112,18 @@ class ApplicationDiscover:
         )
 
     def _app_name_valid(self, *, app_name: str, module: Module) -> bool:
-        module = self._import_module(module=module)
-        object_names = dir(module)
+        loaded_module = self._import_module(module=module)
+        object_names = dir(loaded_module)
 
         if app_name not in set(object_names):
             logger.debug(f"Could not find app name {app_name} in {module.path}")
             return False
 
-        app = getattr(module, app_name)
+        app = getattr(loaded_module, app_name)
         if not isinstance(app, StarConsumers):
-            logger.debug(f"The app name {app_name} in {module.path} doesn't seem to be a StarConsumers app")
+            logger.debug(
+                f"The app name {app_name} in {module.path} doesn't seem to be a StarConsumers app"
+            )
             return False
 
         return True
@@ -158,6 +160,6 @@ class ApplicationDiscover:
         name = self._get_app_name(module=module, app_name=app_name)
         application = Application(name=name, module=module)
 
-        logger.info(f"The Starconsumers application was found")
+        logger.info("The Starconsumers application was found")
         logger.info(f"from {application.module.path} import {application.name}")
         return application

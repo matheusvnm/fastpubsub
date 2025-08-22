@@ -1,64 +1,75 @@
-
 import multiprocessing
 import socket
+from typing import Any
 
 import psutil
 
 from starconsumers import observability
-from starconsumers.logger import logger 
-from starconsumers.consumer import Task
-from starconsumers.datastructures import ProcessInfo, ProcessSocketConnection, ProcessSocketConnectionAddress
+from starconsumers.datastructures import (
+    ProcessInfo,
+    ProcessSocketConnection,
+    ProcessSocketConnectionAddress,
+    Task,
+)
+from starconsumers.logger import logger
+from starconsumers.pubsub.auth import check_credentials
 from starconsumers.pubsub.publisher import PubSubPublisher
 from starconsumers.pubsub.subscriber import PubSubSubscriber
 
 
+def spawn(task: Task) -> None:
+    subscriber = PubSubSubscriber()
+    subscriber.create_subscription(task.subscription)
+    subscriber.subscribe(task.subscription.project_id, task.subscription.name, task.handler)
 
-def spawn(task: Task):
-    subscriber = PubSubSubscriber(task.subscription)
-    subscriber.create_subscription()
-    subscriber.subscribe(task.handler)
 
 class ProcessManager:
-
-    def __init__(self):
+    def __init__(self) -> None:
         multiprocessing.set_start_method(method="spawn", force=True)
         self.processes: dict[str, multiprocessing.Process] = {}
 
-    def spawn(self, tasks: list[Task]):
+    def spawn(self, tasks: list[Task]) -> None:
+        check_credentials()
         ProcessManager._start_apm_provider()
         ProcessManager._create_topics(tasks)
         for task in tasks:
-            process = multiprocessing.Process(target=ProcessManager._spawn, args=(task,), daemon=True)
+            process = multiprocessing.Process(
+                target=ProcessManager._spawn, args=(task,), daemon=True
+            )
             self.processes[task.subscription.name] = process
             self.processes[task.subscription.name].start()
 
     @staticmethod
-    def _spawn(task: Task):
+    def _spawn(task: Task) -> None:
         ProcessManager._start_apm_provider()
         subscriber = PubSubSubscriber()
         subscriber.create_subscription(task.subscription)
         subscriber.subscribe(task.subscription.project_id, task.subscription.name, task.handler)
 
     @staticmethod
-    def _create_topics(tasks: list[Task]):
+    def _create_topics(tasks: list[Task]) -> None:
         created_topics = set()
         for task in tasks:
             key = task.subscription.project_id + ":" + task.subscription.topic_name
             if not task.autocreate or key in created_topics:
-                logger.debug(f"No auto topic create or already created topic for {task.subscription.name}")
+                logger.debug(
+                    f"No auto topic create or already created topic for {task.subscription.name}"
+                )
                 continue
-            
+
             logger.info(f"We will try to create the topic {key}")
             created_topics.add(key)
-            publisher = PubSubPublisher(project_id=task.subscription.project_id, topic_name=task.subscription.topic_name)
-            publisher.create_topic()    
+            publisher = PubSubPublisher(
+                project_id=task.subscription.project_id, topic_name=task.subscription.topic_name
+            )
+            publisher.create_topic()
 
     @staticmethod
-    def _start_apm_provider():
+    def _start_apm_provider() -> None:
         apm = observability.get_apm_provider()
         apm.initialize()
 
-    def terminate(self):
+    def terminate(self) -> None:
         children_processes = psutil.Process().children(recursive=True)
         for child_process in children_processes:
             child_process.terminate()
@@ -67,38 +78,37 @@ class ProcessManager:
         for alive_process in alive_processes:
             alive_process.kill()
 
-
-    def probe_processes(self) -> dict:
+    def probe_processes(self) -> dict[str, Any]:
         apm = observability.get_apm_provider()
-        response = {"apm": {"status": apm.active(), "provides": apm.__class__.__name__}}
+        response: dict[str, Any] = {
+            "apm": {"status": apm.active(), "provides": apm.__class__.__name__}
+        }
 
-        response["processes"] = []
+        processes_infos = []
         for name, process in self.processes.items():
             process_info = self._get_process_info(id=process.pid, name=name)
-            response["processes"].append(process_info)
+            processes_infos.append(process_info)
 
+        response.update({"processes": processes_infos})
         return response
-    
 
-    def _get_process_info(self, id: int, name: str) -> ProcessInfo:
-        connections = []
+    def _get_process_info(self, id: int | None, name: str) -> dict[str, Any]:
+        connections: list[ProcessSocketConnection] = []
 
         try:
             process = psutil.Process(id)
         except psutil.NoSuchProcess:
-            return ProcessInfo(name=name, connections=connections)
+            content = ProcessInfo(name=name, connections=connections)
+            return content.model_dump()
 
         try:
             for connection in process.net_connections():
                 if not (connection.raddr):
-                    return
+                    continue
 
                 hostname, _, _ = socket.gethostbyaddr(connection.raddr.ip)
                 address = ProcessSocketConnectionAddress(
-                    ip=connection.raddr.ip, 
-                    port=connection.raddr.port,
-                    hostname=hostname
-                    
+                    ip=connection.raddr.ip, port=connection.raddr.port, hostname=hostname
                 )
                 connection = ProcessSocketConnection(
                     address=address,
@@ -109,9 +119,11 @@ class ProcessManager:
         except psutil.AccessDenied:
             logger.warning("We lack the permissions to get connection infos.")
 
-        return ProcessInfo(
+        content = ProcessInfo(
             name=name,
             connections=connections,
             running=process.is_running(),
             num_threads=process.num_threads(),
         )
+
+        return content.model_dump()

@@ -3,7 +3,7 @@ from dataclasses import asdict, dataclass
 import uvicorn
 import uvicorn.importer
 
-from starconsumers.application import StarConsumers
+from starconsumers.applications import StarConsumers
 from starconsumers.cli.discover import Application
 
 
@@ -13,12 +13,11 @@ class ServerConfiguration:
     port: int
     reload: bool
     root_path: str
-    proxy_headers: dict
-    tasks: list[str]
+    tasks: list[str] | None
 
 
 class ApplicationRunner:
-    def run(self, application: Application,  configuration: ServerConfiguration):
+    def run(self, application: Application, configuration: ServerConfiguration) -> None:
         app: StarConsumers = uvicorn.importer.import_from_string(str(application))
 
         server_configuration = asdict(configuration)

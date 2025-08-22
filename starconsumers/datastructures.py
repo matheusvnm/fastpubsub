@@ -1,26 +1,51 @@
-
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from typing import Union
+from typing import Any
 
+from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 from pydantic import BaseModel
-from starconsumers.types import DecoratedCallable
+
+
+@dataclass(frozen=True)
+class TopicMessage:
+    id: str
+    size: int
+    data: bytes
+    delivery_attempt: int
+    attributes: dict[str, str]
+
+
+type DecoratedCallable = Callable[[TopicMessage], Any]
 
 
 @dataclass
 class MessageMiddleware:
-    next_call: Union["MessageMiddleware", DecoratedCallable] = None
+    next_call: "MessageMiddleware"
 
-    def __call__(self, *args, **kwargs):
-        if not self.next_call:
-            return 
+    def __call__(self, message: TopicMessage | PubSubMessage) -> Any:
+        return self.next_call(message)
 
-        return self.next_call(*args, **kwargs)
+
+class MiddlewareFactory:
+    def __init__(
+        self,
+        cls: type[MessageMiddleware],
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        self.cls = cls
+        self.args = args
+        self.kwargs = kwargs
+
+    def __iter__(self) -> Iterator[Any]:
+        as_tuple = (self.cls, self.args, self.kwargs)
+        return iter(as_tuple)
 
 
 @dataclass(frozen=True)
 class DeadLetterPolicy:
     topic_name: str
-    delivery_attempts: int
+    max_delivery_attempts: int
 
 
 @dataclass(frozen=True)
@@ -32,7 +57,7 @@ class TopicSubscription:
     ack_deadline_seconds: int
     enable_message_ordering: bool
     enable_exactly_once_delivery: bool
-    dead_letter_policy: Union[DeadLetterPolicy, None]
+    dead_letter_policy: DeadLetterPolicy | None
 
 
 @dataclass(frozen=True)
@@ -42,21 +67,11 @@ class Task:
     subscription: TopicSubscription
 
 
-@dataclass(frozen=True)
-class TopicMessage:
-    id: str
-    size: int
-    data: bytes
-    attributes: dict
-    delivery_attempt: int
-
-
-
 class ProcessSocketConnectionAddress(BaseModel):
     ip: str
     port: int
     hostname: str
-    
+
 
 class ProcessSocketConnection(BaseModel):
     status: str

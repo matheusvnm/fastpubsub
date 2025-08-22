@@ -1,53 +1,24 @@
-
-
-
 import asyncio
-import traceback
-from typing import Union
+from typing import Any
+
+from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
+
+from starconsumers import observability
+from starconsumers.datastructures import MessageMiddleware, TopicMessage
+from starconsumers.exceptions import DropException, RetryException
 from starconsumers.logger import logger
 
-from fastapi.types import DecoratedCallable
-from starconsumers import observability
-from starconsumers.exceptions import DropException, RetryException
-
-from starconsumers.datastructures import MessageMiddleware, TopicMessage
-from google.cloud.pubsub_v1.subscriber.message import Message
-
-
-
-
-class BasicExceptionHandler(MessageMiddleware):
-
-    def __call__(self, message: Message):
-        try:
-            response = super().__call__(message)
-            message.ack()
-            logger.info(f"Message {message.message_id} successfully processed.")
-            return response
-        except DropException as ex:
-            logger.info(f"DROP: Message {message.message_id} will be dropped")
-            message.ack()
-            return
-        except RetryException:
-            logger.warning(f"RETRY: Message {message.message_id} will be retried")
-            message.nack()
-            return
-        except Exception:
-            logger.exception(f"Unhandled exception on message {message.message_id}", stacklevel=5)
-            message.nack()
-            return
 
 class APMTransactionMiddleware(MessageMiddleware):
-
-    def __call__(self, message: Message):
+    def __call__(self, message: PubSubMessage) -> Any:
         apm = observability.get_apm_provider()
-        with apm.background_transaction(name="MessageMiddleware"):
+        with apm.background_transaction("MessageMiddleware"):
             apm.set_distributed_trace_context(message.attributes)
             return super().__call__(message)
 
-class APMLogContextMiddleware(MessageMiddleware):
 
-    def __call__(self, message: Message):
+class APMLogContextMiddleware(MessageMiddleware):
+    def __call__(self, message: PubSubMessage) -> Any:
         apm = observability.get_apm_provider()
 
         trace_id = apm.get_trace_id()
@@ -55,8 +26,30 @@ class APMLogContextMiddleware(MessageMiddleware):
         with logger.contextualize(trace_id=trace_id, span_id=span_id):
             return super().__call__(message)
 
+
+class BasicExceptionHandler(MessageMiddleware):
+    def __call__(self, message: PubSubMessage) -> Any:
+        try:
+            response = super().__call__(message)
+            message.ack()
+            logger.info(f"Message {message.message_id} successfully processed.")
+            return response
+        except DropException:
+            logger.info(f"DROP: Message {message.message_id} will be dropped")
+            message.ack()
+            return None
+        except RetryException:
+            logger.warning(f"RETRY: Message {message.message_id} will be retried")
+            message.nack()
+            return None
+        except Exception:
+            logger.exception(f"Unhandled exception on message {message.message_id}", stacklevel=5)
+            message.nack()
+            return None
+
+
 class MessageSerializerMiddleware(MessageMiddleware):
-    def __call__(self, message: Message):
+    def __call__(self, message: PubSubMessage) -> Any:
         serialized_message = TopicMessage(
             id=message.message_id,
             size=message.size,
@@ -67,13 +60,13 @@ class MessageSerializerMiddleware(MessageMiddleware):
 
         return super().__call__(serialized_message)
 
+
 class AsyncContextMiddleware(MessageMiddleware):
-
-    def __init__(self, next_call: Union["MessageMiddleware", DecoratedCallable]):
+    def __init__(self, next_call: MessageMiddleware) -> None:
         self.next_call = next_call
-        self.is_coroutine = asyncio.iscoroutinefunction(next_call) 
+        self.is_coroutine = asyncio.iscoroutinefunction(next_call)
 
-    def __call__(self, message: TopicMessage):
+    def __call__(self, message: TopicMessage) -> Any:
         if not self.is_coroutine:
             return super().__call__(message)
 

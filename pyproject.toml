@@ -32,6 +32,7 @@ newrelic = [
 [dependency-groups]
 dev = [
     "coverage>=7.10.3",
+    "mypy>=1.17.1",
     "pre-commit>=4.3.0",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.1.0",
@@ -57,6 +58,11 @@ fail_under = 80
 
 [tool.mypy]
 strict = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "newrelic.*"
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100

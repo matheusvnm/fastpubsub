@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 
 import rich
 import typer
@@ -15,7 +15,7 @@ cli_app = typer.Typer(
 
 
 @cli_app.callback()
-def main(ctx: typer.Context):
+def main(ctx: typer.Context) -> None:
     """
     Display helpful tips when the main command is run without any subcommands.
     """
@@ -38,8 +38,7 @@ def run(
         list[str] | None,
         typer.Option(
             "--tasks",
-            help="Specify a tasks to run. "
-            "Use this option multiple times for multiple tasks.",
+            help="Specify a tasks to run. Use this option multiple times for multiple tasks.",
         ),
     ] = [],
     host: Annotated[
@@ -67,13 +66,7 @@ def run(
             "If not provided, it will be auto-detected."
         ),
     ] = None,
-    proxy_headers: Annotated[
-        bool,
-        typer.Option(
-            help="Enable/disable proxy headers (X-Forwarded-*) to identify the client's address."
-        ),
-    ] = True,
-) -> Any:
+) -> None:
     """
     Run a StarConsumers application using Uvicorn.
 
@@ -91,7 +84,6 @@ def run(
         port=port,
         reload=reload,
         root_path=root_path,
-        proxy_headers=proxy_headers,
         tasks=tasks,
     )
 
@@ -100,7 +92,7 @@ def run(
 
 
 @cli_app.command(name="help")
-def show_help():
+def show_help() -> None:
     """
     Shows a helpful guide with common use cases and examples.
     """

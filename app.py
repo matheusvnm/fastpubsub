@@ -1,5 +1,5 @@
-from starconsumers.application import StarConsumers
-from starconsumers.consumer import TopicConsumer
+from starconsumers.applications import StarConsumers
+from starconsumers.consumers import TopicConsumer
 from starconsumers.datastructures import MessageMiddleware, TopicMessage
 from starconsumers.logger import logger
 
