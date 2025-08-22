@@ -1,4 +1,5 @@
 from dataclasses import asdict, dataclass
+from typing import Union
 
 import uvicorn
 import uvicorn.importer
@@ -13,7 +14,7 @@ class ServerConfiguration:
     port: int
     reload: bool
     root_path: str
-    tasks: list[str] | None
+    tasks: Union[list[str], None]
 
 
 class ApplicationRunner:
