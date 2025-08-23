@@ -1,12 +1,15 @@
 from collections.abc import Callable
+from datetime import timedelta
+from gc import enable
 from typing import Any
 
 from google.api_core.exceptions import AlreadyExists, GoogleAPICallError
 from google.cloud.pubsub_v1 import SubscriberClient
+from google.cloud.pubsub_v1.types import FlowControl
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 from google.pubsub_v1.types import DeadLetterPolicy, RetryPolicy, Subscription
 
-from starconsumers.datastructures import TopicSubscription
+from starconsumers.datastructures import MessageControlFlowPolicy, TopicSubscription
 from starconsumers.logger import logger
 
 
@@ -31,15 +34,20 @@ class PubSubSubscriber:
                 max_delivery_attempts=subscription.dead_letter_policy.max_delivery_attempts,
             )
 
+        min_backoff_delay = timedelta(seconds=subscription.retry_policy.min_backoff_delay_secs)
+        max_backoff_delay = timedelta(seconds=subscription.retry_policy.max_backoff_delay_secs)
+        retry_policy = RetryPolicy(minimum_backoff=min_backoff_delay,
+                                   maximum_backoff=max_backoff_delay)
+
         subscription_request = Subscription(
             name=name,
             topic=topic,
-            retry_policy=RetryPolicy(),
+            retry_policy=retry_policy,
             dead_letter_policy=dlt_policy,
-            filter=subscription.filter_expression,
-            ack_deadline_seconds=subscription.ack_deadline_seconds,
-            enable_message_ordering=subscription.enable_message_ordering,
-            enable_exactly_once_delivery=subscription.enable_exactly_once_delivery,
+            filter=subscription.delivery_policy.filter_expression,
+            ack_deadline_seconds=subscription.delivery_policy.ack_deadline_seconds,
+            enable_message_ordering=subscription.delivery_policy.enable_message_ordering,
+            enable_exactly_once_delivery=subscription.delivery_policy.enable_exactly_once_delivery,
         )
 
         with SubscriberClient() as client:
@@ -63,7 +71,7 @@ class PubSubSubscriber:
                 raise
 
     def subscribe(
-        self, project_id: str, subscription_name: str, callback: Callable[[PubSubMessage], Any]
+        self, project_id: str, subscription_name: str, control_flow_policy: MessageControlFlowPolicy, callback: Callable[[PubSubMessage], Any]
     ) -> None:
         """
         Starts listening for messages on the configured Pub/Sub subscription.
@@ -73,7 +81,11 @@ class PubSubSubscriber:
 
         with SubscriberClient() as client:
             logger.info(f"Listening for messages on {subscription_path}")
-            streaming_pull_future = client.subscribe(subscription_path, callback=callback)
+            streaming_pull_future = client.subscribe(
+                subscription_path, await_callbacks_on_shutdown=True, callback=callback,
+                flow_control=FlowControl(max_messages=control_flow_policy.max_messages, 
+                                         max_bytes=control_flow_policy.max_bytes)
+            )
             try:
                 streaming_pull_future.result()
             except KeyboardInterrupt:
@@ -83,6 +95,4 @@ class PubSubSubscriber:
             finally:
                 logger.info("Sending cancel streaming pull command.")
                 streaming_pull_future.cancel()
-                logger.info("Waiting the cancel command to finish.")
-                streaming_pull_future.result()
                 logger.info("Subscriber has shut down.")

@@ -3,13 +3,11 @@ import socket
 from typing import Any
 
 import psutil
+from pydantic import BaseModel
 
 from starconsumers import observability
 from starconsumers.datastructures import (
-    ProcessInfo,
-    ProcessSocketConnection,
-    ProcessSocketConnectionAddress,
-    Task,
+    WrappedTask,
 )
 from starconsumers.logger import logger
 from starconsumers.pubsub.auth import check_credentials
@@ -17,10 +15,23 @@ from starconsumers.pubsub.publisher import PubSubPublisher
 from starconsumers.pubsub.subscriber import PubSubSubscriber
 
 
-def spawn(task: Task) -> None:
-    subscriber = PubSubSubscriber()
-    subscriber.create_subscription(task.subscription)
-    subscriber.subscribe(task.subscription.project_id, task.subscription.name, task.handler)
+
+class ProcessSocketConnectionAddress(BaseModel):
+    ip: str
+    port: int
+    hostname: str
+
+
+class ProcessSocketConnection(BaseModel):
+    status: str
+    address: ProcessSocketConnectionAddress | None
+
+
+class ProcessInfo(BaseModel):
+    name: str
+    num_threads: int = 0
+    running: bool = False
+    connections: list[ProcessSocketConnection] = []
 
 
 class ProcessManager:
@@ -28,7 +39,7 @@ class ProcessManager:
         multiprocessing.set_start_method(method="spawn", force=True)
         self.processes: dict[str, multiprocessing.Process] = {}
 
-    def spawn(self, tasks: list[Task]) -> None:
+    def spawn(self, tasks: list[WrappedTask]) -> None:
         check_credentials()
         ProcessManager._start_apm_provider()
         ProcessManager._create_topics(tasks)
@@ -40,29 +51,51 @@ class ProcessManager:
             self.processes[task.subscription.name].start()
 
     @staticmethod
-    def _spawn(task: Task) -> None:
+    def _spawn(task: WrappedTask) -> None:
         ProcessManager._start_apm_provider()
         subscriber = PubSubSubscriber()
         subscriber.create_subscription(task.subscription)
-        subscriber.subscribe(task.subscription.project_id, task.subscription.name, task.handler)
-
+        subscriber.subscribe(project_id=task.subscription.project_id, 
+                         subscription_name=task.subscription.name,
+                         control_flow_policy=task.subscription.control_flow_policy,
+                         callback=task.handler)
     @staticmethod
-    def _create_topics(tasks: list[Task]) -> None:
+    def _create_topics(tasks: list[WrappedTask]) -> None:
         created_topics = set()
         for task in tasks:
+            lifecycle_policy = task.subscription.lifecycle_policy
+            if not lifecycle_policy.autocreate:
+                logger.info(f"No autocreate enabled for {task.subscription.name}")
+                continue
+
             key = task.subscription.project_id + ":" + task.subscription.topic_name
-            if not task.autocreate or key in created_topics:
-                logger.debug(
-                    f"No auto topic create or already created topic for {task.subscription.name}"
-                )
+            if key in created_topics:
                 continue
 
             logger.info(f"We will try to create the topic {key}")
-            created_topics.add(key)
             publisher = PubSubPublisher(
-                project_id=task.subscription.project_id, topic_name=task.subscription.topic_name
+                project_id=task.subscription.project_id, 
+                topic_name=task.subscription.topic_name
             )
             publisher.create_topic()
+            created_topics.add(key)
+
+            dead_letter_policy = task.subscription.dead_letter_policy
+            if not dead_letter_policy:
+                continue 
+
+            key = task.subscription.project_id + ":" + dead_letter_policy.topic_name
+            if key in created_topics:
+                continue
+
+            logger.info(f"We will try to create the dead letter topic {dead_letter_policy.topic_name}")
+            publisher = PubSubPublisher(
+                project_id=task.subscription.project_id, 
+                topic_name=dead_letter_policy.topic_name
+            )
+            publisher.create_topic()
+            created_topics.add(key)
+
 
     @staticmethod
     def _start_apm_provider() -> None:

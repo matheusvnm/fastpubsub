@@ -6,28 +6,25 @@ from fastapi import FastAPI
 from starlette.types import Receive, Scope, Send
 
 from starconsumers.consumers import TopicConsumer
-from starconsumers.datastructures import MessageMiddleware, MiddlewareFactory, Task
+from starconsumers.datastructures import MessageMiddleware, MiddlewareContainer, MiddlewaresRegister, Task, WrappedTask
 from starconsumers.exceptions import StarConsumersException
 from starconsumers.logger import logger
 from starconsumers.middlewares import (
-    APMLogContextMiddleware,
-    APMTransactionMiddleware,
-    AsyncContextMiddleware,
-    BasicExceptionHandler,
-    MessageSerializerMiddleware,
+    MiddlewareChainBuilder,
 )
 from starconsumers.process import ProcessManager
 
 
 class StarConsumers:
     def __init__(self) -> None:
-        self.tasks: dict[str, Task] = {}
-        self.active_tasks: list[Task] = []
-        self.middlewares: list[MiddlewareFactory] = []
-
         self._process_manager = ProcessManager()
         self._asgi_app = FastAPI(title="StarConsumers", lifespan=self.start)
         self._asgi_app.add_api_route(path="/health", endpoint=self._health_route, methods=["GET"])
+
+        self._active_tasks: list[WrappedTask] = []
+        self._tasks: dict[str, tuple[Task, MiddlewareContainer]] = {}
+        self._middlewares_register = MiddlewaresRegister()
+
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         await self._asgi_app(scope, receive, send)
@@ -35,8 +32,7 @@ class StarConsumers:
     @asynccontextmanager
     async def start(self, _: FastAPI) -> AsyncGenerator[Any]:
         logger.info("Starting the processes")
-
-        self._process_manager.spawn(self.active_tasks)
+        self._process_manager.spawn(self._active_tasks)
         yield
         logger.info("Terminating the processes")
         self._process_manager.terminate()
@@ -46,24 +42,22 @@ class StarConsumers:
         if not isinstance(consumer, TopicConsumer):
             raise ValueError(f"The consumer must be {TopicConsumer.__name__} instance")
 
-        for task_name, task in consumer.task_map.items():
-            if task_name in self.tasks:
-                new_subscription = task.subscription.name
-                existing_subscription = self.tasks[task_name].subscription.name
+        tasks = consumer.tasks_register.get()
+        middlewares = consumer.middlewares_register.get()
+        for name, task in tasks.items():
+            if name in self._tasks:
+                existing_task, _ = self._tasks[name]
                 raise ValueError(
-                    f"Duplicated task name {task_name} for subscriptions"
-                    f"{new_subscription} and {existing_subscription}"
+                    f"Duplicated task name '{name}' for subscriptions "
+                    f"{existing_task.subscription.name} and {task.subscription.name}"
                 )
 
-            self.tasks[task_name] = task
+            self._tasks[name] = (task, middlewares)
 
     def add_middleware(
         self, middleware: type[MessageMiddleware], *args: list[str], **kwargs: dict[str, str]
     ) -> None:
-        if not (isinstance(middleware, type) and issubclass(middleware, MessageMiddleware)):
-            raise ValueError(f"The middleware must implement {MessageMiddleware.__name__} class")
-
-        self.middlewares.append(MiddlewareFactory(middleware, *args, **kwargs))
+        self._middlewares_register.register(middleware, *args, **kwargs)
 
     def activate_tasks(self, tasks_names: list[str]) -> None:
         if not isinstance(tasks_names, list):
@@ -81,47 +75,36 @@ class StarConsumers:
 
     def _activate_all_tasks(self) -> None:
         logger.info("No task selected. We will run all existing tasks")
-        for task in self.tasks.values():
-            new_task = self._build_task_middleware_stack(task)
-            self.active_tasks.append(new_task)
+        for task, middlewares in self._tasks.values():
+            wrapped_task = self._wrap_task(task, middlewares)
+            self._active_tasks.append(wrapped_task)
 
     def _activate_selected_tasks(self, selected_tasks: set[str]) -> None:
         logger.info(f"We selected the tasks {selected_tasks}")
         for task_name in selected_tasks:
-            if task_name not in self.tasks:
+            if task_name not in self._tasks:
                 logger.warning(f"The task {task_name} not found in tasklist")
                 continue
 
-            task = self.tasks[task_name]
-            new_task = self._build_task_middleware_stack(task)
-            self.active_tasks.append(new_task)
+            task, middlewares = self._tasks[task_name]
+            wrapped_task = self._wrap_task(task, middlewares)
+            self._active_tasks.append(wrapped_task)
 
-        if not self.active_tasks:
+        if not self._active_tasks:
             raise StarConsumersException(
                 "No task found to execute. "
                 "Please check their names and use the --tasks argument to call them"
             )
 
-    def _build_task_middleware_stack(self, task: Task) -> Task:
-        pre_user_middlewares = [
-            MiddlewareFactory(APMTransactionMiddleware),
-            MiddlewareFactory(APMLogContextMiddleware),
-            MiddlewareFactory(BasicExceptionHandler),
-            MiddlewareFactory(MessageSerializerMiddleware),
-        ]
+    def _wrap_task(self, task: Task, middlewares: list[MiddlewareContainer]) -> WrappedTask:
+        global_middlewares = self._middlewares_register.get()
+        builder = MiddlewareChainBuilder(handler=task.handler, 
+                                         local_middlewares=middlewares,
+                                         global_middlewares=global_middlewares)
+        handler = builder.build()
+        return WrappedTask(handler=handler, 
+                           subscription=task.subscription)
 
-        pos_user_middlewares = [MiddlewareFactory(AsyncContextMiddleware)]
-
-        middlewares = pre_user_middlewares + self.middlewares + pos_user_middlewares
-
-        handler = task.handler
-        if isinstance(task.handler, MessageMiddleware):
-            handler = task.handler.next_call
-
-        for cls, args, kwargs in reversed(middlewares):
-            handler = cls(*args, next_call=handler, **kwargs)
-
-        return Task(handler=handler, autocreate=task.autocreate, subscription=task.subscription)
 
     async def _health_route(self) -> dict[str, str]:
         return self._process_manager.probe_processes()
