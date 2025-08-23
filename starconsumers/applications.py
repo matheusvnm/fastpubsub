@@ -6,7 +6,13 @@ from fastapi import FastAPI
 from starlette.types import Receive, Scope, Send
 
 from starconsumers.consumers import TopicConsumer
-from starconsumers.datastructures import MessageMiddleware, MiddlewareContainer, MiddlewaresRegister, Task, WrappedTask
+from starconsumers.datastructures import (
+    MessageMiddleware,
+    MiddlewareContainer,
+    MiddlewaresRegister,
+    Task,
+    WrappedTask,
+)
 from starconsumers.exceptions import StarConsumersException
 from starconsumers.logger import logger
 from starconsumers.middlewares import (
@@ -22,9 +28,8 @@ class StarConsumers:
         self._asgi_app.add_api_route(path="/health", endpoint=self._health_route, methods=["GET"])
 
         self._active_tasks: list[WrappedTask] = []
-        self._tasks: dict[str, tuple[Task, MiddlewareContainer]] = {}
+        self._tasks: dict[str, tuple[Task, list[MiddlewareContainer]]] = {}
         self._middlewares_register = MiddlewaresRegister()
-
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         await self._asgi_app(scope, receive, send)
@@ -98,13 +103,13 @@ class StarConsumers:
 
     def _wrap_task(self, task: Task, middlewares: list[MiddlewareContainer]) -> WrappedTask:
         global_middlewares = self._middlewares_register.get()
-        builder = MiddlewareChainBuilder(handler=task.handler, 
-                                         local_middlewares=middlewares,
-                                         global_middlewares=global_middlewares)
+        builder = MiddlewareChainBuilder(
+            handler=task.handler,
+            local_middlewares=middlewares,
+            global_middlewares=global_middlewares,
+        )
         handler = builder.build()
-        return WrappedTask(handler=handler, 
-                           subscription=task.subscription)
-
+        return WrappedTask(handler=handler, subscription=task.subscription)
 
     async def _health_route(self) -> dict[str, str]:
         return self._process_manager.probe_processes()

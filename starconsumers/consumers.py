@@ -65,8 +65,7 @@ class TopicConsumer:
             )
 
             lifecycle_policy = SubscriptionLifecyclePolicy(
-                autocreate=autocreate,
-                autoupdate=autoupdate
+                autocreate=autocreate, autoupdate=autoupdate
             )
 
             control_flow_policy = MessageControlFlowPolicy(
@@ -96,6 +95,6 @@ class TopicConsumer:
         return decorator
 
     def add_middleware(
-        self, middleware: MessageMiddleware, *args: list[Any], **kwargs: dict[str, Any]
+        self, middleware: type[MessageMiddleware], *args: list[Any], **kwargs: dict[str, Any]
     ) -> None:
         self.middlewares_register.register(middleware, *args, **kwargs)

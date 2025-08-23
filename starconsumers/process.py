@@ -10,10 +10,9 @@ from starconsumers.datastructures import (
     WrappedTask,
 )
 from starconsumers.logger import logger
-from starconsumers.pubsub.auth import check_credentials
 from starconsumers.pubsub.publisher import PubSubPublisher
 from starconsumers.pubsub.subscriber import PubSubSubscriber
-
+from starconsumers.pubsub.utils import check_credentials
 
 
 class ProcessSocketConnectionAddress(BaseModel):
@@ -54,11 +53,17 @@ class ProcessManager:
     def _spawn(task: WrappedTask) -> None:
         ProcessManager._start_apm_provider()
         subscriber = PubSubSubscriber()
-        subscriber.create_subscription(task.subscription)
-        subscriber.subscribe(project_id=task.subscription.project_id, 
-                         subscription_name=task.subscription.name,
-                         control_flow_policy=task.subscription.control_flow_policy,
-                         callback=task.handler)
+        if not subscriber.create_subscription(task.subscription):
+            if task.subscription.lifecycle_policy.autoupdate:
+                subscriber.update_subscription(task.subscription)
+
+        subscriber.subscribe(
+            project_id=task.subscription.project_id,
+            subscription_name=task.subscription.name,
+            control_flow_policy=task.subscription.control_flow_policy,
+            callback=task.handler,
+        )
+
     @staticmethod
     def _create_topics(tasks: list[WrappedTask]) -> None:
         created_topics = set()
@@ -74,28 +79,27 @@ class ProcessManager:
 
             logger.info(f"We will try to create the topic {key}")
             publisher = PubSubPublisher(
-                project_id=task.subscription.project_id, 
-                topic_name=task.subscription.topic_name
+                project_id=task.subscription.project_id, topic_name=task.subscription.topic_name
             )
             publisher.create_topic()
             created_topics.add(key)
 
             dead_letter_policy = task.subscription.dead_letter_policy
             if not dead_letter_policy:
-                continue 
+                continue
 
             key = task.subscription.project_id + ":" + dead_letter_policy.topic_name
             if key in created_topics:
                 continue
 
-            logger.info(f"We will try to create the dead letter topic {dead_letter_policy.topic_name}")
+            logger.info(
+                f"We will try to create the dead letter topic {dead_letter_policy.topic_name}"
+            )
             publisher = PubSubPublisher(
-                project_id=task.subscription.project_id, 
-                topic_name=dead_letter_policy.topic_name
+                project_id=task.subscription.project_id, topic_name=dead_letter_policy.topic_name
             )
             publisher.create_topic()
             created_topics.add(key)
-
 
     @staticmethod
     def _start_apm_provider() -> None:

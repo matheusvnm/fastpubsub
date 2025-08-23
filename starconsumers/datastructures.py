@@ -42,10 +42,12 @@ class MessageControlFlowPolicy:
     max_bytes: int
     max_messages: int
 
+
 @dataclass(frozen=True)
 class SubscriptionLifecyclePolicy:
     autocreate: bool
     autoupdate: bool
+
 
 @dataclass(frozen=True)
 class TopicSubscription:
@@ -72,7 +74,7 @@ class TasksRegister:
     def register(self, name: str, task: Task) -> None:
         if not name or not isinstance(name, str) or len(name.strip()) == 0:
             raise ValueError(f"The task name must be a non empty str type not {name=}")
-  
+
         if name in self.tasks:
             new_subscription = task.subscription.name
             existing_subscription = self.tasks[name].subscription.name
@@ -98,6 +100,7 @@ class TasksRegister:
 
     def get(self) -> dict[str, Task]:
         return self.tasks
+
 
 @dataclass
 class MessageMiddleware:
@@ -128,7 +131,7 @@ class MiddlewaresRegister:
     middlewares: list[MiddlewareContainer] = field(default_factory=list)
 
     def register(
-        self, middleware: MessageMiddleware, *args: list[Any], **kwargs: dict[str, Any]
+        self, middleware: type[MessageMiddleware], *args: list[Any], **kwargs: dict[str, Any]
     ) -> None:
         if not (isinstance(middleware, type) and issubclass(middleware, MessageMiddleware)):
             raise ValueError(f"The middleware must implement {MessageMiddleware.__name__} class")
@@ -141,6 +144,5 @@ class MiddlewaresRegister:
 
 @dataclass(frozen=True)
 class WrappedTask:
-    handler: MessageMiddleware
+    handler: MessageMiddleware | DecoratedCallable
     subscription: TopicSubscription
-

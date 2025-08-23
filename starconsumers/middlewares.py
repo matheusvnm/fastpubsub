@@ -5,9 +5,15 @@ from typing import Any
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 
 from starconsumers import observability
-from starconsumers.datastructures import DecoratedCallable, MessageMiddleware, MiddlewareContainer, TopicMessage
+from starconsumers.datastructures import (
+    DecoratedCallable,
+    MessageMiddleware,
+    MiddlewareContainer,
+    TopicMessage,
+)
 from starconsumers.exceptions import DropException, RetryException
 from starconsumers.logger import logger
+
 
 class APMTransactionMiddleware(MessageMiddleware):
     def __call__(self, message: PubSubMessage) -> Any:
@@ -23,7 +29,9 @@ class APMLogContextMiddleware(MessageMiddleware):
 
         trace_id = apm.get_trace_id()
         span_id = apm.get_span_id()
-        with logger.contextualize(trace_id=trace_id, span_id=span_id):
+        with logger.contextualize(
+            trace_id=trace_id, span_id=span_id, message_id=message.message_id
+        ):
             return super().__call__(message)
 
 
@@ -74,11 +82,12 @@ class AsyncContextMiddleware(MessageMiddleware):
 
 
 class MiddlewareChainBuilder:
-
-    def __init__(self, handler: DecoratedCallable, 
-                 local_middlewares: list[MiddlewareContainer], 
-                 global_middlewares: list[MiddlewareContainer]):
-
+    def __init__(
+        self,
+        handler: DecoratedCallable,
+        local_middlewares: list[MiddlewareContainer],
+        global_middlewares: list[MiddlewareContainer],
+    ):
         self.handler = handler
         self.middleware_chain = deepcopy(global_middlewares) + deepcopy(local_middlewares)
 
@@ -89,18 +98,18 @@ class MiddlewareChainBuilder:
             MiddlewareContainer(BasicExceptionHandler),
             MiddlewareContainer(MessageSerializerMiddleware),
         ]
-    
-    def _build_chain_end(self) -> list[MiddlewareContainer]:
-       return [MiddlewareContainer(AsyncContextMiddleware)]
 
-    def build(self) -> MessageMiddleware:
+    def _build_chain_end(self) -> list[MiddlewareContainer]:
+        return [MiddlewareContainer(AsyncContextMiddleware)]
+
+    def build(self) -> MessageMiddleware | DecoratedCallable:
         chain_beginning = self._build_chain_beginning()
         chain_end = self._build_chain_end()
 
         middlewares = chain_beginning + self.middleware_chain + chain_end
 
-        middleware = self.handler
+        next_call = self.handler
         for cls, args, kwargs in reversed(middlewares):
-            middleware = cls(*args, next_call=middleware, **kwargs)
+            next_call = cls(*args, next_call=next_call, **kwargs)
 
-        return middleware
+        return next_call

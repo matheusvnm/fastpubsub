@@ -17,7 +17,7 @@ class LogLocalMiddleware(MessageMiddleware):
 
 
 consumer_a = TopicConsumer(project_id="starconsumers-pubsub-local", topic_name="topic")
-@consumer_a.task(name="some_handler", subscription_name="some_subscription", dead_letter_topic="some_dlt")
+@consumer_a.task(name="some_handler", subscription_name="some_subscription", dead_letter_topic="some_dlt", max_delivery_attempts=10, autoupdate=True)
 async def some_handler(message: TopicMessage):
     logger.info(f"Some async message received for some_handler")
 
