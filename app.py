@@ -19,13 +19,13 @@ class LogLocalMiddleware(MessageMiddleware):
 consumer_a = TopicConsumer(project_id="starconsumers-pubsub-local", topic_name="topic")
 @consumer_a.task(name="some_handler", subscription_name="some_subscription", dead_letter_topic="some_dlt", max_delivery_attempts=10, autoupdate=True)
 async def some_handler(message: TopicMessage):
-    logger.info(f"Some async message received for some_handler")
+    logger.info(f"Some async message received for some_handler: {message.data}:{message.attributes}")
 
 
 consumerb = TopicConsumer(project_id="starconsumers-pubsub-local", topic_name="topic2")
 @consumerb.task(name="other_handler", subscription_name="some_subscription2")
 def other_handler(message: TopicMessage):
-    logger.info(f"Some sync message received for other_handler")
+    logger.info(f"Some sync message received for other_handler: {message.data}:{message.attributes}")
 
 
 
