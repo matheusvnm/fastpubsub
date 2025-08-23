@@ -15,15 +15,15 @@ repos:
 
 - repo: local
   hooks:
-    - id: ruff-format
+    - id: format
       name: Format and sort imports
-      entry: bash -c 'script/format.sh'
+      entry: /bin/bash ./scripts/format.sh
       language: system
       types: [python]
       pass_filenames: false
-    - id: ruff-check
+    - id: lint
       name: Type check and lint
-      entry: bash -c 'script/format.sh'
+      entry: /bin/bash ./scripts/lint.sh
       language: system
       types: [python]
       pass_filenames: false

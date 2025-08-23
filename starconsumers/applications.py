@@ -114,7 +114,10 @@ class StarConsumers:
 
         middlewares = pre_user_middlewares + self.middlewares + pos_user_middlewares
 
-        handler = task.handler.next_call
+        handler = task.handler
+        if isinstance(task.handler, MessageMiddleware):
+            handler = task.handler.next_call
+
         for cls, args, kwargs in reversed(middlewares):
             handler = cls(*args, next_call=handler, **kwargs)
 

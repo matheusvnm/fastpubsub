@@ -1,6 +1,6 @@
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Union
 
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 from pydantic import BaseModel
@@ -20,7 +20,7 @@ type DecoratedCallable = Callable[[TopicMessage], Any]
 
 @dataclass
 class MessageMiddleware:
-    next_call: "MessageMiddleware"
+    next_call: Union["MessageMiddleware", DecoratedCallable]
 
     def __call__(self, message: TopicMessage | PubSubMessage) -> Any:
         return self.next_call(message)
@@ -63,7 +63,7 @@ class TopicSubscription:
 @dataclass(frozen=True)
 class Task:
     autocreate: bool
-    handler: MessageMiddleware
+    handler: MessageMiddleware | DecoratedCallable
     subscription: TopicSubscription
 
 
