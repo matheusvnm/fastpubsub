@@ -1,0 +1,37 @@
+default_language_version:
+    python: python3.13
+
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v6.0.0
+  hooks:
+  -   id: check-added-large-files
+  -   id: check-toml
+  -   id: check-yaml
+      args:
+      -   --unsafe
+  -   id: end-of-file-fixer
+  -   id: trailing-whitespace
+
+- repo: local
+  hooks:
+    - id: ruff-format
+      name: Format and sort imports
+      entry: bash -c 'script/format.sh'
+      language: system
+      types: [python]
+      pass_filenames: false
+    - id: ruff-check
+      name: Type check and lint
+      entry: bash -c 'script/format.sh'
+      language: system
+      types: [python]
+      pass_filenames: false
+
+- repo: https://github.com/compilerla/conventional-pre-commit
+  rev: v4.2.0
+  hooks:
+    - id: conventional-pre-commit
+      name: Checks commit message
+      stages: [commit-msg]
+      args: [build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test, .git/COMMIT_MSG]
