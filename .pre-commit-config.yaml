@@ -16,13 +16,13 @@ repos:
 - repo: local
   hooks:
     - id: format
-      name: Format and sort imports
+      name: format and sort imports
       entry: /bin/bash ./scripts/format.sh
       language: system
       types: [python]
       pass_filenames: false
     - id: lint
-      name: Type check and lint
+      name: lint and type check
       entry: /bin/bash ./scripts/lint.sh
       language: system
       types: [python]
@@ -32,6 +32,6 @@ repos:
   rev: v4.2.0
   hooks:
     - id: conventional-pre-commit
-      name: Checks commit message
+      name: checks commit message
       stages: [commit-msg]
       args: [build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test, .git/COMMIT_MSG]
