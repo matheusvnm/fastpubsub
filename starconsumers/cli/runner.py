@@ -14,8 +14,6 @@ from starconsumers.exceptions import StarConsumersCLIException
 class ServerConfiguration:
     host: str
     port: int
-    reload: bool
-    root_path: str
 
 
 @dataclass(frozen=True)
@@ -29,9 +27,10 @@ class ApplicationRunner:
         self, app_configuration: AppConfiguration, server_configuration: ServerConfiguration
     ) -> None:
         app: StarConsumers = self.get_application(app_configuration.path)
-
         app.activate_tasks(app_configuration.tasks)
-        uvicorn.run(app=app, lifespan="on", log_level="warning", **asdict(server_configuration))
+
+        target = app._asgi_app
+        uvicorn.run(app=target, lifespan="on", log_level="warning", **asdict(server_configuration))
 
     def get_application(self, path: str) -> StarConsumers:
         posix_path = self.translate_pypath_to_posix(pypath=path)
@@ -45,8 +44,8 @@ class ApplicationRunner:
 
     def translate_pypath_to_posix(self, pypath: str) -> Path:
         try:
-            module, _ = pypath.split(":")
-            posix_text_path = module.replace(".", "/")
+            module, _ = pypath.split(os.path.pathsep)
+            posix_text_path = module.replace(os.path.extsep, os.path.sep)
             return Path(posix_text_path)
         except Exception as e:
             raise uvicorn.importer.ImportFromStringError(

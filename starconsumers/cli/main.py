@@ -54,8 +54,8 @@ def run(
     tasks: Annotated[
         list[str] | None,
         typer.Option(
-            "--tasks",
-            help="Specify a tasks to run. Use this option multiple times for multiple tasks.",
+            "--task",
+            help="Specify a task to run. Use this option multiple times for multiple tasks.",
         ),
     ] = [],
     host: Annotated[
@@ -66,18 +66,6 @@ def run(
         int,
         typer.Option(help="The port to serve the application on."),
     ] = 8000,
-    reload: Annotated[
-        bool,
-        typer.Option(
-            help="Enable auto-reload when code files change. Ideal for development, do not use it in production."
-        ),
-    ] = False,
-    root_path: Annotated[
-        str,
-        typer.Option(
-            help="Root path prefix for the application embedded uvicorn server, useful when behind a reverse proxy."
-        ),
-    ] = "",
 ) -> None:
     """
     Run a StarConsumers application using Uvicorn.
@@ -96,8 +84,6 @@ def run(
     server_configuration = ServerConfiguration(
         host=host,
         port=port,
-        reload=reload,
-        root_path=root_path,
     )
 
     application_runner = ApplicationRunner()
@@ -288,27 +274,23 @@ def show_help() -> None:
     you can simply run:
     [yellow]> starconsumers run app.main:app [/yellow]
 
-    [bold]3. Running Specific Tasks[/bold]
+    [bold]2. Running Specific Tasks[/bold]
     To run only `task_a` and `task_b`:
-    [yellow]> starconsumers run app.main:app --tasks task_a --tasks task_b[/yellow]
+    [yellow]> starconsumers run app.main:app --task task_a --task task_b[/yellow]
 
-    [bold]4. Running in Development Mode[/bold]
-    To enable auto-reload on code changes, use the `--reload` flag:
-    [yellow]> starconsumers run app.main:app --reload[/yellow]
-
-    [bold]5. Pub/Sub: Creating a Topic[/bold]
+    [bold]3. Pub/Sub: Creating a Topic[/bold]
     To create a new topic in your GCP project:
     [yellow]> starconsumers pubsub create-topic my-new-topic --project-id gcp-project-123[/yellow]
 
-    [bold]6. Pub/Sub: Publishing a Message from a File[/bold]
+    [bold]4. Pub/Sub: Publishing a Message from a File[/bold]
     Publish a JSON message from a file:
     [yellow]> starconsumers pubsub publish --topic my-topic --project-id gcp-project-123 --file ./payload.json[/yellow]
 
-    [bold]7. Pub/Sub: Publishing a Message with Attributes[/bold]
+    [bold]5. Pub/Sub: Publishing a Message with Attributes[/bold]
     Attach key-value attributes to your message using a comma-separated string:
     [yellow]> starconsumers pubsub publish --topic orders --project-id gcp-123 --message '{"status": "shipped"}' --attributes "event_id=xyz-123,source=cli"[/yellow]
 
-    [bold]8. Using the Pub/Sub Emulator[/bold]
+    [bold]6. Using the Pub/Sub Emulator[/bold]
     To use the local emulator for any pubsub command, add the --emulator flag and specify the port:
     [yellow]> starconsumers pubsub create-topic my-local-topic --project-id local-project --emulator --emulator-port 8085[/yellow]
     """

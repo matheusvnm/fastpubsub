@@ -1,6 +1,5 @@
 import multiprocessing
 import socket
-from typing import Any
 
 import psutil
 from pydantic import BaseModel
@@ -33,6 +32,17 @@ class ProcessInfo(BaseModel):
     connections: list[ProcessSocketConnection] = []
 
 
+class APMInfo(BaseModel):
+    active: bool
+    ready: bool
+    provider: str
+
+
+class ProbeResponse(BaseModel):
+    apm: APMInfo
+    processes: list[ProcessInfo]
+
+
 class ProcessManager:
     def __init__(self) -> None:
         multiprocessing.set_start_method(method="spawn", force=True)
@@ -40,7 +50,6 @@ class ProcessManager:
 
     def spawn(self, tasks: list[WrappedTask]) -> None:
         check_credentials()
-        ProcessManager._start_apm_provider()
         ProcessManager._create_topics(tasks)
         for task in tasks:
             process = multiprocessing.Process(
@@ -115,28 +124,26 @@ class ProcessManager:
         for alive_process in alive_processes:
             alive_process.kill()
 
-    def probe_processes(self) -> dict[str, Any]:
+    def probe_processes(self) -> ProbeResponse:
         apm = observability.get_apm_provider()
-        response: dict[str, Any] = {
-            "apm": {"status": apm.active(), "provides": apm.__class__.__name__}
-        }
+        apm_info = APMInfo(
+            active=apm.active(), ready=bool(apm.get_trace_id()), provider=apm.__class__.__name__
+        )
 
         processes_infos = []
         for name, process in self.processes.items():
             process_info = self._get_process_info(id=process.pid, name=name)
             processes_infos.append(process_info)
 
-        response.update({"processes": processes_infos})
-        return response
+        return ProbeResponse(apm=apm_info, processes=processes_infos)
 
-    def _get_process_info(self, id: int | None, name: str) -> dict[str, Any]:
+    def _get_process_info(self, id: int | None, name: str) -> ProcessInfo:
         connections: list[ProcessSocketConnection] = []
 
         try:
             process = psutil.Process(id)
         except psutil.NoSuchProcess:
-            content = ProcessInfo(name=name, connections=connections)
-            return content.model_dump()
+            return ProcessInfo(name=name, connections=connections)
 
         try:
             for connection in process.net_connections():
@@ -156,11 +163,9 @@ class ProcessManager:
         except psutil.AccessDenied:
             logger.warning("We lack the permissions to get connection infos.")
 
-        content = ProcessInfo(
+        return ProcessInfo(
             name=name,
             connections=connections,
             running=process.is_running(),
             num_threads=process.num_threads(),
         )
-
-        return content.model_dump()

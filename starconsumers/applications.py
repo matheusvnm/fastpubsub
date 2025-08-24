@@ -3,8 +3,8 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI
-from starlette.types import Receive, Scope, Send
 
+from starconsumers import observability
 from starconsumers.consumers import TopicConsumer
 from starconsumers.datastructures import (
     MessageMiddleware,
@@ -18,21 +18,21 @@ from starconsumers.logger import logger
 from starconsumers.middlewares import (
     MiddlewareChainBuilder,
 )
-from starconsumers.process import ProcessManager
+from starconsumers.process import ProbeResponse, ProcessManager
 
 
 class StarConsumers:
-    def __init__(self) -> None:
+    def __init__(self, root_path: str = "") -> None:
         self._process_manager = ProcessManager()
-        self._asgi_app = FastAPI(title="StarConsumers", lifespan=self.start)
+        self._asgi_app = FastAPI(title="StarConsumers", root_path=root_path, lifespan=self.start)
         self._asgi_app.add_api_route(path="/health", endpoint=self._health_route, methods=["GET"])
 
         self._active_tasks: list[WrappedTask] = []
         self._tasks: dict[str, tuple[Task, list[MiddlewareContainer]]] = {}
         self._middlewares_register = MiddlewaresRegister()
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        await self._asgi_app(scope, receive, send)
+        _apm = observability.get_apm_provider()
+        _apm.initialize()
 
     @asynccontextmanager
     async def start(self, _: FastAPI) -> AsyncGenerator[Any]:
@@ -111,5 +111,5 @@ class StarConsumers:
         handler = builder.build()
         return WrappedTask(handler=handler, subscription=task.subscription)
 
-    async def _health_route(self) -> dict[str, str]:
+    async def _health_route(self) -> ProbeResponse:
         return self._process_manager.probe_processes()
