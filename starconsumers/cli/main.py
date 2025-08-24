@@ -1,14 +1,15 @@
 import json
 import os
+from concurrent.futures import Future
 from pathlib import Path
 from typing import Annotated
 
 import rich
 import typer
+from google.api_core.exceptions import AlreadyExists
+from google.cloud.pubsub_v1 import PublisherClient
 
-from starconsumers.cli.discover import ApplicationDiscover
-from starconsumers.cli.runner import ApplicationRunner, ServerConfiguration
-from starconsumers.pubsub.publisher import PubSubPublisher
+from starconsumers.cli.runner import AppConfiguration, ApplicationRunner, ServerConfiguration
 
 cli_app = typer.Typer(
     help="A CLI to discover and run StarConsumers applications and interact with Pub/Sub.",
@@ -43,10 +44,12 @@ def main(ctx: typer.Context) -> None:
 
 @cli_app.command()
 def run(
-    path: Annotated[
-        Path | None,
-        typer.Argument(help="Path to a Python file containing the StarConsumers application."),
-    ] = None,
+    app_path: Annotated[
+        str,
+        typer.Argument(
+            help="Path to the app variable containing the StarConsumers application in format module:app."
+        ),
+    ],
     *,
     tasks: Annotated[
         list[str] | None,
@@ -65,44 +68,40 @@ def run(
     ] = 8000,
     reload: Annotated[
         bool,
-        typer.Option(help="Enable auto-reload when code files change. Ideal for development."),
+        typer.Option(
+            help="Enable auto-reload when code files change. Ideal for development, do not use it in production."
+        ),
     ] = False,
     root_path: Annotated[
         str,
         typer.Option(
-            help="Root path prefix for the application, useful when behind a reverse proxy."
+            help="Root path prefix for the application embedded uvicorn server, useful when behind a reverse proxy."
         ),
     ] = "",
-    app_name: Annotated[
-        str | None,
-        typer.Option(
-            help="Name of the variable containing the application. "
-            "If not provided, it will be auto-detected."
-        ),
-    ] = None,
 ) -> None:
     """
     Run a StarConsumers application using Uvicorn.
 
-    This tool simplifies running applications by automatically discovering the
-    module and application object. If no path is given, it will try common
-    paths like 'main.py' or 'app/main.py'.
+    This tool simplifies running applications by letting the user specify
+    which consumers tasks to run using the --tasks option.
 
-    You can also specify which consumers tasks to run using the --tasks option.
+    The user can also pass no tasks flag to run all of them.
     """
-    application_discover = ApplicationDiscover()
-    application_location = application_discover.search_application(path=path, app_name=app_name)
+
+    app_configuration = AppConfiguration(
+        path=app_path,
+        tasks=tasks if tasks else [],
+    )
 
     server_configuration = ServerConfiguration(
         host=host,
         port=port,
         reload=reload,
         root_path=root_path,
-        tasks=tasks,
     )
 
     application_runner = ApplicationRunner()
-    application_runner.run(application_location, server_configuration)
+    application_runner.run(app_configuration, server_configuration)
 
 
 @pubsub_app.command(name="create-topic")
@@ -147,11 +146,18 @@ def create_topic(
             "The GOOGLE_APPLICATION_CREDENTIALS env var is required for authentication."
         )
 
-    rich.print(f"Attempting to create topic '{topic_name}' in project '{project_id}'...")
-    publisher = PubSubPublisher(project_id=project_id, topic_name=topic_name)
-    publisher.create_topic()
+    rich.print(f"Attempting to create topic '{topic_name}' in project '{project_id}'")
 
-    rich.print(f"[green]Successfully initiated topic creation for '{topic_name}'.[/green]")
+    try:
+        name = PublisherClient.topic_path(project=project_id, topic=topic_name)
+
+        client = PublisherClient()
+        client.create_topic(name=name)
+        rich.print(f"Successfully created topic '{name}'.")
+    except AlreadyExists:
+        rich.print(f"The topic '{topic_name}' already exists.")
+    except Exception as e:
+        rich.print(f"Topic creation failed due to {e}.")
 
 
 @pubsub_app.command()
@@ -245,21 +251,25 @@ def publish(
     try:
         data = json.loads(message_content)
     except json.decoder.JSONDecodeError:
-        rich.print(
-            f"It does not seem to be a json. We will send as text '{topic}' in project '{project_id}'..."
-        )
         data = {"message": message}
+        rich.print(
+            "It does not seem to be a json."
+            f"We will send as text to '{topic}' in project '{project_id}'..."
+        )
 
     rich.print(f"Attempting to publish a message to topic '{topic}' in project '{project_id}'...")
-
-    # --- Your message publishing logic goes here ---
-    # Example:
-    # from your_pubsub_client import PubSubManager
-    # manager = PubSubManager(project_id, use_emulator=emulator, port=emulator_port)
-    # manager.publish_message(topic, message_content)
-
-    publisher = PubSubPublisher(project_id=project_id, topic_name=topic)
-    publisher.publish(data=data, attributes=message_attributes)
+    client = PublisherClient()
+    try:
+        topic_name = PublisherClient.topic_path(project=project_id, topic=topic)
+        encoded_data = json.dumps(data).encode()
+        future: Future[str] = client.publish(
+            topic=topic_name, data=encoded_data, **message_attributes
+        )
+        message_id = future.result()
+        rich.print(f"Message published for topic '{topic_name}' with id '{message_id}'")
+        rich.print(f"We sent {data} with metadata {message_attributes}")
+    except Exception as e:
+        rich.print(f"Publisher failed due to {e}.")
 
 
 @cli_app.command(name="help")
@@ -276,19 +286,15 @@ def show_help() -> None:
     [bold]1. Basic App Usage (Auto-Discovery)[/bold]
     If your project has a standard structure (e.g., app/main.py with a variable named 'app'),
     you can simply run:
-    [yellow]> starconsumers run[/yellow]
-
-    [bold]2. Specifying a Path for the App[/bold]
-    If your main file is in a different location:
-    [yellow]> starconsumers run my_project/server.py[/yellow]
+    [yellow]> starconsumers run app.main:app [/yellow]
 
     [bold]3. Running Specific Tasks[/bold]
     To run only `task_a` and `task_b`:
-    [yellow]> starconsumers run --tasks task_a --tasks task_b[/yellow]
+    [yellow]> starconsumers run app.main:app --tasks task_a --tasks task_b[/yellow]
 
     [bold]4. Running in Development Mode[/bold]
     To enable auto-reload on code changes, use the `--reload` flag:
-    [yellow]> starconsumers run --reload[/yellow]
+    [yellow]> starconsumers run app.main:app --reload[/yellow]
 
     [bold]5. Pub/Sub: Creating a Topic[/bold]
     To create a new topic in your GCP project:
@@ -309,5 +315,9 @@ def show_help() -> None:
     rich.print(explanation)
 
 
-if __name__ == "__main__":
+def cli_main() -> None:
     cli_app()
+
+
+if __name__ == "__main__":
+    cli_main()
