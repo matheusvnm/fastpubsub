@@ -1,13 +1,14 @@
-"""Custom exceptions."""
-
-
 class StarConsumersException(Exception):
     pass
 
 
-class DropException(Exception):
+class StarConsumersCLIException(Exception):
     pass
 
 
 class RetryException(Exception):
+    pass
+
+
+class DropException(Exception):
     pass
