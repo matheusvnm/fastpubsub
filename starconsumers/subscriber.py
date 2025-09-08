@@ -8,13 +8,14 @@ from starconsumers.datastructures import (
     RetryPolicy,
 )
 from starconsumers.middlewares import BaseSubscriberMiddleware, HandlerItem
-from starconsumers.types import DecoratedCallable
+from starconsumers._internal.types import DecoratedCallable
 
 
 class Subscriber:
     def __init__(
         self,
         func: DecoratedCallable,
+        project_id: str,
         topic_name: str,
         subscription_name: str,
         retry_policy: RetryPolicy,
@@ -25,6 +26,7 @@ class Subscriber:
         middlewares: list[BaseSubscriberMiddleware] = [],
     ):
         self._handler = HandlerItem(target=func)
+        self.project_id = project_id
         self.topic_name = topic_name
         self.subscription_name = subscription_name
         self.retry_policy = retry_policy
@@ -36,6 +38,7 @@ class Subscriber:
 
     @property
     def handler(self) -> HandlerItem:
+        # TODO: Add middleware logic
         return self._handler
 
 
@@ -43,4 +46,11 @@ class Subscriber:
         if not (middleware and isinstance(middleware, BaseSubscriberMiddleware)):
             return
         
+        if middleware in self.middlewares:
+            return
+        
         self.middlewares.append(middleware)
+
+    def set_project_id(self, project_id: str):
+        if project_id and isinstance(project_id, str):
+            self._project_id = project_id

@@ -7,17 +7,18 @@ from starconsumers.datastructures import DeadLetterPolicy, MessageControlFlowPol
 from starconsumers.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
 from starconsumers.publisher import Publisher
 from starconsumers.subscriber import Subscriber
-from starconsumers.types import DecoratedCallable, SubscribedCallable
+from starconsumers._internal.types import DecoratedCallable, SubscribedCallable
 
 
 class Registrator:
 
-    def __init__(self):
+    def __init__(self, middlewares: list[Union[BaseSubscriberMiddleware, BasePublisherMiddleware]]):
         self.prefix: str = ""
         self.project_id: str = ""
         self.publishers: dict[str, Publisher] = {}
         self.subscribers: dict[str, Subscriber] = {}
-        self.middlewares: list[Union[BaseSubscriberMiddleware, BasePublisherMiddleware]] = []
+
+        self.middlewares = middlewares
     
     def subscriber(self,
         alias: str,
@@ -81,6 +82,7 @@ class Registrator:
 
             subscriber = Subscriber(
                 func=func,
+                project_id=self.project_id,
                 topic_name=prefixed_topic_name,
                 subscription_name=prefixed_subscription_name,
                 retry_policy=retry_policy,
@@ -93,7 +95,7 @@ class Registrator:
             for middleware in self.middlewares:
                 subscriber.add_middleware(middleware)
 
-            self.subscribers[prefixed_alias] = subscriber
+            self.subscribers[prefixed_alias.casefold()] = subscriber
             return func
 
         return decorator

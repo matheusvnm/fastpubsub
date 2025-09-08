@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class PubSubMessage:
+class Message:
     id: str
     size: int
     data: bytes

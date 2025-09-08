@@ -9,8 +9,8 @@ from starconsumers.datastructures import (
     WrappedTask,
 )
 from starconsumers.logger import logger
-from starconsumers.pubsub.publisher import PubSubPublisher
-from starconsumers.pubsub.subscriber import PubSubSubscriber
+from starconsumers.pubsub.publisher import PubSubPublisherClient
+from starconsumers.pubsub.clients import PubSubSubscriberClient
 from starconsumers.pubsub.utils import check_credentials
 
 
@@ -61,7 +61,7 @@ class ProcessManager:
     @staticmethod
     def _spawn(task: WrappedTask) -> None:
         ProcessManager._start_apm_provider()
-        subscriber = PubSubSubscriber()
+        subscriber = PubSubSubscriberClient()
         if not subscriber.create_subscription(task.subscription):
             if task.subscription.lifecycle_policy.autoupdate:
                 subscriber.update_subscription(task.subscription)
@@ -87,7 +87,7 @@ class ProcessManager:
                 continue
 
             logger.info(f"We will try to create the topic {key}")
-            publisher = PubSubPublisher(
+            publisher = PubSubPublisherClient(
                 project_id=task.subscription.project_id, topic_name=task.subscription.topic_name
             )
             publisher.create_topic()
@@ -104,7 +104,7 @@ class ProcessManager:
             logger.info(
                 f"We will try to create the dead letter topic {dead_letter_policy.topic_name}"
             )
-            publisher = PubSubPublisher(
+            publisher = PubSubPublisherClient(
                 project_id=task.subscription.project_id, topic_name=dead_letter_policy.topic_name
             )
             publisher.create_topic()

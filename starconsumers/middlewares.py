@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from starconsumers.types import DecoratedCallable
+from starconsumers._internal.types import DecoratedCallable
 
 
 if TYPE_CHECKING:

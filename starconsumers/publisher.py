@@ -10,7 +10,7 @@ class Publisher:
                  topic_name: str,
                  middlewares: list[BasePublisherMiddleware]
                  ):
-        self.project_id = project_id
+        self._project_id = project_id
         self.topic_name = topic_name
         self.middlewares = middlewares
 
@@ -23,4 +23,11 @@ class Publisher:
         if not (middleware and isinstance(middleware, BasePublisherMiddleware)):
             return
         
+        if middleware in self.middlewares:
+            return
+        
         self.middlewares.append(middleware)
+
+    def set_project_id(self, project_id: str):
+        if project_id and isinstance(project_id, str):
+            self._project_id = project_id
