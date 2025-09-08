@@ -9,7 +9,7 @@ import typer
 from google.api_core.exceptions import AlreadyExists
 from google.cloud.pubsub_v1 import PublisherClient
 
-from starconsumers.cli.runner import AppConfiguration, ApplicationRunner, ServerConfiguration
+from starconsumers._internal.runner import AppConfiguration, ApplicationRunner, ServerConfiguration
 
 cli_app = typer.Typer(
     help="A CLI to discover and run StarConsumers applications and interact with Pub/Sub.",

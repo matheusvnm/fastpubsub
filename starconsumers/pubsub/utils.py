@@ -3,7 +3,7 @@ import os
 from starconsumers.exceptions import StarConsumersException
 
 
-def check_credentials() -> None:
+def ensure_pubsub_credentials() -> None:
     credentials = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     emulator_host = os.getenv("PUBSUB_EMULATOR_HOST")
     if not credentials and not emulator_host:

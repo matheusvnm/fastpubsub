@@ -1,30 +1,29 @@
+import json
+from concurrent.futures import Future
 from datetime import timedelta
-
+from typing import Any
 
 from google.api_core.exceptions import AlreadyExists, GoogleAPICallError
-from google.cloud.pubsub_v1 import SubscriberClient, PublisherClient
+from google.cloud.pubsub_v1 import PublisherClient, SubscriberClient
 from google.cloud.pubsub_v1.types import FlowControl, PublisherOptions
 from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub_v1.types import DeadLetterPolicy, RetryPolicy, Subscription
 
-from starconsumers.datastructures import MessageControlFlowPolicy, TopicSubscription
+from starconsumers import observability
 from starconsumers.logger import logger
-from starconsumers.pubsub.utils import is_emulator
+from starconsumers.pubsub.handlers import CallbackHandler
+from starconsumers.pubsub.utils import ensure_pubsub_credentials, is_emulator
 from starconsumers.subscriber import Subscriber
 
 
-import json
-from concurrent.futures import Future
-from typing import Any
-
-from starconsumers import observability
-from starconsumers.logger import logger
-
-
-
 class PubSubSubscriberClient:
+    def __init__(self):
+        ensure_pubsub_credentials()
+
     def _create_subscription_request(self, subscriber: Subscriber) -> Subscription:
-        name = SubscriberClient.subscription_path(subscriber.project_id, subscriber.name)
+        name = SubscriberClient.subscription_path(
+            subscriber.project_id, subscriber.subscription_name
+        )
         topic = SubscriberClient.topic_path(subscriber.project_id, subscriber.topic_name)
 
         dlt_policy = None
@@ -64,12 +63,12 @@ class PubSubSubscriberClient:
 
         with SubscriberClient() as client:
             try:
-                logger.info(f"Attempting to create subscription: {subscription_request.name}")
+                logger.debug(f"Attempting to create subscription: {subscription_request.name}")
                 client.create_subscription(request=subscription_request)
-                logger.info(f"Successfully created subscription: {subscription_request.name}")
+                logger.debug(f"Successfully created subscription: {subscription_request.name}")
                 return True
             except AlreadyExists:
-                logger.info(
+                logger.debug(
                     f"Subscription '{subscription_request.name}' already exists. Skipping creation."
                 )
                 return False
@@ -99,11 +98,11 @@ class PubSubSubscriberClient:
         update_mask = FieldMask(paths=update_fields)
         with SubscriberClient() as client:
             try:
-                logger.info(f"Attempting to update the subscription: {subscription_request.name}")
+                logger.debug(f"Attempting to update the subscription: {subscription_request.name}")
                 response = client.update_subscription(
                     subscription=subscription_request, update_mask=update_mask
                 )
-                logger.info(f"Successfully updated the subscription: {subscription_request.name}")
+                logger.debug(f"Successfully updated the subscription: {subscription_request.name}")
                 logger.debug(
                     f"The subscription is now set with the following configuration: {response}"
                 )
@@ -118,44 +117,48 @@ class PubSubSubscriberClient:
                 )
                 raise
 
-    def subscribe(
-        self,
-        subscriber: Subscriber
-    ) -> None:
+    def subscribe(self, subscriber: Subscriber) -> None:
         """
         Starts listening for messages on the configured Pub/Sub subscription.
         This method is blocking and will run indefinitely.
         """
-        subscription_path = SubscriberClient.subscription_path(project_id, subscription_name)
+        subscription_path = SubscriberClient.subscription_path(
+            subscriber.project_id, subscriber.subscription_name
+        )
+        callback_handler = CallbackHandler(subscriber)
 
         with SubscriberClient() as client:
-            logger.info(f"Listening for messages on {subscription_path}")
+            logger.debug(f"Listening for messages on {subscription_path}")
             streaming_pull_future = client.subscribe(
                 subscription_path,
                 await_callbacks_on_shutdown=True,
-                callback=callback,
+                callback=callback_handler.handle,
                 flow_control=FlowControl(
-                    max_messages=control_flow_policy.max_messages,
-                    max_bytes=control_flow_policy.max_bytes,
+                    max_messages=subscriber.control_flow_policy.max_messages,
+                    max_bytes=subscriber.control_flow_policy.max_bytes,
                 ),
             )
             try:
                 streaming_pull_future.result()
             except KeyboardInterrupt:
-                logger.info("Subscriber stopped by user")
+                logger.debug(f"Subscriber '{subscriber.subscription_name}' stopped by user")
             except Exception:
-                logger.exception("Subscription stream terminated unexpectedly", stacklevel=5)
+                logger.exception(
+                    f"Subscription stream terminated unexpectedly for '{subscriber.subscription_name}'",
+                    stacklevel=5,
+                )
             finally:
-                logger.info("Sending cancel streaming pull command.")
+                logger.debug(
+                    f"Sending cancel streaming pull command for '{subscriber.subscription_name}'."
+                )
                 streaming_pull_future.cancel()
-                logger.info("Subscriber has shut down.")
-
-
+                logger.debug(f"Subscriber '{subscriber.subscription_name}' has shutdown.")
 
 
 class PubSubPublisherClient:
     def __init__(self, project_id: str, topic_name: str) -> None:
         self.topic = PublisherClient.topic_path(project=project_id, topic=topic_name)
+        ensure_pubsub_credentials()
 
     def create_topic(self) -> None:
         """
@@ -163,13 +166,14 @@ class PubSubPublisherClient:
         """
         client = PublisherClient()
         try:
+            logger.debug(f"Creating topic '{self.topic}'.")
             client.create_topic(
                 name=self.topic,
             )
             # TODO: Add a default subscription with the same name of the topic
-            logger.info("Created topic sucessfully.")
+            logger.debug(f"Created topic '{self.topic}' sucessfully.")
         except AlreadyExists:
-            logger.info("The topic already exists.")
+            logger.debug(f"The topic '{self.topic}' already exists.")
 
     def publish(
         self, *, data: dict[str, Any], attributes: dict[str, str] = {}, ordering_key: str = ""

@@ -1,7 +1,7 @@
 """Command-line interface."""
+
 import asyncio
 import json
-import os
 from concurrent.futures import Future
 from pathlib import Path
 from typing import Annotated
@@ -57,7 +57,7 @@ def run(
 ) -> None:
     """Run the StarConsumers application."""
     app = discover_app(app_str)
-    
+
     subscribers = app.broker.subscribers
     if tasks:
         subscribers = {alias: sub for alias, sub in subscribers.items() if alias in tasks}
@@ -67,14 +67,14 @@ def run(
         return
 
     process_manager = ProcessManager()
-    
+
     wrapped_tasks = []
     for subscriber in subscribers.values():
         # This is a placeholder for the WrappedTask creation
         pass
 
     # process_manager.spawn(wrapped_tasks)
-    
+
     loop = asyncio.get_event_loop()
     try:
         loop.run_forever()

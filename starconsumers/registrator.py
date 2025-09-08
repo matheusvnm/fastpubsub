@@ -1,26 +1,32 @@
+from copy import deepcopy
 
-
-
-from typing import Union
-from old.starconsumers.datastructures import MessageDeliveryPolicy, MessageRetryPolicy, SubscriptionLifecyclePolicy
-from starconsumers.datastructures import DeadLetterPolicy, MessageControlFlowPolicy
+from starconsumers._internal.types import DecoratedCallable, SubscribedCallable
+from starconsumers._internal.utils import AsyncRunner
+from starconsumers.datastructures import (
+    DeadLetterPolicy,
+    LifecyclePolicy,
+    MessageControlFlowPolicy,
+    MessageDeliveryPolicy,
+    MessageRetryPolicy,
+)
 from starconsumers.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
 from starconsumers.publisher import Publisher
 from starconsumers.subscriber import Subscriber
-from starconsumers._internal.types import DecoratedCallable, SubscribedCallable
 
 
 class Registrator:
-
-    def __init__(self, middlewares: list[Union[BaseSubscriberMiddleware, BasePublisherMiddleware]]):
+    def __init__(
+        self, middlewares: list[type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]]
+    ):
         self.prefix: str = ""
         self.project_id: str = ""
         self.publishers: dict[str, Publisher] = {}
         self.subscribers: dict[str, Subscriber] = {}
+        self.middlewares = middlewares or []
 
-        self.middlewares = middlewares
-    
-    def subscriber(self,
+    # TODO: Add param type check
+    def subscriber(
+        self,
         alias: str,
         *,
         topic_name: str,
@@ -37,6 +43,7 @@ class Registrator:
         max_backoff_delay_secs: int = 600,
         max_messages: int = 1000,
         max_messages_bytes: int = 100 * 1024 * 1024,
+        middlewares: list[type[BaseSubscriberMiddleware]] = None,
     ) -> SubscribedCallable:
         def decorator(func: DecoratedCallable) -> DecoratedCallable:
             dead_letter_policy = None
@@ -57,9 +64,7 @@ class Registrator:
                 enable_exactly_once_delivery=enable_exactly_once_delivery,
             )
 
-            lifecycle_policy = SubscriptionLifecyclePolicy(
-                autocreate=autocreate, autoupdate=autoupdate
-            )
+            lifecycle_policy = LifecyclePolicy(autocreate=autocreate, autoupdate=autoupdate)
 
             control_flow_policy = MessageControlFlowPolicy(
                 max_messages=max_messages,
@@ -67,57 +72,67 @@ class Registrator:
             )
 
             prefixed_alias = alias
-            prefixed_topic_name = topic_name
             prefixed_subscription_name = subscription_name
 
             if self.prefix and isinstance(self.prefix, str):
                 prefixed_alias = f"{self.prefix}.{prefixed_alias}"
-                prefixed_topic_name = f"{self.prefix}.{prefixed_topic_name}"
                 prefixed_subscription_name = f"{self.prefix}.{prefixed_subscription_name}"
 
-            publisher_middlewares = []
+            subscriber_middlewares = deepcopy(middlewares) if middlewares else []
             for middleware in self.middlewares:
-                if isinstance(middleware, BasePublisherMiddleware):
-                    publisher_middlewares.append(middleware)     
+                subscriber_middlewares.append(middleware)
 
             subscriber = Subscriber(
-                func=func,
+                func=AsyncRunner(func),
                 project_id=self.project_id,
-                topic_name=prefixed_topic_name,
+                topic_name=topic_name,
                 subscription_name=prefixed_subscription_name,
                 retry_policy=retry_policy,
                 delivery_policy=delivery_policy,
                 lifecycle_policy=lifecycle_policy,
                 control_flow_policy=control_flow_policy,
                 dead_letter_policy=dead_letter_policy,
+                middlewares=subscriber_middlewares,
             )
-
-            for middleware in self.middlewares:
-                subscriber.add_middleware(middleware)
 
             self.subscribers[prefixed_alias.casefold()] = subscriber
             return func
 
         return decorator
-    
 
+    # TODO: Add param type check
     def publisher(self, topic_name: str) -> Publisher:
-        prefixed_topic_name = topic_name
-        if self.prefix and isinstance(self.prefix, str):
-            prefixed_topic_name = f"{self.prefix}.{prefixed_topic_name}"
-
-        if prefixed_topic_name not in self.publishers:
-            publisher = Publisher(project_id=self.project_id, 
-                                  topic_name=prefixed_topic_name, 
-                                  middlewares=[])
+        if topic_name not in self.publishers:
+            publisher = Publisher(project_id=self.project_id, topic_name=topic_name, middlewares=[])
 
             for middleware in self.middlewares:
                 publisher.add_middleware(middleware)
 
-            self.publishers[prefixed_topic_name] = publisher
+            self.publishers[topic_name] = publisher
 
-        return self.publishers[prefixed_topic_name]
+        return self.publishers[topic_name]
 
-    async def publish(self, topic_name: str, data: dict, ordering_key: str = "", attributes: dict = None) -> None:
+    async def publish(
+        self, topic_name: str, data: dict, ordering_key: str = "", attributes: dict = None
+    ) -> None:
         publisher = self.publisher(topic_name)
         await publisher.publish(data=data, ordering_key=ordering_key, attributes=attributes)
+
+    def add_middleware(
+        self, middleware: type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]
+    ) -> None:
+        if not issubclass(
+            middleware,
+            (BaseSubscriberMiddleware | BasePublisherMiddleware),
+        ):
+            return
+
+        if middleware not in self.middlewares:
+            self.middlewares.append(middleware)
+
+        for middleware in self.middlewares:
+            for publisher in self.publishers.values():
+                publisher.add_middleware(middleware)
+
+            for subscriber in self.subscribers.values():
+                subscriber.add_middleware(middleware)

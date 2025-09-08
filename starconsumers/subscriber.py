@@ -1,14 +1,14 @@
 """Subscriber logic."""
 
+from starconsumers._internal.types import DecoratedCallable
 from starconsumers.datastructures import (
     DeadLetterPolicy,
-    DeliveryPolicy,
     LifecyclePolicy,
     MessageControlFlowPolicy,
-    RetryPolicy,
+    MessageDeliveryPolicy,
+    MessageRetryPolicy,
 )
 from starconsumers.middlewares import BaseSubscriberMiddleware, HandlerItem
-from starconsumers._internal.types import DecoratedCallable
 
 
 class Subscriber:
@@ -18,12 +18,12 @@ class Subscriber:
         project_id: str,
         topic_name: str,
         subscription_name: str,
-        retry_policy: RetryPolicy,
+        retry_policy: MessageRetryPolicy,
         lifecycle_policy: LifecyclePolicy,
-        delivery_policy: DeliveryPolicy,
+        delivery_policy: MessageDeliveryPolicy,
         dead_letter_policy: DeadLetterPolicy,
         control_flow_policy: MessageControlFlowPolicy,
-        middlewares: list[BaseSubscriberMiddleware] = [],
+        middlewares: list[type[BaseSubscriberMiddleware]] = None,
     ):
         self._handler = HandlerItem(target=func)
         self.project_id = project_id
@@ -34,23 +34,25 @@ class Subscriber:
         self.delivery_policy = delivery_policy
         self.dead_letter_policy = dead_letter_policy
         self.control_flow_policy = control_flow_policy
-        self.middlewares = middlewares
+        self.middlewares = []
+
+        if middlewares:
+            for middleware in middlewares:
+                self.add_middleware(middleware)
 
     @property
     def handler(self) -> HandlerItem:
         # TODO: Add middleware logic
         return self._handler
 
-
-    def add_middleware(self, middleware: BaseSubscriberMiddleware) -> None:
-        if not (middleware and isinstance(middleware, BaseSubscriberMiddleware)):
+    def add_middleware(self, middleware: type[BaseSubscriberMiddleware]) -> None:
+        if not (middleware and issubclass(middleware, BaseSubscriberMiddleware)):
             return
-        
+
         if middleware in self.middlewares:
             return
-        
+
         self.middlewares.append(middleware)
 
     def set_project_id(self, project_id: str):
-        if project_id and isinstance(project_id, str):
-            self._project_id = project_id
+        self.project_id = project_id

@@ -1,13 +1,14 @@
 """StarConsumers application."""
-import asyncio
+
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Awaitable, Callable, List, Optional, ParamSpec, TypeVar, Union
 
-from starconsumers._internal.utils import to_async
+import anyio
+
+from starconsumers._internal.types import CallableHook
+from starconsumers._internal.utils import AsyncRunner, set_exit
 from starconsumers.broker import Broker
-from starconsumers._internal.types import AsyncCallable, CallableHook, SyncCallable
-
-
+from starconsumers.logger import logger
 
 # TODO: Add context manager to start/end the application. aenter aexit.
 
@@ -43,38 +44,64 @@ class StarConsumers:
             for func in after_shutdown:
                 self.after_shutdown(func)
 
+        self.running = True
+
     def on_startup(self, func: CallableHook) -> CallableHook:
-        self._on_startup.append(to_async(func))
+        self._on_startup.append(AsyncRunner(func))
         return func
 
     def on_shutdown(self, func: CallableHook) -> CallableHook:
-        self._on_shutdown.append(to_async(func))
+        self._on_shutdown.append(AsyncRunner(func))
         return func
 
     def after_startup(self, func: CallableHook) -> CallableHook:
-        self._after_startup.append(to_async(func))
-        return func
-    
-    def after_shutdown(self, func: CallableHook) -> CallableHook:
-        self._after_shutdown.append(to_async(func))
+        self._after_startup.append(AsyncRunner(func))
         return func
 
-    async def start(self) -> None:
-        with self._start_hooks():
+    def after_shutdown(self, func: CallableHook) -> CallableHook:
+        self._after_shutdown.append(AsyncRunner(func))
+        return func
+
+    async def run(self):
+        """Run StarConsumers Application."""
+        set_exit(lambda *_: self.stop(), sync=False)
+
+        try:
+            async with anyio.create_task_group() as tg:
+                tg.start_soon(self._start)
+
+                while self.running:
+                    await anyio.sleep(0.1)
+
+                await self._shutdown()
+                tg.cancel_scope.cancel()
+        except ExceptionGroup as e:
+            for ex in e.exceptions:
+                raise ex from None
+
+    async def _start(self) -> None:
+        async with self._start_hooks():
             await self.broker.start()
 
     @asynccontextmanager
     async def _start_hooks(self) -> AsyncIterator[None]:
+        logger.info("StarConsumers app starting...")
         for func in self._on_startup:
             await func()
 
-        yield 
+        yield
 
         for func in self._after_startup:
             await func()
 
-    async def shutdown(self) -> None:
-        with self._shutdown_hooks():
+        logger.info("StarConsumers app started successfully! To exit, press CTRL+C")
+
+    def stop(self):
+        """Stop application manually."""
+        self.running = False
+
+    async def _shutdown(self) -> None:
+        async with self._shutdown_hooks():
             await self.broker.shutdown()
 
     @asynccontextmanager
@@ -82,8 +109,7 @@ class StarConsumers:
         for func in self._on_shutdown:
             await func()
 
-        yield 
+        yield
 
         for func in self._after_shutdown:
             await func()
-

@@ -1,56 +1,84 @@
-
-
-
-
-
-from asyncio import iscoroutine
-from functools import wraps
+import asyncio
 import functools
 import inspect
-from typing import Awaitable, Callable, ParamSpec, TypeVar, Union, cast
-from starconsumers._internal.types import AsyncCallable, SyncCallable
-from starlette.concurrency import run_in_threadpool
-import anyio
+import signal
+from collections.abc import Awaitable, Callable
+from contextlib import suppress
+from types import FrameType
+from typing import Any, ParamSpec, TypeVar, cast
 
+from starlette.concurrency import run_in_threadpool
+
+from starconsumers._internal.compat import IS_WINDOWS
+
+HANDLED_SIGNALS: tuple[int, ...] = (
+    signal.SIGINT,  # Unix signal 2. Sent by Ctrl+C.
+    signal.SIGTERM,  # Unix signal 15. Sent by `kill <pid>`.
+)
+
+if IS_WINDOWS:  # pragma: py-not-win32
+    # Windows signal 21. Sent by Ctrl+Break.
+    HANDLED_SIGNALS += (signal.SIGBREAK,)  # type: ignore[attr-defined]
 
 
 P = ParamSpec("P")
 T = TypeVar("T")
 
-"""
-def to_async(
-    func: Callable[F_Spec, F_Return] | Callable[F_Spec, Awaitable[F_Return]],
-) -> Callable[F_Spec, Awaitable[F_Return]]:
-    "Converts a synchronous function to an asynchronous function.
-    if is_coroutine_callable(func):
-        return cast("Callable[F_Spec, Awaitable[F_Return]]", func)
 
-    func = cast("Callable[F_Spec, F_Return]", func)
+class AsyncRunner:
+    """
+    A pickleable async decorator that converts a synchronous function to an
+    asynchronous one by running it in a thread pool.
 
-    @wraps(func)
-    async def to_async_wrapper(*args: F_Spec.args, **kwargs: F_Spec.kwargs) -> F_Return:
-        """Wraps a function to make it asynchronous."""
-        return await run_in_threadpool(func, *args, **kwargs)
+    If the decorated function is already a coroutine, it is left unchanged.
+    """
 
-    return to_async_wrapper
+    def __init__(self, func: Callable[P, T]):
+        self.func = func
+        self.is_async = inspect.iscoroutinefunction(func)
+        functools.update_wrapper(self, func)
+
+    async def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        """
+        Makes the instance callable and executes the core async logic.
+        This method is what runs when you call the decorated function.
+        """
+        if self.is_async:
+            async_func = cast(Callable[P, Awaitable[T]], self.func)
+            return await async_func(*args, **kwargs)
+        return await run_in_threadpool(self.func, *args, **kwargs)
+
+    def __reduce__(self):
+        """
+        Provides the "recipe" for pickling.
+
+        It tells pickle: "To rebuild this object, call the AsyncConverter
+        class with the original function (self.func) as the argument."
+        """
+        return (AsyncRunner, (self.func,))
 
 
-"""
+def set_exit(
+    func: Callable[[int, FrameType | None], Any],
+    *,
+    sync: bool = False,
+) -> None:
+    """Set exit handler for signals.
 
-def to_async(
-    func: Callable[P, T],
-) -> AsyncCallable:
-    """Converts a synchronous function to an asynchronous function."""
-    if inspect.iscoroutinefunction(func):
-        return cast("Callable[P, Awaitable[T]]", func)
+    Args:
+        func: A callable object that takes an integer
+              and an optional frame type as arguments and returns any value.
+        sync: set sync or async signal callback.
+    """
+    if not sync:
+        with suppress(NotImplementedError):
+            loop = asyncio.get_running_loop()
 
-    func = cast("Callable[P, T]", func)
+            for sig in HANDLED_SIGNALS:
+                loop.add_signal_handler(sig, func, sig, None)
 
-    @wraps(func)
-    async def to_async_wrapper(*args: P, **kwargs: T) -> T:
-        """Wraps a function to make it asynchronous."""
-        func = functools.partial(func, *args, **kwargs)
-        return await anyio.to_thread.run_sync(func)
+            return
 
-    return to_async_wrapper
-
+    # Windows or sync mode
+    for sig in HANDLED_SIGNALS:
+        signal.signal(sig, func)

@@ -1,4 +1,3 @@
-"""Data structures."""
 from dataclasses import dataclass
 
 
@@ -12,31 +11,13 @@ class Message:
 
 
 @dataclass(frozen=True)
-class WrappedTask:
-    handler: "Callable"
-    subscription: "Subscription"
-
-
-@dataclass(frozen=True)
 class MessageControlFlowPolicy:
     max_messages: int = 10
     max_bytes: int = 1024 * 1024 * 10  # 10MB
 
 
 @dataclass(frozen=True)
-class TopicSubscription:
-    name: str
-    project_id: str
-    topic_name: str
-    delivery_policy: "DeliveryPolicy"
-    retry_policy: "RetryPolicy"
-    dead_letter_policy: "DeadLetterPolicy"
-    control_flow_policy: "MessageControlFlowPolicy"
-    lifecycle_policy: "LifecyclePolicy"
-
-
-@dataclass(frozen=True)
-class DeliveryPolicy:
+class MessageDeliveryPolicy:
     filter_expression: str
     ack_deadline_seconds: int
     enable_message_ordering: bool
@@ -44,7 +25,7 @@ class DeliveryPolicy:
 
 
 @dataclass(frozen=True)
-class RetryPolicy:
+class MessageRetryPolicy:
     min_backoff_delay_secs: int
     max_backoff_delay_secs: int
 

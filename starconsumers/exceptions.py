@@ -5,9 +5,9 @@ class StarConsumersException(Exception):
     pass
 
 
-class DropException(Exception):
+class Drop(Exception):
     pass
 
 
-class RetryException(Exception):
+class Retry(Exception):
     pass
