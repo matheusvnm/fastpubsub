@@ -1,7 +1,6 @@
 from copy import deepcopy
 
 from starconsumers._internal.types import DecoratedCallable, SubscribedCallable
-from starconsumers._internal.utils import AsyncRunner
 from starconsumers.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,
@@ -9,6 +8,7 @@ from starconsumers.datastructures import (
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
+from starconsumers.exceptions import StarConsumersException
 from starconsumers.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
 from starconsumers.publisher import Publisher
 from starconsumers.subscriber import Subscriber
@@ -46,6 +46,35 @@ class Registrator:
         middlewares: list[type[BaseSubscriberMiddleware]] = None,
     ) -> SubscribedCallable:
         def decorator(func: DecoratedCallable) -> DecoratedCallable:
+            prefixed_alias = alias
+            prefixed_subscription_name = subscription_name
+
+            if self.prefix and isinstance(self.prefix, str):
+                prefixed_alias = f"{self.prefix}.{prefixed_alias}"
+                prefixed_subscription_name = f"{self.prefix}.{prefixed_subscription_name}"
+
+            if prefixed_alias in self.subscribers:
+                raise StarConsumersException(
+                    f"The alias '{prefixed_alias}' already exists."
+                    " The alias must be unique among all subscribers"
+                )
+
+            existing_subscriber = next(
+                filter(
+                    lambda sub: sub.subscription_name == prefixed_subscription_name,
+                    self.subscribers.values(),
+                ),
+                None,
+            )
+
+            if existing_subscriber:
+                existing_subscriber_filter = existing_subscriber.delivery_policy.filter_expression
+                if existing_subscriber_filter == filter_expression:
+                    raise StarConsumersException(
+                        f"The subscription '{prefixed_subscription_name}' for '{filter_expression=}' already exists."
+                        " We only accept one handler per subscription and filter expression combination"
+                    )
+
             dead_letter_policy = None
             if dead_letter_topic:
                 dead_letter_policy = DeadLetterPolicy(
@@ -71,19 +100,12 @@ class Registrator:
                 max_bytes=max_messages_bytes,
             )
 
-            prefixed_alias = alias
-            prefixed_subscription_name = subscription_name
-
-            if self.prefix and isinstance(self.prefix, str):
-                prefixed_alias = f"{self.prefix}.{prefixed_alias}"
-                prefixed_subscription_name = f"{self.prefix}.{prefixed_subscription_name}"
-
-            subscriber_middlewares = deepcopy(middlewares) if middlewares else []
+            subscriber_middlewares = list(middlewares) if middlewares else []
             for middleware in self.middlewares:
                 subscriber_middlewares.append(middleware)
 
             subscriber = Subscriber(
-                func=AsyncRunner(func),
+                func=func,
                 project_id=self.project_id,
                 topic_name=topic_name,
                 subscription_name=prefixed_subscription_name,
@@ -112,11 +134,11 @@ class Registrator:
 
         return self.publishers[topic_name]
 
-    async def publish(
+    def publish(
         self, topic_name: str, data: dict, ordering_key: str = "", attributes: dict = None
     ) -> None:
         publisher = self.publisher(topic_name)
-        await publisher.publish(data=data, ordering_key=ordering_key, attributes=attributes)
+        publisher.publish(data=data, ordering_key=ordering_key, attributes=attributes)
 
     def add_middleware(
         self, middleware: type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]

@@ -6,8 +6,8 @@ from contextlib import asynccontextmanager
 import anyio
 
 from starconsumers._internal.types import CallableHook
-from starconsumers._internal.utils import AsyncRunner, set_exit
 from starconsumers.broker import Broker
+from starconsumers.concurrency import ensure_async_callable, set_exit
 from starconsumers.logger import logger
 
 # TODO: Add context manager to start/end the application. aenter aexit.
@@ -47,19 +47,23 @@ class StarConsumers:
         self.running = True
 
     def on_startup(self, func: CallableHook) -> CallableHook:
-        self._on_startup.append(AsyncRunner(func))
+        ensure_async_callable(func)
+        self._on_startup.append(func)
         return func
 
     def on_shutdown(self, func: CallableHook) -> CallableHook:
-        self._on_shutdown.append(AsyncRunner(func))
+        ensure_async_callable(func)
+        self._on_shutdown.append(func)
         return func
 
     def after_startup(self, func: CallableHook) -> CallableHook:
-        self._after_startup.append(AsyncRunner(func))
+        ensure_async_callable(func)
+        self._after_startup.append(func)
         return func
 
     def after_shutdown(self, func: CallableHook) -> CallableHook:
-        self._after_shutdown.append(AsyncRunner(func))
+        ensure_async_callable(func)
+        self._after_shutdown.append(func)
         return func
 
     async def run(self):
@@ -71,7 +75,7 @@ class StarConsumers:
                 tg.start_soon(self._start)
 
                 while self.running:
-                    await anyio.sleep(0.1)
+                    await anyio.sleep(1)
 
                 await self._shutdown()
                 tg.cancel_scope.cancel()

@@ -1,6 +1,8 @@
 """Subscriber logic."""
 
-from starconsumers._internal.types import DecoratedCallable
+from typing import Any
+from starconsumers._internal.types import AsyncCallable
+from starconsumers.concurrency import ensure_async_callable
 from starconsumers.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,
@@ -14,7 +16,7 @@ from starconsumers.middlewares import BaseSubscriberMiddleware, HandlerItem
 class Subscriber:
     def __init__(
         self,
-        func: DecoratedCallable,
+        func: AsyncCallable,
         project_id: str,
         topic_name: str,
         subscription_name: str,
@@ -34,7 +36,7 @@ class Subscriber:
         self.delivery_policy = delivery_policy
         self.dead_letter_policy = dead_letter_policy
         self.control_flow_policy = control_flow_policy
-        self.middlewares = []
+        self.middlewares: list[type[BaseSubscriberMiddleware]] = []
 
         if middlewares:
             for middleware in middlewares:
@@ -42,7 +44,6 @@ class Subscriber:
 
     @property
     def handler(self) -> HandlerItem:
-        # TODO: Add middleware logic
         return self._handler
 
     def add_middleware(self, middleware: type[BaseSubscriberMiddleware]) -> None:
@@ -52,6 +53,7 @@ class Subscriber:
         if middleware in self.middlewares:
             return
 
+        ensure_async_callable(middleware)
         self.middlewares.append(middleware)
 
     def set_project_id(self, project_id: str):

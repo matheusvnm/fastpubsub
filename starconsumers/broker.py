@@ -1,7 +1,5 @@
 """Broker implementation."""
 
-import asyncio
-
 from starconsumers.exceptions import StarConsumersException
 from starconsumers.logger import logger
 from starconsumers.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
@@ -21,7 +19,6 @@ class Broker(Registrator):
         super().__init__(middlewares=middlewares)
         self.project_id = project_id
         self.process_manager = ProcessManager()
-        # TODO: Create a process manager
 
     def include_router(self, router: BrokerRouter) -> None:
         router.set_project_id(self.project_id)
@@ -34,14 +31,7 @@ class Broker(Registrator):
 
             self.subscribers[alias] = subscriber
 
-        for alias in self.subscribers.keys():
-            if alias in router.subscribers:
-                del router.subscribers[alias]
-
-    # Should return a ASGI app to attach in uvicorn (like FastAPI).
-    async def start(self, selected_subscribers: set[str] = set()) -> None:
-        """Start the broker."""
-
+    async def start(self, selected_subscribers: set[str] = None) -> None:
         await self._drop_unused_subscribers(selected_subscribers)
 
         created_topics = set()
@@ -49,29 +39,26 @@ class Broker(Registrator):
             logger.info(f"Starting the subscription '{alias}'")
 
             target_topic = subscriber.topic_name
-            group: asyncio.TaskGroup
-            async with asyncio.TaskGroup() as group:
-                if subscriber.lifecycle_policy.autocreate:
+            if subscriber.lifecycle_policy.autocreate:
+                if target_topic not in created_topics:
+                    await self._create_topic(target_topic)
+                    created_topics.add(target_topic)
+
+                if subscriber.dead_letter_policy:
+                    target_topic = subscriber.dead_letter_policy.topic_name
                     if target_topic not in created_topics:
-                        group.create_task(self._create_topic(target_topic))
+                        await self._create_topic(target_topic)
                         created_topics.add(target_topic)
 
-                    # FIXME: We should wait the topic creation before subscription
-                    group.create_task(self._create_subscription(subscriber))
-                    if subscriber.dead_letter_policy:
-                        target_topic = subscriber.dead_letter_policy.topic_name
-                        if target_topic not in created_topics:
-                            group.create_task(self._create_topic(target_topic))
-                            created_topics.add(target_topic)
+                await self._create_subscription(subscriber)
 
-                if subscriber.lifecycle_policy.autoupdate:
-                    group.create_task(self._update_subscription(subscriber))
+            if subscriber.lifecycle_policy.autoupdate:
+                await self._update_subscription(subscriber)
 
             self.process_manager.spawn(subscriber)
 
     async def _drop_unused_subscribers(self, selected_subscribers: set[str]) -> None:
         if not selected_subscribers:
-            # We will run all the tasks
             return
 
         for selected_subscriber in selected_subscribers:

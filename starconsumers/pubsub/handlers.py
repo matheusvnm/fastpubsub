@@ -38,7 +38,7 @@ class CallbackHandler:
                     message.ack()
                     return
                 except Retry:
-                    logger.info(f"Message {message.message_id} processing will be retried")
+                    logger.warning(f"Message {message.message_id} processing will be retried")
                     message.nack()
                     return
                 except Exception:
@@ -51,11 +51,12 @@ class CallbackHandler:
                 return
 
     def _consume(self, message: PubSubMessage):
-        handler = self.subscriber.handler
-        coroutine = handler(message)
+        callback = self.subscriber.handler
+        for middleware in reversed(self.subscriber.middlewares):
+            callback = middleware(callback)
+
         loop = asyncio.new_event_loop()
-        response = loop.run_until_complete(coroutine)
-        return response
+        return loop.run_until_complete(callback(message))
 
     def _deserialize_message(message) -> Any:
         pass

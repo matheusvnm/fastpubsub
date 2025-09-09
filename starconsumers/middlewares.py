@@ -1,39 +1,34 @@
 """Middleware implementations."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Union
+import inspect
+from typing import Any, Union
 
-from starconsumers._internal.types import DecoratedCallable
-
-if TYPE_CHECKING:
-    from starconsumers.datastructures import PubSubMessage
+from starconsumers._internal.types import AsyncCallable
+from starconsumers.datastructures import Message
 
 
 class HandlerItem:
-    def __init__(self, *, target: DecoratedCallable):
+    def __init__(self, *, target: AsyncCallable):
         self.target = target
 
-    def __call__(self, message: Any):
-        return self.target(message)
+    async def __call__(self, message: Message) -> Any:
+        # TODO: Add the serialization logic
+        return await self.target(message)
 
 
 @dataclass
 class BaseSubscriberMiddleware:
     next_call: Union["BaseSubscriberMiddleware", "HandlerItem"]
 
-    async def on_consume(self, message: "PubSubMessage"):
-        if isinstance(self.next_call, HandlerItem):
-            await self.next_call(message)
-
-        return await self.next_call.on_consume(message=message)
+    async def __call__(self, message: Message):
+        return await self.next_call(message)
 
 
 @dataclass
 class BasePublisherMiddleware:
     next_call: "BasePublisherMiddleware"
 
-    async def on_publish(self, data: dict, ordering_key: str = "", attributes: dict = None):
+    async def __call__(self, data: dict, ordering_key: str = "", attributes: dict = None):
         # TODO: Build the wrapping logic
-        return await self.next_call.on_publish(
-            data=data, ordering_key=ordering_key, attributes=attributes
-        )
+        return await self.next_call(data=data, ordering_key=ordering_key, attributes=attributes)

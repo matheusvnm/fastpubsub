@@ -1,15 +1,18 @@
+from abc import ABC
 import asyncio
 import functools
 import inspect
 import signal
+import sys
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
-from types import FrameType
+from types import FrameType, FunctionType
+import types
 from typing import Any, ParamSpec, TypeVar, cast
 
 from starlette.concurrency import run_in_threadpool
 
-from starconsumers._internal.compat import IS_WINDOWS
+IS_WINDOWS = sys.platform in {"win32", "cygwin", "msys"}
 
 HANDLED_SIGNALS: tuple[int, ...] = (
     signal.SIGINT,  # Unix signal 2. Sent by Ctrl+C.
@@ -23,39 +26,6 @@ if IS_WINDOWS:  # pragma: py-not-win32
 
 P = ParamSpec("P")
 T = TypeVar("T")
-
-
-class AsyncRunner:
-    """
-    A pickleable async decorator that converts a synchronous function to an
-    asynchronous one by running it in a thread pool.
-
-    If the decorated function is already a coroutine, it is left unchanged.
-    """
-
-    def __init__(self, func: Callable[P, T]):
-        self.func = func
-        self.is_async = inspect.iscoroutinefunction(func)
-        functools.update_wrapper(self, func)
-
-    async def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
-        """
-        Makes the instance callable and executes the core async logic.
-        This method is what runs when you call the decorated function.
-        """
-        if self.is_async:
-            async_func = cast(Callable[P, Awaitable[T]], self.func)
-            return await async_func(*args, **kwargs)
-        return await run_in_threadpool(self.func, *args, **kwargs)
-
-    def __reduce__(self):
-        """
-        Provides the "recipe" for pickling.
-
-        It tells pickle: "To rebuild this object, call the AsyncConverter
-        class with the original function (self.func) as the argument."
-        """
-        return (AsyncRunner, (self.func,))
 
 
 def set_exit(
@@ -82,3 +52,17 @@ def set_exit(
     # Windows or sync mode
     for sig in HANDLED_SIGNALS:
         signal.signal(sig, func)
+
+
+def ensure_async_callable(obj: Callable[P, T]):
+        if isinstance(obj, FunctionType):
+            if not inspect.iscoroutinefunction(obj):
+                raise TypeError("The function {obj} must be async.")
+            return
+
+        if inspect.isclass(obj):
+            if not callable(obj):
+                raise TypeError(f"The class {obj} must implement a async def __call__.")            
+
+        if not inspect.iscoroutinefunction(obj.__call__):
+            raise TypeError(f"The class {obj} __call__ function must be async.")

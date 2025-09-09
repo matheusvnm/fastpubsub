@@ -6,13 +6,38 @@ import asyncio
 from typing import Any
 from starconsumers.applications import StarConsumers
 from starconsumers.broker import Broker
+from starconsumers.datastructures import Message
 from starconsumers.logger import logger
+from starconsumers.middlewares import BaseSubscriberMiddleware
 from starconsumers.router import BrokerRouter
+
+
+class SubscriberMiddlewareWithLogs(BaseSubscriberMiddleware):
+
+    def __call__(self, message: Message):
+        logger.info("This is a logger")
+        return super().__call__(message)
+
+
+
+class SubscriberMiddlewareWithLogs2(BaseSubscriberMiddleware):
+
+    async def __call__(self, message: Message):
+        logger.info("This is a logger 2")
+        return await super().__call__(message)
+
+
+
+class SubscriberMiddlewareWithLogs0(BaseSubscriberMiddleware):
+
+    def __call__(self, message: Message):
+        logger.info("This is a logger 0")
+        return super().__call__(message)
 
 
 broker = Broker(project_id="jeitto-backend-local")
 
-@broker.subscriber("mysub", topic_name="topic1", subscription_name="subscription")
+@broker.subscriber("mysub", topic_name="topic1", subscription_name="subscription", middlewares=[SubscriberMiddlewareWithLogs0, SubscriberMiddlewareWithLogs2, SubscriberMiddlewareWithLogs])
 def handler(message: Any):
     logger.info(f"Hi we received {message.data}")
     with open("abc.txt", "w") as fs:

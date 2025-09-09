@@ -11,8 +11,8 @@ import typer
 from google.api_core.exceptions import AlreadyExists
 from google.cloud.pubsub_v1 import PublisherClient
 
+from starconsumers.concurrency import ProcessManager
 from starconsumers.discover import discover_app
-from starconsumers.process import ProcessManager
 
 cli_app = typer.Typer(
     help="A CLI to discover and run StarConsumers applications and interact with Pub/Sub.",

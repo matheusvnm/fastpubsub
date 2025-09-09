@@ -11,9 +11,15 @@ class Publisher:
         self.project_id = project_id
         self.topic_name = topic_name
         self.middlewares = middlewares
+        self.middlewares: list[type[BasePublisherMiddleware]] = []
 
-    async def publish(self, data: dict, ordering_key: str = "", attributes: dict = None) -> None:
+        if middlewares:
+            for middleware in middlewares:
+                self.add_middleware(middleware)
+
+    def publish(self, data: dict, ordering_key: str = "", attributes: dict = None) -> None:
         # TODO: Build middlewares
+        # TODO: Add autocreate in publish
         client = PubSubPublisherClient(project_id=self.project_id, topic_name=self.topic_name)
         client.publish(data=data, ordering_key=ordering_key, attributes=attributes)
 
