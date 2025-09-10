@@ -1,16 +1,11 @@
-from abc import ABC
 import asyncio
-import functools
 import inspect
 import signal
 import sys
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from contextlib import suppress
 from types import FrameType, FunctionType
-import types
-from typing import Any, ParamSpec, TypeVar, cast
-
-from starlette.concurrency import run_in_threadpool
+from typing import Any, ParamSpec, TypeVar
 
 IS_WINDOWS = sys.platform in {"win32", "cygwin", "msys"}
 
@@ -55,14 +50,14 @@ def set_exit(
 
 
 def ensure_async_callable(obj: Callable[P, T]):
-        if isinstance(obj, FunctionType):
-            if not inspect.iscoroutinefunction(obj):
-                raise TypeError("The function {obj} must be async.")
-            return
+    if isinstance(obj, FunctionType):
+        if not inspect.iscoroutinefunction(obj):
+            raise TypeError("The function {obj} must be async.")
+        return
 
-        if inspect.isclass(obj):
-            if not callable(obj):
-                raise TypeError(f"The class {obj} must implement a async def __call__.")            
+    if inspect.isclass(obj):
+        if not callable(obj):
+            raise TypeError(f"The class {obj} must implement a async def __call__.")
 
-        if not inspect.iscoroutinefunction(obj.__call__):
-            raise TypeError(f"The class {obj} __call__ function must be async.")
+    if not inspect.iscoroutinefunction(obj.__call__):
+        raise TypeError(f"The class {obj} __call__ function must be async.")

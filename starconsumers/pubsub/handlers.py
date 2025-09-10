@@ -8,11 +8,11 @@
 
 import asyncio
 import traceback
-from typing import Any
 
 from google.cloud.pubsub_v1.subscriber.exceptions import AcknowledgeError
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 
+from starconsumers.datastructures import Message
 from starconsumers.exceptions import Drop, Retry
 from starconsumers.logger import logger
 from starconsumers.subscriber import Subscriber
@@ -51,14 +51,24 @@ class CallbackHandler:
                 return
 
     def _consume(self, message: PubSubMessage):
+        deserialized_message = self._deserialize_message(message)
+
         callback = self.subscriber.handler
         for middleware in reversed(self.subscriber.middlewares):
             callback = middleware(callback)
 
         loop = asyncio.new_event_loop()
-        return loop.run_until_complete(callback(message))
+        return loop.run_until_complete(callback(deserialized_message))
 
-    def _deserialize_message(message) -> Any:
-        pass
-        # TODO: Add logic of deserialização
-        # TODO:
+    def _deserialize_message(self, message: PubSubMessage) -> Message:
+        delivery_attempt = 0
+        if message.delivery_attempt is not None:
+            delivery_attempt = message.delivery_attempt
+
+        return Message(
+            id=message.message_id,
+            size=message.size,
+            data=message.data,
+            attributes=message.attributes,
+            delivery_attempt=delivery_attempt,
+        )

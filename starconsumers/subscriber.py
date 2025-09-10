@@ -1,6 +1,5 @@
 """Subscriber logic."""
 
-from typing import Any
 from starconsumers._internal.types import AsyncCallable
 from starconsumers.concurrency import ensure_async_callable
 from starconsumers.datastructures import (
@@ -10,7 +9,7 @@ from starconsumers.datastructures import (
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
-from starconsumers.middlewares import BaseSubscriberMiddleware, HandlerItem
+from starconsumers.middlewares import BaseSubscriberMiddleware, MessageHandleCommand
 
 
 class Subscriber:
@@ -27,7 +26,7 @@ class Subscriber:
         control_flow_policy: MessageControlFlowPolicy,
         middlewares: list[type[BaseSubscriberMiddleware]] = None,
     ):
-        self._handler = HandlerItem(target=func)
+        self._handler = MessageHandleCommand(target=func)
         self.project_id = project_id
         self.topic_name = topic_name
         self.subscription_name = subscription_name
@@ -43,7 +42,7 @@ class Subscriber:
                 self.add_middleware(middleware)
 
     @property
-    def handler(self) -> HandlerItem:
+    def handler(self) -> MessageHandleCommand:
         return self._handler
 
     def add_middleware(self, middleware: type[BaseSubscriberMiddleware]) -> None:

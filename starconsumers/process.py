@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from starconsumers import observability
 from starconsumers.logger import logger
-from starconsumers.pubsub.clients import PubSubSubscriberClient
+from starconsumers.pubsub.sub import PubSubSubscriberClient
 from starconsumers.subscriber import Subscriber
 
 

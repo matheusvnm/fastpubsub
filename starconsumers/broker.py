@@ -4,7 +4,8 @@ from starconsumers.exceptions import StarConsumersException
 from starconsumers.logger import logger
 from starconsumers.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
 from starconsumers.process import ProcessManager
-from starconsumers.pubsub.clients import PubSubPublisherClient, PubSubSubscriberClient
+from starconsumers.pubsub.pub import PubSubPublisherClient
+from starconsumers.pubsub.sub import PubSubSubscriberClient
 from starconsumers.registrator import Registrator
 from starconsumers.router import BrokerRouter
 from starconsumers.subscriber import Subscriber

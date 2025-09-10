@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from starconsumers._internal.types import DecoratedCallable, SubscribedCallable
 from starconsumers.datastructures import (
     DeadLetterPolicy,
@@ -125,20 +123,18 @@ class Registrator:
     # TODO: Add param type check
     def publisher(self, topic_name: str) -> Publisher:
         if topic_name not in self.publishers:
-            publisher = Publisher(project_id=self.project_id, topic_name=topic_name, middlewares=[])
-
-            for middleware in self.middlewares:
-                publisher.add_middleware(middleware)
-
+            publisher = Publisher(
+                project_id=self.project_id, topic_name=topic_name, middlewares=self.middlewares
+            )
             self.publishers[topic_name] = publisher
 
         return self.publishers[topic_name]
 
-    def publish(
+    async def publish(
         self, topic_name: str, data: dict, ordering_key: str = "", attributes: dict = None
     ) -> None:
         publisher = self.publisher(topic_name)
-        publisher.publish(data=data, ordering_key=ordering_key, attributes=attributes)
+        await publisher.publish(data=data, ordering_key=ordering_key, attributes=attributes)
 
     def add_middleware(
         self, middleware: type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]
