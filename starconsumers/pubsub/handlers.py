@@ -59,7 +59,6 @@ class CallbackHandler:
 
         return asyncio.run(callback(deserialized_message))
 
-
     def _deserialize_message(self, message: PubSubMessage) -> Message:
         delivery_attempt = 0
         if message.delivery_attempt is not None:

@@ -131,10 +131,17 @@ class Registrator:
         return self.publishers[topic_name]
 
     async def publish(
-        self, topic_name: str, data: dict, ordering_key: str = "", attributes: dict = None
+        self,
+        topic_name: str,
+        data: dict,
+        ordering_key: str = "",
+        attributes: dict = None,
+        autocreate: bool = True,
     ) -> None:
         publisher = self.publisher(topic_name)
-        await publisher.publish(data=data, ordering_key=ordering_key, attributes=attributes)
+        await publisher.publish(
+            data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
+        )
 
     def add_middleware(
         self, middleware: type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]

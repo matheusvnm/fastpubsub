@@ -13,15 +13,15 @@ from starconsumers.router import BrokerRouter
 
 class BrokerLevelPublisherMiddleware(BasePublisherMiddleware):
 
-    async def __call__(self, data: dict[str, Any], attributes: dict[str, str] = {}, ordering_key: str = ""):
+    async def __call__(self, data: dict[str, Any], attributes: dict[str, str], ordering_key: str, autocreate: bool):
         logger.info(f"This is a global publisher middleware for sending messages")
-        return await super().__call__(data=data, ordering_key=ordering_key, attributes=attributes)
+        return await super().__call__(data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate)
 
 class RouterLevelPublisherMiddleware(BasePublisherMiddleware):
 
-    async def __call__(self, data: dict[str, Any], attributes: dict[str, str] = {}, ordering_key: str = ""):
+    async def __call__(self, data: dict[str, Any], attributes: dict[str, str], ordering_key: str, autocreate: bool):
         logger.info(f"This is a router-level publisher middleware for sending messages")
-        return await super().__call__(data=data, ordering_key=ordering_key, attributes=attributes)
+        return await super().__call__(data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate)
 
 
 broker = Broker(project_id="starconsumers-pubsub-local", middlewares=[BrokerLevelPublisherMiddleware])
@@ -49,7 +49,7 @@ async def after_started():
     await broker.publish(topic_name="topic_a", data={"some_message": "messageA"})
     
     logger.info("The next published message will have two middlewares")
-    await router.publish(topic_name="topic_b", data={"some_message": "messageA"})
+    await router.publish(topic_name="topic_f", data={"some_message": "messageA"})
     
 
 

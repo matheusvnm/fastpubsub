@@ -1,7 +1,7 @@
 """Publisher logic."""
 
 from starconsumers.concurrency import ensure_async_callable
-from starconsumers.middlewares import BasePublisherMiddleware, MessagePublishCommand
+from starconsumers.middlewares import BasePublisherMiddleware, PublishMessageCommand
 
 
 class Publisher:
@@ -17,12 +17,16 @@ class Publisher:
             for middleware in middlewares:
                 self.add_middleware(middleware)
 
-    async def publish(self, data: dict, ordering_key: str = "", attributes: dict = None) -> None:
-        publisher = MessagePublishCommand(project_id=self.project_id, topic_name=self.topic_name)
+    async def publish(
+        self, data: dict, ordering_key: str = "", attributes: dict = None, autocreate: bool = True
+    ) -> None:
+        publisher = PublishMessageCommand(project_id=self.project_id, topic_name=self.topic_name)
         for middleware in self.middlewares:
             publisher = middleware(publisher)
 
-        await publisher(data=data, ordering_key=ordering_key, attributes=attributes)
+        await publisher(
+            data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
+        )
 
     def add_middleware(self, middleware: type[BasePublisherMiddleware]) -> None:
         if not (middleware and issubclass(middleware, BasePublisherMiddleware)):

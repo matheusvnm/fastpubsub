@@ -9,7 +9,7 @@ from starconsumers.datastructures import (
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
-from starconsumers.middlewares import BaseSubscriberMiddleware, MessageHandleCommand
+from starconsumers.middlewares import BaseSubscriberMiddleware, HandleMessageCommand
 
 
 class Subscriber:
@@ -26,7 +26,7 @@ class Subscriber:
         control_flow_policy: MessageControlFlowPolicy,
         middlewares: list[type[BaseSubscriberMiddleware]] = None,
     ):
-        self._handler = MessageHandleCommand(target=func)
+        self._handler = HandleMessageCommand(target=func)
         self.project_id = project_id
         self.topic_name = topic_name
         self.subscription_name = subscription_name
@@ -42,7 +42,7 @@ class Subscriber:
                 self.add_middleware(middleware)
 
     @property
-    def handler(self) -> MessageHandleCommand:
+    def handler(self) -> HandleMessageCommand:
         return self._handler
 
     def add_middleware(self, middleware: type[BaseSubscriberMiddleware]) -> None:
