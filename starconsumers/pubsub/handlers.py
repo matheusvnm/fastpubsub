@@ -54,11 +54,11 @@ class CallbackHandler:
         deserialized_message = self._deserialize_message(message)
 
         callback = self.subscriber.handler
-        for middleware in reversed(self.subscriber.middlewares):
+        for middleware in self.subscriber.middlewares:
             callback = middleware(callback)
 
-        loop = asyncio.new_event_loop()
-        return loop.run_until_complete(callback(deserialized_message))
+        return asyncio.run(callback(deserialized_message))
+
 
     def _deserialize_message(self, message: PubSubMessage) -> Message:
         delivery_attempt = 0

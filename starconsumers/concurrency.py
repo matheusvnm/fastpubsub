@@ -52,7 +52,7 @@ def set_exit(
 def ensure_async_callable(obj: Callable[P, T]):
     if isinstance(obj, FunctionType):
         if not inspect.iscoroutinefunction(obj):
-            raise TypeError("The function {obj} must be async.")
+            raise TypeError(f"The function {obj} must be async.")
         return
 
     if inspect.isclass(obj):

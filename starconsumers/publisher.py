@@ -19,7 +19,7 @@ class Publisher:
 
     async def publish(self, data: dict, ordering_key: str = "", attributes: dict = None) -> None:
         publisher = MessagePublishCommand(project_id=self.project_id, topic_name=self.topic_name)
-        for middleware in reversed(self.middlewares):
+        for middleware in self.middlewares:
             publisher = middleware(publisher)
 
         await publisher(data=data, ordering_key=ordering_key, attributes=attributes)
