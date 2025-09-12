@@ -2,7 +2,7 @@ from starconsumers.middlewares import BasePublisherMiddleware, BaseSubscriberMid
 from starconsumers.registrator import Registrator
 
 
-class BrokerRouter(Registrator):
+class Router(Registrator):
     def __init__(
         self,
         prefix: str = "",

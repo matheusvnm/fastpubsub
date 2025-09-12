@@ -1,4 +1,5 @@
 import multiprocessing
+import os
 import socket
 
 import psutil
@@ -39,29 +40,29 @@ class ProbeResponse(BaseModel):
     processes: list[ProcessInfo]
 
 
+def _spawn(subscriber: Subscriber) -> None:
+    logger.info(f"Started the subscriber {subscriber.subscription_name} subscription subprocess [{os.getpid()}]")
+    apm = observability.get_apm_provider()
+    apm.initialize()
+
+    client = PubSubSubscriberClient()
+    client.subscribe(subscriber)
+
+
 class ProcessManager:
     def __init__(self) -> None:
-        multiprocessing.set_start_method(method="spawn", force=True)
+        self.context = multiprocessing.get_context(method="spawn")
         self.processes: dict[str, multiprocessing.Process] = {}
 
     def spawn(self, subscriber: Subscriber) -> None:
-        process = multiprocessing.Process(
-            target=ProcessManager._spawn, args=(subscriber,), daemon=True
-        )
+        process = self.context.Process(target=_spawn, args=(subscriber,), daemon=True)
         self.processes[subscriber.subscription_name] = process
         self.processes[subscriber.subscription_name].start()
 
-    @staticmethod
-    def _spawn(subscriber: Subscriber) -> None:
-        apm = observability.get_apm_provider()
-        apm.initialize()
-
-        client = PubSubSubscriberClient()
-        client.subscribe(subscriber)
-
     def terminate(self, subscriber: Subscriber) -> None:
-        process = self.processes[subscriber.subscription_name]
+        logger.info(f"Terminanting the subscriber {subscriber.subscription_name} child process")
 
+        process = self.processes[subscriber.subscription_name]
         children_processes = psutil.Process(pid=process.pid).children(recursive=True)
         for child_process in children_processes:
             child_process.terminate()

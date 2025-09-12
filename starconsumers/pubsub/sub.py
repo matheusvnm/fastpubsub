@@ -1,6 +1,7 @@
+from contextlib import suppress
 from datetime import timedelta
 
-from google.api_core.exceptions import AlreadyExists, GoogleAPICallError
+from google.api_core.exceptions import AlreadyExists
 from google.cloud.pubsub_v1 import SubscriberClient
 from google.cloud.pubsub_v1.types import FlowControl
 from google.protobuf.field_mask_pb2 import FieldMask
@@ -57,27 +58,12 @@ class PubSubSubscriberClient:
         """
         subscription_request = self._create_subscription_request(subscriber=subscriber)
 
-        with SubscriberClient() as client:
-            try:
+        with suppress(AlreadyExists):
+            with SubscriberClient() as client:
                 logger.debug(f"Attempting to create subscription: {subscription_request.name}")
                 client.create_subscription(request=subscription_request)
                 logger.debug(f"Successfully created subscription: {subscription_request.name}")
                 return True
-            except AlreadyExists:
-                logger.debug(
-                    f"Subscription '{subscription_request.name}' already exists. Skipping creation."
-                )
-                return False
-            except GoogleAPICallError:
-                logger.exception(
-                    f"Failed to create subscription '{subscription_request.name}'", stacklevel=5
-                )
-                raise
-            except Exception:
-                logger.exception(
-                    "An unexpected error occurred during subscription creation", stacklevel=5
-                )
-                raise
 
     def update_subscription(self, subscriber: Subscriber) -> None:
         subscription_request = self._create_subscription_request(subscriber=subscriber)
@@ -93,25 +79,12 @@ class PubSubSubscriberClient:
 
         update_mask = FieldMask(paths=update_fields)
         with SubscriberClient() as client:
-            try:
-                logger.debug(f"Attempting to update the subscription: {subscription_request.name}")
-                response = client.update_subscription(
-                    subscription=subscription_request, update_mask=update_mask
-                )
-                logger.debug(f"Successfully updated the subscription: {subscription_request.name}")
-                logger.debug(
-                    f"The subscription is now set with the following configuration: {response}"
-                )
-            except GoogleAPICallError:
-                logger.exception(
-                    f"Failed to update subscription '{subscription_request.name}'", stacklevel=5
-                )
-                raise
-            except Exception:
-                logger.exception(
-                    "An unexpected error occurred during subscription update", stacklevel=5
-                )
-                raise
+            logger.debug(f"Attempting to update the subscription: {subscription_request.name}")
+            response = client.update_subscription(
+                subscription=subscription_request, update_mask=update_mask
+            )
+            logger.debug(f"Successfully updated the subscription: {subscription_request.name}")
+            logger.debug(f"The subscription is now following the configuration: {response}")
 
     def subscribe(self, subscriber: Subscriber) -> None:
         """

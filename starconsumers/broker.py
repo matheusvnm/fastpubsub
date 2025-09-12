@@ -7,7 +7,7 @@ from starconsumers.process import ProcessManager
 from starconsumers.pubsub.pub import PubSubPublisherClient
 from starconsumers.pubsub.sub import PubSubSubscriberClient
 from starconsumers.registrator import Registrator
-from starconsumers.router import BrokerRouter
+from starconsumers.router import Router
 from starconsumers.subscriber import Subscriber
 
 
@@ -15,13 +15,19 @@ class Broker(Registrator):
     def __init__(
         self,
         project_id: str,
+        routers: list[Router] = None,
         middlewares: list[type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]] = None,
     ):
         super().__init__(middlewares=middlewares)
         self.project_id = project_id
         self.process_manager = ProcessManager()
 
-    def include_router(self, router: BrokerRouter) -> None:
+        self.routers: list[Router] = []
+        if routers:
+            for router in routers:
+                self.include_router(router=router)
+
+    def include_router(self, router: Router) -> None:
         router.set_project_id(self.project_id)
         for middleware in self.middlewares:
             router.add_middleware(middleware)
@@ -32,13 +38,13 @@ class Broker(Registrator):
 
             self.subscribers[alias] = subscriber
 
+        self.routers.append(router)
+
     async def start(self, selected_subscribers: set[str] = None) -> None:
-        await self._drop_unused_subscribers(selected_subscribers)
+        subscribers = await self._filter_subscribers(selected_subscribers)
 
         created_topics = set()
-        for alias, subscriber in self.subscribers.items():
-            logger.info(f"Starting the subscription '{alias}'")
-
+        for subscriber in subscribers:
             target_topic = subscriber.topic_name
             if subscriber.lifecycle_policy.autocreate:
                 if target_topic not in created_topics:
@@ -58,32 +64,39 @@ class Broker(Registrator):
 
             self.process_manager.spawn(subscriber)
 
-    async def _drop_unused_subscribers(self, selected_subscribers: set[str]) -> None:
-        if not selected_subscribers:
-            return
+    async def _filter_subscribers(self, selected_subscribers: set[str]) -> list[Subscriber]:
+        found_subscribers = []
 
-        for selected_subscriber in selected_subscribers:
-            if selected_subscriber not in self.subscribers:
-                raise StarConsumersException(f"The {selected_subscriber} does not exists")
+        subscribers = {**self.subscribers}
+        for router in self.routers:
+            subscribers.update(router.subscribers)
 
-        for subscription_name in self.subscribers.keys():
-            if subscription_name not in self.subscribers:
-                del self.subscribers[subscription_name]
+        if not selected_subscribers or not isinstance(selected_subscribers, set):
+            found_subscribers = list(subscribers.values())
+            return found_subscribers
+
+        aliases = [name.casefold() for name in selected_subscribers]
+        for alias in aliases:
+            if alias not in subscribers:
+                logger.error(f"The '{alias}' not found")
+                continue
+
+            found_subscribers.append(subscribers[alias])
+
+        if not found_subscribers:
+            raise StarConsumersException(f"No subscriber aliases found for '{aliases}'")
+        
+        return found_subscribers
 
     async def _create_topic(self, topic_name: str) -> None:
-        logger.info(f"The topic '{topic_name}' will be created if does not exists.")
         client = PubSubPublisherClient(project_id=self.project_id, topic_name=topic_name)
         client.create_topic()
 
     async def _create_subscription(self, subscriber: Subscriber) -> None:
-        logger.info(
-            f"The subscription '{subscriber.subscription_name}' will be created if does not exists."
-        )
         client = PubSubSubscriberClient()
         client.create_subscription(subscriber=subscriber)
 
     async def _update_subscription(self, subscriber: Subscriber) -> None:
-        logger.info(f"The subscription '{subscriber.subscription_name}' will be updated if exists.")
         client = PubSubSubscriberClient()
         client.update_subscription(subscriber=subscriber)
         # TODO: Checar o que ocorre se uma inscrição não criada for atualizada

@@ -8,7 +8,7 @@ from starconsumers.broker import Broker
 from starconsumers.datastructures import Message
 from starconsumers.logger import logger
 from starconsumers.middlewares import BaseSubscriberMiddleware
-from starconsumers.router import BrokerRouter
+from starconsumers.router import Router
 
 
 class BrokerLevelSubscriberMiddleware(BaseSubscriberMiddleware):
@@ -31,15 +31,7 @@ class SubscriberLevelSubscriberMiddleware(BaseSubscriberMiddleware):
         return await super().__call__(message)
 
 
-broker = Broker(project_id="starconsumers-pubsub-local", middlewares=[BrokerLevelSubscriberMiddleware])
-
-@broker.subscriber("broker-subscriber", topic_name="topic_a", subscription_name="subscription_a",)
-async def broker_handle(message: Message):
-    logger.info(f"This handler has only the broker middleware")
-
-
-
-router = BrokerRouter(middlewares=[RouterLevelSubscriberMiddleware])
+router = Router(middlewares=[RouterLevelSubscriberMiddleware])
 
 @router.subscriber("router-subscriber", topic_name="topic_b", subscription_name="subscription_b",)
 async def router_handle(message: Message):
@@ -51,7 +43,13 @@ async def router_handle_with_middleware(message: Message):
     logger.info(f"This handler has all middlewares")
 
 
-broker.include_router(router)
+broker = Broker(project_id="starconsumers-pubsub-local", middlewares=[BrokerLevelSubscriberMiddleware], routers=[router])
+
+@broker.subscriber("broker-subscriber", topic_name="topic_a", subscription_name="subscription_a",)
+async def broker_handle(message: Message):
+    logger.info(f"This handler has only the broker middleware")
+
+
 app = StarConsumers(broker=broker)
 
 
