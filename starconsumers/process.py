@@ -41,7 +41,9 @@ class ProbeResponse(BaseModel):
 
 
 def _spawn(subscriber: Subscriber) -> None:
-    logger.info(f"Started the subscriber {subscriber.subscription_name} subscription subprocess [{os.getpid()}]")
+    logger.info(
+        f"Started the subscriber {subscriber.subscription_name} subscription subprocess [{os.getpid()}]"
+    )
     apm = observability.get_apm_provider()
     apm.initialize()
 

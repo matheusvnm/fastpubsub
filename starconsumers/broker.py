@@ -85,7 +85,7 @@ class Broker(Registrator):
 
         if not found_subscribers:
             raise StarConsumersException(f"No subscriber aliases found for '{aliases}'")
-        
+
         return found_subscribers
 
     async def _create_topic(self, topic_name: str) -> None:

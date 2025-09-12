@@ -42,4 +42,4 @@ if __name__ == "__main__":
     uvicorn.run("examples.05_fastapi_integration:app", workers=2, log_level="warning")
 
 
-        
+

@@ -97,7 +97,7 @@ class StarConsumers:
 
     @asynccontextmanager
     async def _start_hooks(self) -> AsyncIterator[None]:
-        logger.info(f"Starting a StarConsumers child processes")
+        logger.info("Starting a StarConsumers child processes")
         for func in self._on_startup:
             await func()
 
@@ -106,7 +106,7 @@ class StarConsumers:
         for func in self._after_startup:
             await func()
 
-        logger.info(f"The StarConsumers child processes started")
+        logger.info("The StarConsumers child processes started")
 
     def stop(self):
         """Stop application manually."""
@@ -118,7 +118,7 @@ class StarConsumers:
 
     @asynccontextmanager
     async def _shutdown_hooks(self) -> AsyncIterator[None]:
-        logger.info(f"Terminating the StarConsumers child process")
+        logger.info("Terminating the StarConsumers child process")
         for func in self._on_shutdown:
             await func()
 
@@ -174,6 +174,7 @@ class FastConsumers(FastAPI, StarConsumers):
         **extra: Any,
     ):
         from starlette.applications import Starlette
+
         super().__init__(
             debug=debug,
             title=title,

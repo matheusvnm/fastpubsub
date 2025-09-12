@@ -29,7 +29,7 @@ router = Router(middlewares=[RouterLevelPublisherMiddleware])
 @router.subscriber("router-subscriber", topic_name="topic_b", subscription_name="subscription_b",)
 async def router_handle(message: Message):
     logger.info(f"We received message {message} on router_handle")
-    
+
 
 broker = Broker(project_id="starconsumers-pubsub-local", middlewares=[BrokerLevelPublisherMiddleware], routers=[router])
 
@@ -48,7 +48,7 @@ async def after_started():
 
     logger.info("The next published message will have two middlewares")
     await router.publish(topic_name="topic_f", data={"some_message": "messageA"})
-    
+
 
 
 if __name__ == "__main__":
