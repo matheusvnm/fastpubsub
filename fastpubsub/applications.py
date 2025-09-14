@@ -105,7 +105,8 @@ class Application:
 
 
 class FastPubSub(FastAPI, Application):
-    # TODO: Adicionar na adição de subscribers (handlers) uma validação para impedir adição de Depends() do fastapi e outros tipos do mesmo
+    # TODO: Adicionar na adição de subscribers (handlers) uma validação para
+    #  impedir adição de Depends() do fastapi e outros tipos do mesmo
 
     def __init__(
         self,

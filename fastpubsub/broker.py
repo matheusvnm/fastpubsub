@@ -8,12 +8,12 @@ from fastpubsub.exceptions import StarConsumersException
 from fastpubsub.logger import logger
 from fastpubsub.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
 from fastpubsub.process import ProcessManager
-from fastpubsub.registrator import Registrator, RouterRegistrator
-from fastpubsub.router import PubSubRouter
+from fastpubsub.routing.base_router import Router
+from fastpubsub.routing.router import PubSubRouter
 from fastpubsub.subscriber import Subscriber
 
 
-class PubSubBroker(Registrator, RouterRegistrator):
+class PubSubBroker(Router):
     def __init__(
         self,
         project_id: str,
@@ -23,14 +23,12 @@ class PubSubBroker(Registrator, RouterRegistrator):
         if not (project_id and isinstance(project_id, str) and len(project_id.strip()) > 0):
             raise StarConsumersException(f"The project id value ({project_id}) is invalid.")
 
-        super().__init__(middlewares=middlewares)
-        super(Registrator, self).__init__(routers=routers)
-
-        self.project_id = project_id
+        super().__init__(project_id=project_id, routers=routers, middlewares=middlewares)
         self.process_manager = ProcessManager()
 
+
     def include_router(self, router: PubSubRouter) -> None:
-        super(Registrator, self).include_router(router)
+        super().include_router(router)
 
         router.set_project_id(self.project_id)
         for middleware in self.middlewares:

@@ -1,10 +1,9 @@
-
 from fastpubsub.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
-from fastpubsub.registrator import Registrator, RouterRegistrator
+from fastpubsub.routing.base_router import Router
 from fastpubsub.subscriber import Subscriber
 
 
-class PubSubRouter(Registrator, RouterRegistrator):
+class PubSubRouter(Router):
     def __init__(
         self,
         prefix: str,
@@ -12,16 +11,19 @@ class PubSubRouter(Registrator, RouterRegistrator):
         routers: list["PubSubRouter"] = None,
         middlewares: list[type[BaseSubscriberMiddleware], type[BasePublisherMiddleware]] = None,
     ):
-        super().__init__(middlewares=middlewares)
-        super(Registrator, self).__init__(routers=routers)
-
-        self.prefix = prefix  # TODO: Add prefix validation (only letter/numbers/underscore/slashed -- should not have special chars, point or space)
+        
+        # TODO: Add prefix validation
+        # It must start/end with letter/numbers
+        # It can have periods, slashes and underscore in the middle.
+        super().__init__(prefix=prefix, routers=routers, middlewares=middlewares)
 
     def set_project_id(self, project_id: str) -> None:
         self.project_id = project_id
 
+        print(f"{self.prefix} {project_id}")
         router: PubSubRouter
         for router in self.routers:
+            router.add_prefix(self.prefix)
             router.set_project_id(project_id)
 
         for publisher in self.publishers.values():
@@ -31,15 +33,17 @@ class PubSubRouter(Registrator, RouterRegistrator):
             subscriber.set_project_id(self.project_id)
 
     def include_router(self, router: "PubSubRouter") -> None:
-        super(Registrator, self).include_router(router)
+        super().include_router(router)
 
         router.add_prefix(self.prefix)
         for middleware in self.middlewares:
             router.include_middleware(middleware)
 
     def add_prefix(self, new_prefix: str):
-        self.prefix = f"{new_prefix}.{self.prefix}"
+        if new_prefix in self.prefix:
+            return
 
+        self.prefix = f"{new_prefix}.{self.prefix}"
         subscribers_to_realias = dict(self.subscribers)
 
         self.subscribers.clear()
@@ -50,7 +54,7 @@ class PubSubRouter(Registrator, RouterRegistrator):
             self.subscribers[new_prefixed_alias] = subscriber
 
     def get_subscribers(self) -> dict[str, Subscriber]:
-        subscribers = dict()
+        subscribers = {}
 
         router: PubSubRouter
         for router in self.routers:

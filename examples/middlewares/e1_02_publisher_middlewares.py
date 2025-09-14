@@ -2,16 +2,16 @@
 
 
 
-import asyncio
+
 from typing import Any
 
-import uvicorn
-from fastpubsub.applications import Application, FastPubSub
+
+from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
 from fastpubsub.logger import logger
 from fastpubsub.middlewares import BasePublisherMiddleware
-from fastpubsub.router import PubSubRouter
+from fastpubsub.routing.router import PubSubRouter
 
 class BrokerLevelPublisherMiddleware(BasePublisherMiddleware):
 
@@ -27,20 +27,17 @@ class RouterLevelPublisherMiddleware(BasePublisherMiddleware):
 
 
 router = PubSubRouter(middlewares=[RouterLevelPublisherMiddleware])
+broker = PubSubBroker(project_id="fastpubsub-pubsub-local", middlewares=[BrokerLevelPublisherMiddleware], routers=[router])
+app = FastPubSub(broker)
+
 
 @router.subscriber("router-subscriber", topic_name="topic_b", subscription_name="subscription_b",)
 async def router_handle(message: Message):
     logger.info(f"We received message {message} on router_handle")
 
-
-broker = PubSubBroker(project_id="fastpubsub-pubsub-local", middlewares=[BrokerLevelPublisherMiddleware], routers=[router])
-
 @broker.subscriber("broker-subscriber", topic_name="topic_a", subscription_name="subscription_a",)
 async def broker_handle(message: Message):
     logger.info(f"We received message {message} on broker_handle")
-
-
-app = FastPubSub(broker)
 
 
 @app.after_startup

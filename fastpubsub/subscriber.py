@@ -24,7 +24,7 @@ class Subscriber:
         control_flow_policy: MessageControlFlowPolicy,
         middlewares: list[type[BaseSubscriberMiddleware]] = None,
     ):
-        self.handler = HandleMessageCommand(target=func)
+        
         self.project_id = project_id
         self.topic_name = topic_name
         self.subscription_name = subscription_name
@@ -33,6 +33,7 @@ class Subscriber:
         self.delivery_policy = delivery_policy
         self.dead_letter_policy = dead_letter_policy
         self.control_flow_policy = control_flow_policy
+        self.handler = HandleMessageCommand(target=func)
         self.middlewares: list[type[BaseSubscriberMiddleware]] = []
 
         if middlewares:

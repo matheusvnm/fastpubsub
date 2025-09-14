@@ -2,13 +2,14 @@ import os
 from contextlib import suppress
 from datetime import timedelta
 
-from google.api_core.exceptions import AlreadyExists
+from google.api_core.exceptions import AlreadyExists, NotFound
 from google.cloud.pubsub_v1 import SubscriberClient
 from google.cloud.pubsub_v1.types import FlowControl
 from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub_v1.types import DeadLetterPolicy, RetryPolicy, Subscription
 
 from fastpubsub.clients.handlers import CallbackHandler
+from fastpubsub.exceptions import StarConsumersException
 from fastpubsub.logger import logger
 from fastpubsub.subscriber import Subscriber
 
@@ -59,11 +60,14 @@ class PubSubSubscriberClient:
         subscription_request = self._create_subscription_request(subscriber=subscriber)
 
         with suppress(AlreadyExists):
-            with SubscriberClient() as client:
-                logger.debug(f"Attempting to create subscription: {subscription_request.name}")
-                client.create_subscription(request=subscription_request)
-                logger.debug(f"Successfully created subscription: {subscription_request.name}")
-                return True
+            try:
+                with SubscriberClient() as client:
+                    logger.debug(f"Attempting to create subscription: {subscription_request.name}")
+                    client.create_subscription(request=subscription_request)
+                    logger.debug(f"Successfully created subscription: {subscription_request.name}")
+                    return True
+            except NotFound:
+                raise StarConsumersException(f"The topic {subscription_request.topic} was not found for subscription")
 
     def update_subscription(self, subscriber: Subscriber) -> None:
         subscription_request = self._create_subscription_request(subscriber=subscriber)
@@ -113,7 +117,8 @@ class PubSubSubscriberClient:
                 logger.debug(f"Subscriber '{subscriber.subscription_name}' stopped by user")
             except Exception:
                 logger.exception(
-                    f"Subscription stream terminated unexpectedly for '{subscriber.subscription_name}'",
+                    "Subscription stream terminated "
+                    f"unexpectedly for '{subscriber.subscription_name}'",
                     stacklevel=5,
                 )
             finally:

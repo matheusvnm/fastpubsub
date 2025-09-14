@@ -2,10 +2,12 @@ from fastpubsub.logger import logger
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
-from fastpubsub.router import PubSubRouter
+from fastpubsub.routing.router import PubSubRouter
 
 
-
+# The aliases/subscription name can be the same.
+# That is because each PubSubRouter has prefix.
+# Hence, their message handler do not conflict
 router_core = PubSubRouter(prefix="core")
 router_sales = PubSubRouter(prefix="sales")
 router_logistics = PubSubRouter(prefix="logistics")

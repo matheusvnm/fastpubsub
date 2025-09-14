@@ -74,10 +74,6 @@ docstring-code-format = true
 select = ["E", "W", "I", "C4", "UP", "F", "B", "ARG"]
 extend-ignore = ["B008", "B006"]
 
-[tool.ruff.lint.extend-per-file-ignores]
-# Also ignore `E501` in all `__init__.py` files.
-"main.py" = ["E501"]
-
 [tool.uv]
 package = true
 

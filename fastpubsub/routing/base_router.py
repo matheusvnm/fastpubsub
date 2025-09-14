@@ -12,22 +12,37 @@ from fastpubsub.subscriber import Subscriber
 from fastpubsub.types import DecoratedCallable, SubscribedCallable
 
 
-class Registrator:
+
+class Router:
     def __init__(
-        self, middlewares: list[type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]]
+        self,
+        prefix: str = "", 
+        project_id: str = "",
+        routers: list["Router"] = None, 
+        middlewares: list[type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]] = None
     ):
-        self.prefix: str = ""
-        self.project_id: str = ""
+        # These field is lazily loaded
+        self.prefix: str = prefix
+        self.project_id: str = project_id
+
         self.publishers: dict[str, Publisher] = {}
         self.subscribers: dict[str, Subscriber] = {}
+        self.routers: list[Router] = []
         self.middlewares: list[type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]] = []
-
+        
         if middlewares:
             if not isinstance(middlewares, list):
                 raise StarConsumersException("Your routers should be passed as a list")
 
             for middleware in middlewares:
                 self.include_middleware(middleware)
+
+        if routers:
+            if not isinstance(routers, list):
+                raise StarConsumersException("Your routers should be passed as a list")
+
+            for router in routers:
+                self.include_router(router)
 
     # TODO: Add param type check
     def subscriber(
@@ -168,22 +183,13 @@ class Registrator:
         for subscriber in self.subscribers.values():
             subscriber.add_middleware(middleware)
 
+        for router in self.routers:
+            router.include_middleware(middleware)
 
-class RouterRegistrator:
-    def __init__(self, routers: list["RouterRegistrator"]):
-        self.routers: list[RouterRegistrator] = []
-
-        if routers and isinstance(routers, list):
-            if not isinstance(routers, list):
-                raise StarConsumersException("Your routers should be passed as a list")
-
-            for router in routers:
-                self.include_router(router)
-
-    def include_router(self, router: "RouterRegistrator") -> None:
-        if not isinstance(router, RouterRegistrator):
+    def include_router(self, router: "Router") -> None:
+        if not isinstance(router, Router):
             raise StarConsumersException(
-                f"Your routers must be of type {RouterRegistrator.__name__}"
+                f"Your routers must be of type {Router.__name__}"
             )
 
         self.routers.append(router)
