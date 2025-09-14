@@ -1,6 +1,6 @@
 """StarConsumers application."""
 
-from collections.abc import AsyncIterator, Callable, Coroutine, Sequence
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Coroutine, Sequence
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -20,30 +20,30 @@ class Application:
     def __init__(
         self,
         broker: PubSubBroker,
-        on_startup: list[CallableHook] = None,
-        on_shutdown: list[CallableHook] = None,
-        after_startup: list[CallableHook] = None,
-        after_shutdown: list[CallableHook] = None,
+        on_startup: tuple[CallableHook] = None,
+        on_shutdown: tuple[CallableHook] = None,
+        after_startup: tuple[CallableHook] = None,
+        after_shutdown: tuple[CallableHook] = None,
     ):
         self.broker = broker
 
         self._on_startup = []
-        if on_startup and isinstance(on_startup, list):
+        if on_startup and isinstance(on_startup, tuple):
             for func in on_startup:
                 self.on_startup(func)
 
         self._on_shutdown = []
-        if on_shutdown and isinstance(on_shutdown, list):
+        if on_shutdown and isinstance(on_shutdown, tuple):
             for func in on_shutdown:
                 self.on_shutdown(func)
 
         self._after_startup = []
-        if after_startup and isinstance(after_startup, list):
+        if after_startup and isinstance(after_startup, tuple):
             for func in after_startup:
                 self.after_startup(func)
 
         self._after_shutdown = []
-        if after_shutdown and isinstance(after_shutdown, list):
+        if after_shutdown and isinstance(after_shutdown, tuple):
             for func in after_shutdown:
                 self.after_shutdown(func)
 
@@ -70,12 +70,12 @@ class Application:
         return func
 
     async def _start(self) -> None:
-        async with self._start_hooks():
+        async with self.start_hooks():
             await self.broker.start()
 
     @asynccontextmanager
-    async def _start_hooks(self) -> AsyncIterator[None]:
-        logger.info("Starting a StarConsumers child processes")
+    async def start_hooks(self) -> AsyncIterator[None]:
+        logger.info("Starting FastPubSub processes")
         for func in self._on_startup:
             await func()
 
@@ -84,15 +84,15 @@ class Application:
         for func in self._after_startup:
             await func()
 
-        logger.info("The StarConsumers child processes started")
+        logger.info("The FastPubSub processes started")
 
     async def _shutdown(self) -> None:
-        async with self._shutdown_hooks():
+        async with self.shutdown_hooks():
             await self.broker.shutdown()
 
     @asynccontextmanager
-    async def _shutdown_hooks(self) -> AsyncIterator[None]:
-        logger.info("Terminating the StarConsumers child process")
+    async def shutdown_hooks(self) -> AsyncIterator[None]:
+        logger.info("Terminating FastPubSub processes")
         for func in self._on_shutdown:
             await func()
 
@@ -100,6 +100,8 @@ class Application:
 
         for func in self._after_shutdown:
             await func()
+
+        logger.info("Terminating FastPubSub terminated")
 
 
 class FastPubSub(FastAPI, Application):
@@ -194,7 +196,7 @@ class FastPubSub(FastAPI, Application):
         self.add_api_route(path=health_check_url, endpoint=self._health, methods=["GET"])
 
     @asynccontextmanager
-    async def run(self, app: FastAPI):
+    async def run(self, app: "FastPubSub") -> AsyncGenerator[None]:
         if not self.lifespan_context:
             await self._start()
             yield

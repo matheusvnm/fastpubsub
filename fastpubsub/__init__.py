@@ -1,1 +1,0 @@
-"""StarConsumers Framework."""

@@ -51,3 +51,6 @@ class Subscriber:
 
     def set_project_id(self, project_id: str):
         self.project_id = project_id
+
+    def add_prefix(self, new_prefix: str):
+        self.subscription_name = f"{new_prefix}.{self.subscription_name}"

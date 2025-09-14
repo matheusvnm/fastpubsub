@@ -32,5 +32,5 @@ async def after_started():
 
 @app.get("/")
 async def home():
-    await broker.publish(topic_name="topic_a", data={"some_message": "messageA"})
+    await broker.publisher(topic_name="topic_a")
     return {"hello": "world"}

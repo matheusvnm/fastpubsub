@@ -40,9 +40,9 @@ class ProbeResponse(BaseModel):
     processes: list[ProcessInfo]
 
 
-def _spawn(subscriber: Subscriber) -> None:
+def spawn(subscriber: Subscriber) -> None:
     logger.info(
-        f"Started the subscriber {subscriber.subscription_name} subscription subprocess [{os.getpid()}]"
+        f"Started the subscription {subscriber.subscription_name} subprocess [{os.getpid()}]"
     )
     apm = observability.get_apm_provider()
     apm.initialize()
@@ -59,7 +59,8 @@ class ProcessManager:
     def spawn(self, subscriber: Subscriber) -> None:
         # TODO: Remover sistema daemonic do processo
         # TODO: Adicionar algum tipo de tratamento on terminate.
-        process = self.context.Process(target=_spawn, args=(subscriber,), daemon=True)
+        # TODO: Criar processo
+        process = self.context.Process(target=spawn, args=(subscriber,), daemon=True)
         self.processes[subscriber.subscription_name] = process
         self.processes[subscriber.subscription_name].start()
 

@@ -20,7 +20,14 @@ class Registrator:
         self.project_id: str = ""
         self.publishers: dict[str, Publisher] = {}
         self.subscribers: dict[str, Subscriber] = {}
-        self.middlewares = middlewares or []
+        self.middlewares: list[type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]] = []
+
+        if middlewares:
+            if not isinstance(middlewares, list):
+                raise StarConsumersException("Your routers should be passed as a list")
+
+            for middleware in middlewares:
+                self.include_middleware(middleware)
 
     # TODO: Add param type check
     def subscriber(
@@ -143,7 +150,7 @@ class Registrator:
             data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
         )
 
-    def add_middleware(
+    def include_middleware(
         self, middleware: type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]
     ) -> None:
         if not issubclass(
@@ -155,9 +162,28 @@ class Registrator:
         if middleware not in self.middlewares:
             self.middlewares.append(middleware)
 
-        for middleware in self.middlewares:
-            for publisher in self.publishers.values():
-                publisher.add_middleware(middleware)
+        for publisher in self.publishers.values():
+            publisher.add_middleware(middleware)
 
-            for subscriber in self.subscribers.values():
-                subscriber.add_middleware(middleware)
+        for subscriber in self.subscribers.values():
+            subscriber.add_middleware(middleware)
+
+
+class RouterRegistrator:
+    def __init__(self, routers: list["RouterRegistrator"]):
+        self.routers: list[RouterRegistrator] = []
+
+        if routers and isinstance(routers, list):
+            if not isinstance(routers, list):
+                raise StarConsumersException("Your routers should be passed as a list")
+
+            for router in routers:
+                self.include_router(router)
+
+    def include_router(self, router: "RouterRegistrator") -> None:
+        if not isinstance(router, RouterRegistrator):
+            raise StarConsumersException(
+                f"Your routers must be of type {RouterRegistrator.__name__}"
+            )
+
+        self.routers.append(router)

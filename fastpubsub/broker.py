@@ -8,39 +8,39 @@ from fastpubsub.exceptions import StarConsumersException
 from fastpubsub.logger import logger
 from fastpubsub.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
 from fastpubsub.process import ProcessManager
-from fastpubsub.registrator import Registrator
+from fastpubsub.registrator import Registrator, RouterRegistrator
 from fastpubsub.router import PubSubRouter
 from fastpubsub.subscriber import Subscriber
 
 
-class PubSubBroker(Registrator):
+class PubSubBroker(Registrator, RouterRegistrator):
     def __init__(
         self,
         project_id: str,
         routers: list[PubSubRouter] = None,
         middlewares: list[type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]] = None,
     ):
+        if not (project_id and isinstance(project_id, str) and len(project_id.strip()) > 0):
+            raise StarConsumersException(f"The project id value ({project_id}) is invalid.")
+
         super().__init__(middlewares=middlewares)
+        super(Registrator, self).__init__(routers=routers)
+
         self.project_id = project_id
         self.process_manager = ProcessManager()
 
-        self.routers: list[PubSubRouter] = []
-        if routers:
-            for router in routers:
-                self.include_router(router=router)
-
     def include_router(self, router: PubSubRouter) -> None:
+        super(Registrator, self).include_router(router)
+
         router.set_project_id(self.project_id)
         for middleware in self.middlewares:
-            router.add_middleware(middleware)
+            router.include_middleware(middleware)
 
         for alias, subscriber in router.subscribers.items():
             if alias in self.subscribers:
                 raise ValueError(f"Subscriber with alias '{alias}' already exists.")
 
             self.subscribers[alias] = subscriber
-
-        self.routers.append(router)
 
     async def start(self) -> None:
         subscribers = await self._filter_subscribers()
@@ -67,14 +67,14 @@ class PubSubBroker(Registrator):
             self.process_manager.spawn(subscriber)
 
     async def _filter_subscribers(self) -> list[Subscriber]:
-        selected_subscribers = self._get_selected_subscribers()
-
         found_subscribers = []
+        subscribers = dict(self.subscribers)
 
-        subscribers = {**self.subscribers}
+        router: PubSubRouter
         for router in self.routers:
-            subscribers.update(router.subscribers)
+            subscribers.update(router.get_subscribers())
 
+        selected_subscribers = self._get_selected_subscribers()
         if not selected_subscribers:
             found_subscribers = list(subscribers.values())
             logger.debug(f"Running all the subscribers as {list(subscribers.keys())}")

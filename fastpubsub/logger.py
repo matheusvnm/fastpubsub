@@ -129,44 +129,42 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(log_object, indent=None, separators=(",", ":"))
 
 
-class LoggerFactory:
+def setup_logger() -> FastPubSubLogger:
     """
-    Manages an isolated logger for the 'fastpubsub' library.
+    Enables and configures the FastPubSub logger.
     """
+    # TODO: Add colorized logger
+    log_level = int(os.getenv("FASTPUBSUB_LOG_LEVEL", logging.INFO))
+    log_serialize = bool(int(os.getenv("FASTPUBSUB_ENABLE_LOG_SERIALIZE", 0)))
 
-    @staticmethod
-    def setup() -> FastPubSubLogger:
-        """
-        Enables and configures the FastPubSub logger.
-        """
-        # TODO: Add colorized logger
-        log_level = int(os.getenv("FASTPUBSUB_LOG_LEVEL", logging.INFO))
-        log_serialize = bool(int(os.getenv("FASTPUBSUB_ENABLE_LOG_SERIALIZE", 0)))
+    logging.setLoggerClass(FastPubSubLogger)
+    logger = logging.getLogger("fastpubsub")
+    logging.setLoggerClass(logging.Logger)
 
-        logging.setLoggerClass(FastPubSubLogger)
-        logger = logging.getLogger("fastpubsub")
-        logging.setLoggerClass(logging.Logger)
+    if logger.hasHandlers():
+        logger.handlers.clear()
 
-        logger.setLevel(log_level)
-        logger.propagate = False
+    logger.setLevel(log_level)
+    logger.propagate = False
 
-        handler = logging.StreamHandler(sys.stdout)
-        handler.addFilter(ContextFilter())
+    handler = logging.StreamHandler(sys.stdout)
+    handler.addFilter(ContextFilter())
 
-        formatter: logging.Formatter = JsonFormatter()
-        if not log_serialize:
-            fmt = (
-                "%(asctime)s | %(levelname)-8s "
-                "| %(process)d:%(thread)d "
-                "| %(module)s:%(funcName)s:%(lineno)d "
-                "| %(message)s"
-            )
-            formatter = TextFormatter(fmt)
+    formatter: logging.Formatter = JsonFormatter()
+    if not log_serialize:
+        fmt = (
+            "%(asctime)s | %(levelname)-8s "
+            "| %(process)d:%(thread)d "
+            "| %(module)s:%(funcName)s:%(lineno)d "
+            "| %(message)s"
+        )
+        formatter = TextFormatter(fmt)
 
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
-        return cast(FastPubSubLogger, logger)
+    return cast(FastPubSubLogger, logger)
 
 
-logger: FastPubSubLogger = LoggerFactory.setup()
+# Bydefault get the root log. We initialize it correctly elsewhere
+logger: FastPubSubLogger = setup_logger()

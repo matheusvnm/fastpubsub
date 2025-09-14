@@ -6,6 +6,7 @@ from pathlib import Path
 import uvicorn
 import uvicorn.importer
 
+from fastpubsub import logger
 from fastpubsub.applications import FastPubSub
 from fastpubsub.exceptions import StarConsumersCLIException
 
@@ -32,6 +33,7 @@ class AppConfiguration:
 class ApplicationRunner:
     def run(self, app_config: AppConfiguration, server_config: ServerConfiguration) -> None:
         self.setup_enviroment(app_config=app_config)
+        self.validate_application(app_config.app)
 
         uvicorn.run(
             app_config.app,
@@ -51,7 +53,7 @@ class ApplicationRunner:
         os.environ["FASTPUBSUB_ENABLE_LOG_COLORS"] = str(1) if app_config.log_colorize else str(0)
         os.environ["FASTPUBSUB_SUBSCRIBERS"] = ",".join(app_config.subscribers)
         os.environ["FASTPUBSUB_APM_PROVIDER"] = app_config.apm_provider
-        self.validate_application(app_config.app)
+        logger.setup_logger()
 
     def validate_application(self, path: str):
         posix_path = self.translate_pypath_to_posix(pypath=path)
