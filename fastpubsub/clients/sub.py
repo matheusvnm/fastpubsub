@@ -1,5 +1,6 @@
 from contextlib import suppress
 from datetime import timedelta
+import os
 
 from google.api_core.exceptions import AlreadyExists
 from google.cloud.pubsub_v1 import SubscriberClient
@@ -7,15 +8,14 @@ from google.cloud.pubsub_v1.types import FlowControl
 from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub_v1.types import DeadLetterPolicy, RetryPolicy, Subscription
 
-from starconsumers.logger import logger
-from starconsumers.pubsub.handlers import CallbackHandler
-from starconsumers.pubsub.utils import ensure_pubsub_credentials, is_emulator
-from starconsumers.subscriber import Subscriber
+from fastpubsub.logger import logger
+from fastpubsub.clients.handlers import CallbackHandler
+from fastpubsub.subscriber import Subscriber
 
 
 class PubSubSubscriberClient:
     def __init__(self):
-        ensure_pubsub_credentials()
+        self.is_emulator = True if os.getenv("PUBSUB_EMULATOR_HOST") else False
 
     def _create_subscription_request(self, subscriber: Subscriber) -> Subscription:
         name = SubscriberClient.subscription_path(
@@ -74,7 +74,7 @@ class PubSubSubscriberClient:
             "enable_exactly_once_delivery",
         ]
 
-        if not is_emulator():
+        if not self.is_emulator:
             update_fields.append("filter")
 
         update_mask = FieldMask(paths=update_fields)

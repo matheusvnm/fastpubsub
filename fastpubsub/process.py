@@ -5,10 +5,10 @@ import socket
 import psutil
 from pydantic import BaseModel
 
-from starconsumers import observability
-from starconsumers.logger import logger
-from starconsumers.pubsub.sub import PubSubSubscriberClient
-from starconsumers.subscriber import Subscriber
+from fastpubsub import observability
+from fastpubsub.logger import logger
+from fastpubsub.clients.sub import PubSubSubscriberClient
+from fastpubsub.subscriber import Subscriber
 
 
 class ProcessSocketConnectionAddress(BaseModel):
@@ -57,12 +57,14 @@ class ProcessManager:
         self.processes: dict[str, multiprocessing.Process] = {}
 
     def spawn(self, subscriber: Subscriber) -> None:
+        # TODO: Remover sistema daemonic do processo
+        # TODO: Adicionar algum tipo de tratamento on terminate.
         process = self.context.Process(target=_spawn, args=(subscriber,), daemon=True)
         self.processes[subscriber.subscription_name] = process
         self.processes[subscriber.subscription_name].start()
 
     def terminate(self, subscriber: Subscriber) -> None:
-        logger.info(f"Terminanting the subscriber {subscriber.subscription_name} child process")
+        logger.info(f"The subscriber {subscriber.subscription_name} child process will terminate")
 
         process = self.processes[subscriber.subscription_name]
         children_processes = psutil.Process(pid=process.pid).children(recursive=True)

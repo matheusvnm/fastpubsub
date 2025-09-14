@@ -3,6 +3,6 @@
 set -e
 set -x
 
-ruff format starconsumers
-ruff check starconsumers --select I --fix
-ruff check starconsumers --fix
+ruff format fastpubsub
+ruff check fastpubsub --select I --fix
+ruff check fastpubsub --fix

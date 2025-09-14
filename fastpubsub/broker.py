@@ -1,33 +1,34 @@
 """Broker implementation."""
 
-from starconsumers.exceptions import StarConsumersException
-from starconsumers.logger import logger
-from starconsumers.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
-from starconsumers.process import ProcessManager
-from starconsumers.pubsub.pub import PubSubPublisherClient
-from starconsumers.pubsub.sub import PubSubSubscriberClient
-from starconsumers.registrator import Registrator
-from starconsumers.router import Router
-from starconsumers.subscriber import Subscriber
+import os
+from fastpubsub.exceptions import StarConsumersException
+from fastpubsub.logger import logger
+from fastpubsub.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
+from fastpubsub.process import ProcessManager
+from fastpubsub.clients.pub import PubSubPublisherClient
+from fastpubsub.clients.sub import PubSubSubscriberClient
+from fastpubsub.registrator import Registrator
+from fastpubsub.router import PubSubRouter
+from fastpubsub.subscriber import Subscriber
 
 
-class Broker(Registrator):
+class PubSubBroker(Registrator):
     def __init__(
         self,
         project_id: str,
-        routers: list[Router] = None,
+        routers: list[PubSubRouter] = None,
         middlewares: list[type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]] = None,
     ):
         super().__init__(middlewares=middlewares)
         self.project_id = project_id
         self.process_manager = ProcessManager()
 
-        self.routers: list[Router] = []
+        self.routers: list[PubSubRouter] = []
         if routers:
             for router in routers:
                 self.include_router(router=router)
 
-    def include_router(self, router: Router) -> None:
+    def include_router(self, router: PubSubRouter) -> None:
         router.set_project_id(self.project_id)
         for middleware in self.middlewares:
             router.add_middleware(middleware)
@@ -40,8 +41,8 @@ class Broker(Registrator):
 
         self.routers.append(router)
 
-    async def start(self, selected_subscribers: set[str] = None) -> None:
-        subscribers = await self._filter_subscribers(selected_subscribers)
+    async def start(self) -> None:
+        subscribers = await self._filter_subscribers()
 
         created_topics = set()
         for subscriber in subscribers:
@@ -54,7 +55,7 @@ class Broker(Registrator):
                 if subscriber.dead_letter_policy:
                     target_topic = subscriber.dead_letter_policy.topic_name
                     if target_topic not in created_topics:
-                        await self._create_topic(target_topic)
+                        await self._create_topic(target_topic, create_default_subscription=True)
                         created_topics.add(target_topic)
 
                 await self._create_subscription(subscriber)
@@ -64,33 +65,56 @@ class Broker(Registrator):
 
             self.process_manager.spawn(subscriber)
 
-    async def _filter_subscribers(self, selected_subscribers: set[str]) -> list[Subscriber]:
+ 
+        
+
+    async def _filter_subscribers(self) -> list[Subscriber]:
+        selected_subscribers = self._get_selected_subscribers()
+
         found_subscribers = []
 
         subscribers = {**self.subscribers}
         for router in self.routers:
             subscribers.update(router.subscribers)
 
-        if not selected_subscribers or not isinstance(selected_subscribers, set):
+        if not selected_subscribers:
             found_subscribers = list(subscribers.values())
+            logger.debug(f"Running all the subscribers as {list(subscribers.keys())}")
             return found_subscribers
 
-        aliases = [name.casefold() for name in selected_subscribers]
-        for alias in aliases:
-            if alias not in subscribers:
-                logger.error(f"The '{alias}' not found")
+        for selected_subscriber in selected_subscribers:
+            if selected_subscriber not in subscribers:
+                logger.warning(f"The '{selected_subscriber}' subscriber alias not found")
                 continue
-
-            found_subscribers.append(subscribers[alias])
+            
+            logger.debug(f"We have found the subscriber '{selected_subscriber}'")
+            found_subscribers.append(subscribers[selected_subscriber])
 
         if not found_subscribers:
-            raise StarConsumersException(f"No subscriber aliases found for '{aliases}'")
+            raise StarConsumersException(f"No subscriber found for '{selected_subscriber}'. It should be one of {list(subscribers.keys())}")
 
         return found_subscribers
 
-    async def _create_topic(self, topic_name: str) -> None:
+    def _get_selected_subscribers(self) -> set[str]:
+        selected_subscribers = set()
+        subscribers_text = os.getenv("FASTPUBSUB_SUBSCRIBERS", "")
+        if not subscribers_text:
+            return selected_subscribers
+        
+        dirty_aliases = subscribers_text.split(",")
+        for dirty_alias in dirty_aliases:
+            clean_alias = dirty_alias.lower().strip()
+            if clean_alias:
+                selected_subscribers.add(clean_alias)
+
+        return selected_subscribers
+
+
+    async def _create_topic(
+        self, topic_name: str, create_default_subscription: bool = False
+    ) -> None:
         client = PubSubPublisherClient(project_id=self.project_id, topic_name=topic_name)
-        client.create_topic()
+        client.create_topic(create_default_subscription)
 
     async def _create_subscription(self, subscriber: Subscriber) -> None:
         client = PubSubSubscriberClient()

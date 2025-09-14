@@ -1,15 +1,15 @@
-from starconsumers._internal.types import DecoratedCallable, SubscribedCallable
-from starconsumers.datastructures import (
+from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,
     MessageControlFlowPolicy,
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
-from starconsumers.exceptions import StarConsumersException
-from starconsumers.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
-from starconsumers.publisher import Publisher
-from starconsumers.subscriber import Subscriber
+from fastpubsub.exceptions import StarConsumersException
+from fastpubsub.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
+from fastpubsub.publisher import Publisher
+from fastpubsub.subscriber import Subscriber
+from fastpubsub.types import DecoratedCallable, SubscribedCallable
 
 
 class Registrator:
@@ -115,7 +115,7 @@ class Registrator:
                 middlewares=subscriber_middlewares,
             )
 
-            self.subscribers[prefixed_alias.casefold()] = subscriber
+            self.subscribers[prefixed_alias.lower()] = subscriber
             return func
 
         return decorator

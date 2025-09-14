@@ -12,10 +12,10 @@ import traceback
 from google.cloud.pubsub_v1.subscriber.exceptions import AcknowledgeError
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 
-from starconsumers.datastructures import Message
-from starconsumers.exceptions import Drop, Retry
-from starconsumers.logger import logger
-from starconsumers.subscriber import Subscriber
+from fastpubsub.datastructures import Message
+from fastpubsub.exceptions import Drop, Retry
+from fastpubsub.logger import logger
+from fastpubsub.subscriber import Subscriber
 
 
 class CallbackHandler:

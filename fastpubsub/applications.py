@@ -5,22 +5,22 @@ from collections.abc import AsyncIterator, Callable, Coroutine, Sequence
 from contextlib import asynccontextmanager
 from typing import Any
 
-import anyio
 from fastapi import Depends, FastAPI, Request, Response, routing
 from fastapi.middleware import Middleware
 from fastapi.responses import JSONResponse
+from starlette.applications import Starlette
 from starlette.routing import BaseRoute
 
-from starconsumers._internal.types import CallableHook
-from starconsumers.broker import Broker
-from starconsumers.concurrency import ensure_async_callable, set_exit
-from starconsumers.logger import logger
+from fastpubsub.broker import PubSubBroker
+from fastpubsub.concurrency import ensure_async_callable
+from fastpubsub.logger import logger
+from fastpubsub.types import CallableHook
 
 
-class StarConsumers:
+class Application:
     def __init__(
         self,
-        broker: Broker,
+        broker: PubSubBroker,
         on_startup: list[CallableHook] = None,
         on_shutdown: list[CallableHook] = None,
         after_startup: list[CallableHook] = None,
@@ -70,30 +70,9 @@ class StarConsumers:
         self._after_shutdown.append(func)
         return func
 
-    async def run(self, selected_subscribers: set[str] = None):
-        """Run StarConsumers Application."""
-        set_exit(lambda *_: self.stop(), sync=False)
-
-        try:
-            async with anyio.create_task_group() as tg:
-                tg.start_soon(self._start, selected_subscribers)
-
-                while not self.should_exit:
-                    # TODO: Checar se todos os processos estão vivos
-                    # TODO: Se algum não estiver, devemos reiniciar
-                    # TODO: Usar o process manager para isso.
-                    # TODO: Em caso de duvida ver o keep_subprocess_alive do uvicorn.
-                    await anyio.sleep(0.5)
-
-                await self._shutdown()
-                tg.cancel_scope.cancel()
-        except ExceptionGroup as e:
-            for ex in e.exceptions:
-                raise ex from None
-
-    async def _start(self, selected_subscribers: set[str] = None) -> None:
+    async def _start(self) -> None:
         async with self._start_hooks():
-            await self.broker.start(selected_subscribers=selected_subscribers)
+            await self.broker.start()
 
     @asynccontextmanager
     async def _start_hooks(self) -> AsyncIterator[None]:
@@ -107,10 +86,6 @@ class StarConsumers:
             await func()
 
         logger.info("The StarConsumers child processes started")
-
-    def stop(self):
-        """Stop application manually."""
-        self.should_exit = True
 
     async def _shutdown(self) -> None:
         async with self._shutdown_hooks():
@@ -128,12 +103,12 @@ class StarConsumers:
             await func()
 
 
-class FastConsumers(FastAPI, StarConsumers):
+class FastPubSub(FastAPI, Application):
     # TODO: Adicionar na adição de subscribers (handlers) uma validação para impedir adição de Depends() do fastapi e outros tipos do mesmo
 
     def __init__(
         self,
-        broker: Broker,
+        broker: PubSubBroker,
         *,
         on_startup: list[CallableHook] = None,
         on_shutdown: list[CallableHook] = None,
@@ -152,6 +127,7 @@ class FastConsumers(FastAPI, StarConsumers):
         redirect_slashes: bool = True,
         docs_url: str = "/docs",
         redoc_url: str = "/redoc",
+        health_check_url: str = "/consumers/health",
         swagger_ui_oauth2_redirect_url: str | None = None,
         middleware: Sequence[Middleware] | None = None,
         exception_handlers: dict[
@@ -173,8 +149,6 @@ class FastConsumers(FastAPI, StarConsumers):
         separate_input_output_schemas: bool = True,
         **extra: Any,
     ):
-        from starlette.applications import Starlette
-
         super().__init__(
             debug=debug,
             title=title,
@@ -218,27 +192,20 @@ class FastConsumers(FastAPI, StarConsumers):
 
         self.lifespan_context = lifespan
         # TODO: Create setup method for that
-        self.add_api_route(path="/starconsumers/health", endpoint=self._health, methods=["GET"])
+        self.add_api_route(path=health_check_url, endpoint=self._health, methods=["GET"])
 
     @asynccontextmanager
     async def run(self, app: FastAPI):
-        # TODO: Precisamos spawnar um processo para gerenciar os workers
-        # TODO: O processo de start precisa ser feito dentro desse process
 
-        # TODO: Checar se todos os processos estão vivos
-        # TODO: Se algum não estiver, devemos reiniciar
-        # TODO: Usar o process manager para isso.
-        # TODO: Em caso de duvida ver o keep_subprocess_alive do uvicorn.
-        subscribers = str(os.getenv("STARCONSUMERS_SUBSCRIBERS", "")).split(",")
-        if self.lifespan_context:
-            async with self.lifespan_context(app):
-                await self._start(subscribers)
-                yield
-                await self._shutdown()
-        else:
-            await self._start(subscribers)
+        if not self.lifespan_context:
+            await self._start()
             yield
             await self._shutdown()
+        else:
+            async with self.lifespan_context(app):
+                await self._start()
+                yield
+                await self._shutdown()
 
-    async def _health(self, request: Any):
+    async def _health(self, request: Request):
         return {"health": "ok"}

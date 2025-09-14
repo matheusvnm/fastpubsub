@@ -3,7 +3,7 @@ requires = ["uv_build>=0.8.11,<0.9.0"]
 build-backend = "uv_build"
 
 [project]
-name = "starconsumers"
+name = "fastpubsub"
 version = "0.2.3"
 description = "A high performance FastAPI-based message consumer framework for PubSub"
 readme = "README.md"
@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
-starconsumers = "starconsumers.cli.main:cli_app"
+fastpubsub = "fastpubsub.cli.main:app"
 
 [project.optional-dependencies]
 newrelic = [
@@ -48,7 +48,7 @@ verbosity_test_cases = 3
 
 [tool.coverage.run]
 parallel = true
-source = ["starconsumers"]
+source = ["fastpubsub"]
 
 [tool.coverage.report]
 show_missing = true

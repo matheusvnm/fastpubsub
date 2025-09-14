@@ -1,8 +1,8 @@
-from starconsumers.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
-from starconsumers.registrator import Registrator
+from fastpubsub.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
+from fastpubsub.registrator import Registrator
 
 
-class Router(Registrator):
+class PubSubRouter(Registrator):
     def __init__(
         self,
         prefix: str = "",

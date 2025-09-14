@@ -5,8 +5,8 @@ from contextlib import contextmanager
 from functools import cache
 from typing import Any
 
-from starconsumers.exceptions import StarConsumersException
-from starconsumers.logger import logger
+from fastpubsub.exceptions import StarConsumersException
+from fastpubsub.logger import logger
 
 
 class ApmProvider(ABC):
@@ -108,7 +108,7 @@ class NewRelicProvider(ApmProvider):
             logger.exception("No newrelic module found.")
             raise StarConsumersException(
                 "No newrelic module found. "
-                "Please install it using 'pip install starconsumers[newrelic]'."
+                "Please install it using 'pip install fastpubsub[newrelic]'."
             ) from e
 
     def initialize(self) -> None:
@@ -176,7 +176,7 @@ class NewRelicProvider(ApmProvider):
 
 @cache
 def get_apm_provider() -> ApmProvider:
-    name = os.getenv("STARCONSUMERS_APM_PROVIDER", "")
+    name = os.getenv("FASTPUBSUB_APM_PROVIDER", "")
     name = name.lower()
 
     provider_map = {

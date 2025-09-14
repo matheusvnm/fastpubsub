@@ -1,15 +1,13 @@
-"""Subscriber logic."""
-
-from starconsumers._internal.types import AsyncCallable
-from starconsumers.concurrency import ensure_async_callable
-from starconsumers.datastructures import (
+from fastpubsub.concurrency import ensure_async_callable
+from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,
     MessageControlFlowPolicy,
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
-from starconsumers.middlewares import BaseSubscriberMiddleware, HandleMessageCommand
+from fastpubsub.middlewares import BaseSubscriberMiddleware, HandleMessageCommand
+from fastpubsub.types import AsyncCallable
 
 
 class Subscriber:
@@ -26,7 +24,7 @@ class Subscriber:
         control_flow_policy: MessageControlFlowPolicy,
         middlewares: list[type[BaseSubscriberMiddleware]] = None,
     ):
-        self._handler = HandleMessageCommand(target=func)
+        self.handler = HandleMessageCommand(target=func)
         self.project_id = project_id
         self.topic_name = topic_name
         self.subscription_name = subscription_name
@@ -41,13 +39,9 @@ class Subscriber:
             for middleware in middlewares:
                 self.add_middleware(middleware)
 
-    @property
-    def handler(self) -> HandleMessageCommand:
-        return self._handler
-
     def add_middleware(self, middleware: type[BaseSubscriberMiddleware]) -> None:
         if not (middleware and issubclass(middleware, BaseSubscriberMiddleware)):
-            return
+            return  # TODO Raise an exception
 
         if middleware in self.middlewares:
             return

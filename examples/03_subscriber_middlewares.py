@@ -3,12 +3,14 @@
 
 
 import asyncio
-from starconsumers.applications import StarConsumers
-from starconsumers.broker import Broker
-from starconsumers.datastructures import Message
-from starconsumers.logger import logger
-from starconsumers.middlewares import BaseSubscriberMiddleware
-from starconsumers.router import Router
+
+import uvicorn
+from fastpubsub.applications import Application, FastPubSub
+from fastpubsub.broker import PubSubBroker
+from fastpubsub.datastructures import Message
+from fastpubsub.logger import logger
+from fastpubsub.middlewares import BaseSubscriberMiddleware
+from fastpubsub.router import PubSubRouter
 
 
 class BrokerLevelSubscriberMiddleware(BaseSubscriberMiddleware):
@@ -31,7 +33,7 @@ class SubscriberLevelSubscriberMiddleware(BaseSubscriberMiddleware):
         return await super().__call__(message)
 
 
-router = Router(middlewares=[RouterLevelSubscriberMiddleware])
+router = PubSubRouter(middlewares=[RouterLevelSubscriberMiddleware])
 
 @router.subscriber("router-subscriber", topic_name="topic_b", subscription_name="subscription_b",)
 async def router_handle(message: Message):
@@ -43,14 +45,14 @@ async def router_handle_with_middleware(message: Message):
     logger.info(f"This handler has all middlewares")
 
 
-broker = Broker(project_id="starconsumers-pubsub-local", middlewares=[BrokerLevelSubscriberMiddleware], routers=[router])
+broker = PubSubBroker(project_id="fastpubsub-pubsub-local", middlewares=[BrokerLevelSubscriberMiddleware], routers=[router])
 
 @broker.subscriber("broker-subscriber", topic_name="topic_a", subscription_name="subscription_a",)
 async def broker_handle(message: Message):
     logger.info(f"This handler has only the broker middleware")
 
 
-app = StarConsumers(broker=broker)
+app = FastPubSub(broker)
 
 
 @app.after_startup
@@ -58,7 +60,3 @@ async def after_started():
     await broker.publish(topic_name="topic_a", data={"some_message": "messageA"})
     await broker.publish(topic_name="topic_b", data={"some_message": "messageA"})
     await broker.publish(topic_name="topic_c", data={"some_message": "messageA"})
-
-
-if __name__ == "__main__":
-    asyncio.run(app.run())

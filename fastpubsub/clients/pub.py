@@ -7,9 +7,9 @@ from google.api_core.exceptions import AlreadyExists
 from google.cloud.pubsub_v1 import PublisherClient, SubscriberClient
 from google.cloud.pubsub_v1.types import PublisherOptions
 
-from starconsumers import observability
-from starconsumers.logger import logger
-from starconsumers.pubsub.utils import ensure_pubsub_credentials
+from fastpubsub import observability
+from fastpubsub.logger import logger
+
 
 
 class PubSubPublisherClient:
@@ -18,9 +18,9 @@ class PubSubPublisherClient:
         self.default_subscription = SubscriberClient.subscription_path(
             project=project_id, subscription=topic_name
         )
-        ensure_pubsub_credentials()
 
-    def create_topic(self) -> None:
+
+    def create_topic(self, create_default_subscription: bool = True) -> None:
         """
         Creates the configured Pub/Sub topic.
         """
@@ -29,6 +29,9 @@ class PubSubPublisherClient:
             logger.debug(f"Creating topic '{self.topic}'.")
             publisher_client.create_topic(name=self.topic)
             logger.debug(f"Created topic '{self.topic}' sucessfully.")
+
+            if not create_default_subscription:
+                return
 
             with SubscriberClient() as subscriber_client:
                 logger.debug(f"Creating default subscription for '{self.topic}'.")

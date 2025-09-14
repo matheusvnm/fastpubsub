@@ -4,7 +4,9 @@ import os
 import sys
 import threading
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, cast
+
+
 
 
 class ContextStore:
@@ -75,7 +77,7 @@ class ContextFilter(logging.Filter):
         return True
 
 
-class StarLogger(logging.Logger):
+class FastPubSubLogger(logging.Logger):
     """A custom logger class with a 'contextualize' method."""
 
     @contextmanager
@@ -112,7 +114,7 @@ class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         log_object = {
             "timestamp": self.formatTime(record, self.datefmt),
-            "severity": record.levelname,
+            "level": record.levelname,
             "name": record.name,
             "message": record.getMessage(),
             "module": record.module,
@@ -131,26 +133,30 @@ class JsonFormatter(logging.Formatter):
 
 class LoggerFactory:
     """
-    Manages an isolated logger for the 'starconsumers' library.
+    Manages an isolated logger for the 'fastpubsub' library.
     """
 
     @staticmethod
-    def setup(serialize: bool = False, level: str = "INFO") -> Any:
+    def setup() -> FastPubSubLogger:
         """
-        Enables and configures the StarConsumers logger.
+        Enables and configures the FastPubSub logger.
         """
-        logging.setLoggerClass(StarLogger)
-        logger = logging.getLogger(__name__)
+        # TODO: Add colorized logger
+        log_level = int(os.getenv("FASTPUBSUB_LOG_LEVEL", logging.INFO))
+        log_serialize = bool(int(os.getenv("FASTPUBSUB_ENABLE_LOG_SERIALIZE", 0)))
+
+        logging.setLoggerClass(FastPubSubLogger)
+        logger = logging.getLogger("fastpubsub")
         logging.setLoggerClass(logging.Logger)
 
-        logger.setLevel(level.upper())
+        logger.setLevel(log_level)
         logger.propagate = False
 
         handler = logging.StreamHandler(sys.stdout)
         handler.addFilter(ContextFilter())
 
         formatter: logging.Formatter = JsonFormatter()
-        if not serialize:
+        if not log_serialize:
             fmt = (
                 "%(asctime)s | %(levelname)-8s "
                 "| %(process)d:%(thread)d "
@@ -162,10 +168,7 @@ class LoggerFactory:
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
-        return logger
+        return cast(FastPubSubLogger, logger)
 
 
-_log_level = str(os.getenv("STARCONSUMERS_LOG_LEVEL", "INFO"))
-_log_serialize = bool(os.getenv("STARCONSUMERS_LOG_SERIALIZE", False))
-
-logger: StarLogger = LoggerFactory.setup(serialize=_log_serialize, level=_log_level)
+logger: FastPubSubLogger = LoggerFactory.setup()

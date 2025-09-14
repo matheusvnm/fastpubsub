@@ -1,7 +1,7 @@
 """Publisher logic."""
 
-from starconsumers.concurrency import ensure_async_callable
-from starconsumers.middlewares import BasePublisherMiddleware, PublishMessageCommand
+from fastpubsub.concurrency import ensure_async_callable
+from fastpubsub.middlewares import BasePublisherMiddleware, PublishMessageCommand
 
 
 class Publisher:
@@ -30,7 +30,7 @@ class Publisher:
 
     def add_middleware(self, middleware: type[BasePublisherMiddleware]) -> None:
         if not (middleware and issubclass(middleware, BasePublisherMiddleware)):
-            return
+            return  # TODO Raise an exception
 
         if middleware in self.middlewares:
             return

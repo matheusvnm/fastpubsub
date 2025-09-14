@@ -2,9 +2,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Union
 
-from starconsumers._internal.types import AsyncCallable
-from starconsumers.datastructures import Message
-from starconsumers.pubsub.pub import PubSubPublisherClient
+from fastpubsub.datastructures import Message
+from fastpubsub.clients.pub import PubSubPublisherClient
+from fastpubsub.types import AsyncCallable
 
 
 @dataclass

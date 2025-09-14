@@ -3,6 +3,6 @@
 set -e
 set -x
 
-mypy starconsumers
-ruff check starconsumers
-ruff format starconsumers --check
+mypy fastpubsub
+ruff check fastpubsub
+ruff format fastpubsub --check
