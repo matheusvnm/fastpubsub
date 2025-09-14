@@ -11,14 +11,12 @@ from fastpubsub import observability
 from fastpubsub.logger import logger
 
 
-
 class PubSubPublisherClient:
     def __init__(self, project_id: str, topic_name: str) -> None:
         self.topic = PublisherClient.topic_path(project=project_id, topic=topic_name)
         self.default_subscription = SubscriberClient.subscription_path(
             project=project_id, subscription=topic_name
         )
-
 
     def create_topic(self, create_default_subscription: bool = True) -> None:
         """

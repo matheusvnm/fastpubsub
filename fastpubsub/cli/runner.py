@@ -1,8 +1,7 @@
 import os
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
-from turtle import st
 
 import uvicorn
 import uvicorn.importer
@@ -15,9 +14,10 @@ from fastpubsub.exceptions import StarConsumersCLIException
 class ServerConfiguration:
     host: str
     port: int
-    workers: int 
+    workers: int
     reload: bool
     log_level: bool
+
 
 @dataclass(frozen=True)
 class AppConfiguration:
@@ -30,9 +30,7 @@ class AppConfiguration:
 
 
 class ApplicationRunner:
-    def run(
-        self, app_config: AppConfiguration, server_config: ServerConfiguration
-    ) -> None:
+    def run(self, app_config: AppConfiguration, server_config: ServerConfiguration) -> None:
         self.setup_enviroment(app_config=app_config)
 
         uvicorn.run(
@@ -47,7 +45,9 @@ class ApplicationRunner:
 
     def setup_enviroment(self, app_config: AppConfiguration):
         os.environ["FASTPUBSUB_LOG_LEVEL"] = str(app_config.log_level)
-        os.environ["FASTPUBSUB_ENABLE_LOG_SERIALIZE"] = str(1) if app_config.log_serialize else str(0)
+        os.environ["FASTPUBSUB_ENABLE_LOG_SERIALIZE"] = (
+            str(1) if app_config.log_serialize else str(0)
+        )
         os.environ["FASTPUBSUB_ENABLE_LOG_COLORS"] = str(1) if app_config.log_colorize else str(0)
         os.environ["FASTPUBSUB_SUBSCRIBERS"] = ",".join(app_config.subscribers)
         os.environ["FASTPUBSUB_APM_PROVIDER"] = app_config.apm_provider

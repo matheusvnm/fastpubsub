@@ -7,8 +7,6 @@ from contextlib import contextmanager
 from typing import Any, cast
 
 
-
-
 class ContextStore:
     """A thread-safe store for logging context."""
 

@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Union
 
-from fastpubsub.datastructures import Message
 from fastpubsub.clients.pub import PubSubPublisherClient
+from fastpubsub.datastructures import Message
 from fastpubsub.types import AsyncCallable
 
 

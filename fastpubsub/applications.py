@@ -1,6 +1,5 @@
 """StarConsumers application."""
 
-import os
 from collections.abc import AsyncIterator, Callable, Coroutine, Sequence
 from contextlib import asynccontextmanager
 from typing import Any
@@ -196,7 +195,6 @@ class FastPubSub(FastAPI, Application):
 
     @asynccontextmanager
     async def run(self, app: FastAPI):
-
         if not self.lifespan_context:
             await self._start()
             yield

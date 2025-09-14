@@ -1,12 +1,13 @@
 """Broker implementation."""
 
 import os
+
+from fastpubsub.clients.pub import PubSubPublisherClient
+from fastpubsub.clients.sub import PubSubSubscriberClient
 from fastpubsub.exceptions import StarConsumersException
 from fastpubsub.logger import logger
 from fastpubsub.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
 from fastpubsub.process import ProcessManager
-from fastpubsub.clients.pub import PubSubPublisherClient
-from fastpubsub.clients.sub import PubSubSubscriberClient
 from fastpubsub.registrator import Registrator
 from fastpubsub.router import PubSubRouter
 from fastpubsub.subscriber import Subscriber
@@ -65,9 +66,6 @@ class PubSubBroker(Registrator):
 
             self.process_manager.spawn(subscriber)
 
- 
-        
-
     async def _filter_subscribers(self) -> list[Subscriber]:
         selected_subscribers = self._get_selected_subscribers()
 
@@ -86,12 +84,14 @@ class PubSubBroker(Registrator):
             if selected_subscriber not in subscribers:
                 logger.warning(f"The '{selected_subscriber}' subscriber alias not found")
                 continue
-            
+
             logger.debug(f"We have found the subscriber '{selected_subscriber}'")
             found_subscribers.append(subscribers[selected_subscriber])
 
         if not found_subscribers:
-            raise StarConsumersException(f"No subscriber found for '{selected_subscriber}'. It should be one of {list(subscribers.keys())}")
+            raise StarConsumersException(
+                f"No subscriber found for '{selected_subscriber}'. It should be one of {list(subscribers.keys())}"
+            )
 
         return found_subscribers
 
@@ -100,7 +100,7 @@ class PubSubBroker(Registrator):
         subscribers_text = os.getenv("FASTPUBSUB_SUBSCRIBERS", "")
         if not subscribers_text:
             return selected_subscribers
-        
+
         dirty_aliases = subscribers_text.split(",")
         for dirty_alias in dirty_aliases:
             clean_alias = dirty_alias.lower().strip()
@@ -108,7 +108,6 @@ class PubSubBroker(Registrator):
                 selected_subscribers.add(clean_alias)
 
         return selected_subscribers
-
 
     async def _create_topic(
         self, topic_name: str, create_default_subscription: bool = False

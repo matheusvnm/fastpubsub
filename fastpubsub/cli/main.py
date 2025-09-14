@@ -1,13 +1,24 @@
 import rich
 import typer
 
-
 from fastpubsub.__about__ import __version__
-
-from fastpubsub.cli.options import AppApmProvider, AppArgument, AppHostOption, AppHotReloadOption, AppLogColorizeOption, AppLogLevelOption, AppLogSerializeOption, AppNumWorkersOption, AppPortOption, AppSelectedSubscribersOption, AppServerLogLevelOption, AppVersionOption, CLIContext
+from fastpubsub.cli.options import (
+    AppApmProvider,
+    AppArgument,
+    AppHostOption,
+    AppHotReloadOption,
+    AppLogColorizeOption,
+    AppLogLevelOption,
+    AppLogSerializeOption,
+    AppNumWorkersOption,
+    AppPortOption,
+    AppSelectedSubscribersOption,
+    AppServerLogLevelOption,
+    AppVersionOption,
+    CLIContext,
+)
 from fastpubsub.cli.runner import AppConfiguration, ApplicationRunner, ServerConfiguration
-from fastpubsub.cli.utils import LogLevels, get_log_level, ensure_pubsub_credentials
-
+from fastpubsub.cli.utils import LogLevels, ensure_pubsub_credentials, get_log_level
 
 app = typer.Typer(
     help="A CLI to run FastPubSub applications and interact with Pub/Sub (locally and on cloud).",
@@ -39,7 +50,6 @@ pubsub.add_typer(pubsub_local)
 app.add_typer(pubsub)
 
 
-
 @app.callback()
 def main(
     ctx: CLIContext,
@@ -61,6 +71,7 @@ def main(
 
     if version:
         import platform
+
         typer.echo(
             f"Running FastStream {__version__} with {platform.python_implementation()} "
             f"{platform.python_version()} on {platform.system()}",
@@ -69,21 +80,20 @@ def main(
         raise typer.Exit
 
 
-
 @app.command()
 def run(
-  ctx: CLIContext,
-  app: AppArgument,
-  workers: AppNumWorkersOption = 1,
-  subscribers: AppSelectedSubscribersOption = [],
-  reload: AppHotReloadOption = False,
-  host: AppHostOption = "0.0.0.0",
-  port: AppPortOption = 8000,
-  log_level: AppLogLevelOption = LogLevels.info,
-  log_serialize: AppLogSerializeOption = False,
-  log_colorize: AppLogColorizeOption = False,
-  server_log_level: AppServerLogLevelOption = LogLevels.warning,
-  apm_provider: AppApmProvider = AppApmProvider.NOOP
+    ctx: CLIContext,
+    app: AppArgument,
+    workers: AppNumWorkersOption = 1,
+    subscribers: AppSelectedSubscribersOption = [],
+    reload: AppHotReloadOption = False,
+    host: AppHostOption = "0.0.0.0",
+    port: AppPortOption = 8000,
+    log_level: AppLogLevelOption = LogLevels.info,
+    log_serialize: AppLogSerializeOption = False,
+    log_colorize: AppLogColorizeOption = False,
+    server_log_level: AppServerLogLevelOption = LogLevels.warning,
+    apm_provider: AppApmProvider = AppApmProvider.NOOP,
 ) -> None:
     ensure_pubsub_credentials()
     translated_log_level = get_log_level(log_level)
@@ -107,7 +117,6 @@ def run(
 
     application_runner = ApplicationRunner()
     application_runner.run(app_configuration, server_configuration)
-
 
 
 @app.command(name="help")

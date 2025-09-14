@@ -1,6 +1,6 @@
+import os
 from contextlib import suppress
 from datetime import timedelta
-import os
 
 from google.api_core.exceptions import AlreadyExists
 from google.cloud.pubsub_v1 import SubscriberClient
@@ -8,8 +8,8 @@ from google.cloud.pubsub_v1.types import FlowControl
 from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub_v1.types import DeadLetterPolicy, RetryPolicy, Subscription
 
-from fastpubsub.logger import logger
 from fastpubsub.clients.handlers import CallbackHandler
+from fastpubsub.logger import logger
 from fastpubsub.subscriber import Subscriber
 
 

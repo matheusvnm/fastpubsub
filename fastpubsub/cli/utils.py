@@ -1,14 +1,12 @@
 import logging
-from collections import defaultdict
-from enum import StrEnum
 import os
+from enum import StrEnum
 
-from fastpubsub.exceptions import StarConsumersCLIException, StarConsumersException
+from fastpubsub.exceptions import StarConsumersCLIException
 
 
 class LogLevels(StrEnum):
-    """A class to represent log levels.
-    """
+    """A class to represent log levels."""
 
     critical = "CRITICAL"
     fatal = "FATAL"
@@ -50,17 +48,16 @@ def get_log_level(level: LogLevels | str | int) -> int:
         return LOGGING_LEVEL_MAP[level.lower()]
 
     possible_values = list(LogLevels._value2member_map_.values())
-    raise StarConsumersCLIException(f"Invalid value for '--log-level', it should be one of {possible_values}")
-
+    raise StarConsumersCLIException(
+        f"Invalid value for '--log-level', it should be one of {possible_values}"
+    )
 
 
 class APMProviders(StrEnum):
-    """A class to represent the possible APM providers.
-    """
+    """A class to represent the possible APM providers."""
 
     NOOP = "NOOP"
     NEWRELIC = "NEWRELIC"
-
 
 
 def ensure_pubsub_credentials() -> None:
@@ -71,4 +68,3 @@ def ensure_pubsub_credentials() -> None:
             "You should set either of the environment variables for authentication:"
             " (GOOGLE_APPLICATION_CREDENTIALS, PUBSUB_EMULATOR_HOST)"
         )
-

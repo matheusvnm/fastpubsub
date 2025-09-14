@@ -6,8 +6,8 @@ import psutil
 from pydantic import BaseModel
 
 from fastpubsub import observability
-from fastpubsub.logger import logger
 from fastpubsub.clients.sub import PubSubSubscriberClient
+from fastpubsub.logger import logger
 from fastpubsub.subscriber import Subscriber
 
 
