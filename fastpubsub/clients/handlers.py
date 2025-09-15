@@ -51,12 +51,8 @@ class CallbackHandler:
                 return
 
     def _consume(self, message: PubSubMessage):
+        callback = self.subscriber.callback
         deserialized_message = self._deserialize_message(message)
-
-        callback = self.subscriber.handler
-        for middleware in self.subscriber.middlewares:
-            callback = middleware(callback)
-
         return asyncio.run(callback(deserialized_message))
 
     def _deserialize_message(self, message: PubSubMessage) -> Message:

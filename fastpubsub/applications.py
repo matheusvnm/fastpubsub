@@ -101,7 +101,7 @@ class Application:
         for func in self._after_shutdown:
             await func()
 
-        logger.info("Terminating FastPubSub terminated")
+        logger.info("The FastPubSub processes terminated")
 
 
 class FastPubSub(FastAPI, Application):

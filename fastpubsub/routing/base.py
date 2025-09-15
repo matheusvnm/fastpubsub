@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,
@@ -17,27 +16,17 @@ from fastpubsub.types import DecoratedCallable, SubscribedCallable
 class Router:
     def __init__(
         self,
-        prefix: str = "", 
-        project_id: str = "",
+        prefix: str,
+        *,
         routers: list["Router"] = None, 
         middlewares: list[type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]] = None
     ):
-        # These field is lazily loaded
         self.prefix: str = prefix
-        self.project_id: str = project_id
-
-        self.routers: list[Router] = []
         self.publishers: dict[str, Publisher] = {}
         self.subscribers: dict[str, Subscriber] = {}
+        self.routers: list[Router] = []
         self.middlewares: list[type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]] = []
         
-        if routers:
-            if not isinstance(routers, list):
-                raise StarConsumersException("Your routers should be passed as a list")
-
-            for router in routers:
-                self.include_router(router)
-
         if middlewares:
             if not isinstance(middlewares, list):
                 raise StarConsumersException("Your routers should be passed as a list")
@@ -45,7 +34,13 @@ class Router:
             for middleware in middlewares:
                 self.include_middleware(middleware)
 
-  
+        if routers:
+            if not isinstance(routers, list):
+                raise StarConsumersException("Your routers should be passed as a list")
+
+            for router in routers:
+                self.include_router(router)
+
     # TODO: Add param type check
     def subscriber(
         self,
@@ -128,7 +123,6 @@ class Router:
 
             subscriber = Subscriber(
                 func=func,
-                project_id=self.project_id,
                 topic_name=topic_name,
                 subscription_name=prefixed_subscription_name,
                 retry_policy=retry_policy,
@@ -147,14 +141,11 @@ class Router:
     # TODO: Add param type check
     def publisher(self, topic_name: str) -> Publisher:
         if topic_name not in self.publishers:
-            publisher = Publisher(
-                project_id=self.project_id, topic_name=topic_name, middlewares=self.middlewares
-            )
+            publisher = Publisher(topic_name=topic_name, middlewares=self.middlewares)
             self.publishers[topic_name] = publisher
 
         return self.publishers[topic_name]
 
-    # TODO: Add param type check
     async def publish(
         self,
         topic_name: str,
@@ -164,11 +155,10 @@ class Router:
         autocreate: bool = True,
     ) -> None:
         publisher = self.publisher(topic_name)
-        await publisher.publish(
+        return await publisher.publish(
             data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
         )
 
-    # TODO: Add param type check
     def include_middleware(
         self, middleware: type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]
     ) -> None:
@@ -176,10 +166,8 @@ class Router:
             middleware,
             (BaseSubscriberMiddleware | BasePublisherMiddleware),
         ):
-            return
+                raise StarConsumersException(f"The middleware should be a class type {BasePublisherMiddleware.__name__} or {BaseSubscriberMiddleware.__name__}") 
 
-        if middleware not in self.middlewares:
-            self.middlewares.append(middleware)
 
         for publisher in self.publishers.values():
             publisher.add_middleware(middleware)
@@ -187,23 +175,16 @@ class Router:
         for subscriber in self.subscribers.values():
             subscriber.add_middleware(middleware)
 
+        if middleware not in self.middlewares:
+            self.middlewares.append(middleware)
+
         for router in self.routers:
             router.include_middleware(middleware)
 
-    def get_subscribers(self) -> dict[str, Subscriber]:
-        subscribers = {}
-        subscribers.update(self.subscribers)
+    def include_router(self, router: "Router") -> None:
+        if not isinstance(router, Router):
+            raise StarConsumersException(
+                f"Your routers must be of type {Router.__name__}"
+            )
 
-        router: Router
-        for router in self.routers:
-            router_subscribers = router.get_subscribers()
-            subscribers.update(router_subscribers)
-
-        
-        return subscribers
-
-    @abstractmethod
-    def include_router(self, router: "Router") -> None: ...
-
-
-
+        self.routers.append(router)

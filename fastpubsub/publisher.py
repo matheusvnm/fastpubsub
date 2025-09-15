@@ -1,6 +1,7 @@
 """Publisher logic."""
 
 from fastpubsub.concurrency import ensure_async_callable
+from fastpubsub.exceptions import StarConsumersException
 from fastpubsub.middlewares import BasePublisherMiddleware, PublishMessageCommand
 
 
@@ -21,7 +22,7 @@ class Publisher:
         self, data: dict, ordering_key: str = "", attributes: dict = None, autocreate: bool = True
     ) -> None:
         publisher = PublishMessageCommand(project_id=self.project_id, topic_name=self.topic_name)
-        for middleware in self.middlewares:
+        for middleware in reversed(self.middlewares):
             publisher = middleware(publisher)
 
         await publisher(
@@ -30,7 +31,7 @@ class Publisher:
 
     def add_middleware(self, middleware: type[BasePublisherMiddleware]) -> None:
         if not (middleware and issubclass(middleware, BasePublisherMiddleware)):
-            return  # TODO Raise an exception
+            return 
 
         if middleware in self.middlewares:
             return

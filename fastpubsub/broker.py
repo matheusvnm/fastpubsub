@@ -23,22 +23,26 @@ class PubSubBroker(Router):
         if not (project_id and isinstance(project_id, str) and len(project_id.strip()) > 0):
             raise StarConsumersException(f"The project id value ({project_id}) is invalid.")
 
-        super().__init__(project_id=project_id, routers=routers, middlewares=middlewares)
         self.process_manager = ProcessManager()
+        super().__init__(project_id=project_id, routers=routers, middlewares=middlewares)
+        
 
 
     def include_router(self, router: PubSubRouter) -> None:
-        super().include_router(router)
+        if not isinstance(router, PubSubRouter):
+            raise StarConsumersException(
+                f"Your routers must be of type {PubSubRouter.__name__}"
+            )
 
-        router.set_project_id(self.project_id)
+        router.propagate_project_id(self.project_id)
         for middleware in self.middlewares:
             router.include_middleware(middleware)
 
-        for alias, subscriber in router.subscribers.items():
+        for alias in router.subscribers.keys():
             if alias in self.subscribers:
                 raise ValueError(f"Subscriber with alias '{alias}' already exists.")
-
-            self.subscribers[alias] = subscriber
+        
+        self.routers.append(router)
 
     async def start(self) -> None:
         subscribers = await self._filter_subscribers()
@@ -65,19 +69,14 @@ class PubSubBroker(Router):
             self.process_manager.spawn(subscriber)
 
     async def _filter_subscribers(self) -> list[Subscriber]:
-        found_subscribers = []
-        subscribers = dict(self.subscribers)
-
-        router: PubSubRouter
-        for router in self.routers:
-            subscribers.update(router.get_subscribers())
-
+        subscribers = self.get_subscribers()
         selected_subscribers = self._get_selected_subscribers()
-        if not selected_subscribers:
-            found_subscribers = list(subscribers.values())
-            logger.debug(f"Running all the subscribers as {list(subscribers.keys())}")
-            return found_subscribers
 
+        if not selected_subscribers:
+            logger.debug(f"Running all the subscribers as {list(subscribers.keys())}")
+            return list(subscribers.values())
+
+        found_subscribers = []
         for selected_subscriber in selected_subscribers:
             if selected_subscriber not in subscribers:
                 logger.warning(f"The '{selected_subscriber}' subscriber alias not found")
@@ -123,7 +122,4 @@ class PubSubBroker(Router):
         # TODO: Checar o que ocorre se uma inscrição não criada for atualizada
 
     async def shutdown(self) -> None:
-        """Shutdown the broker."""
-        for alias, subscriber in self.subscribers.items():
-            logger.info(f"Stopping the the subscription '{alias}'")
-            self.process_manager.terminate(subscriber)
+        self.process_manager.terminate()

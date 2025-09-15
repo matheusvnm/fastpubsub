@@ -6,28 +6,15 @@
 from typing import Any
 
 
+from examples.middlewares.middlewares import BrokerPublisherMiddleware, RouterPublisherMiddleware
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
 from fastpubsub.logger import logger
-from fastpubsub.middlewares import BasePublisherMiddleware
 from fastpubsub.routing.router import PubSubRouter
 
-class BrokerLevelPublisherMiddleware(BasePublisherMiddleware):
-
-    async def __call__(self, data: dict[str, Any], attributes: dict[str, str], ordering_key: str, autocreate: bool):
-        logger.info(f"This is a global publisher middleware for sending messages")
-        return await super().__call__(data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate)
-
-class RouterLevelPublisherMiddleware(BasePublisherMiddleware):
-
-    async def __call__(self, data: dict[str, Any], attributes: dict[str, str], ordering_key: str, autocreate: bool):
-        logger.info(f"This is a router-level publisher middleware for sending messages")
-        return await super().__call__(data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate)
-
-
-router = PubSubRouter(middlewares=[RouterLevelPublisherMiddleware])
-broker = PubSubBroker(project_id="fastpubsub-pubsub-local", middlewares=[BrokerLevelPublisherMiddleware], routers=[router])
+router = PubSubRouter(prefix="core", middlewares=[RouterPublisherMiddleware])
+broker = PubSubBroker(project_id="fastpubsub-pubsub-local", middlewares=[BrokerPublisherMiddleware], routers=[router])
 app = FastPubSub(broker)
 
 

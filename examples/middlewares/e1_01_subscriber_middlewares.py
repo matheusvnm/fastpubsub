@@ -3,35 +3,14 @@ from fastpubsub.applications import  FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
 from fastpubsub.logger import logger
-from fastpubsub.middlewares import BaseSubscriberMiddleware
 from fastpubsub.routing.router import PubSubRouter
 
-
-class BrokerLevelSubscriberMiddleware(BaseSubscriberMiddleware):
-
-    async def __call__(self, message: Message):
-        logger.info(f"This is a global subscriber middleware with message: {message.data}")
-        return await super().__call__(message)
+from examples.middlewares.middlewares import SubscriberLevelSubscriberMiddleware, BrokerSubscriberMiddleware, RouterSubscriberMiddleware
 
 
-class RouterLevelSubscriberMiddleware(BaseSubscriberMiddleware):
-
-    async def __call__(self, message: Message):
-        logger.info(f"This is a router-level subscriber middleware with message: {message.data}")
-        return await super().__call__(message)
-
-
-class SubscriberLevelSubscriberMiddleware(BaseSubscriberMiddleware):
-
-    async def __call__(self, message: Message):
-        logger.info(f"This is a subscriber-level subscriber middleware with message: {message.data}")
-        return await super().__call__(message)
-
-
-router = PubSubRouter(prefix="myawesomerouter", middlewares=[RouterLevelSubscriberMiddleware])
-broker = PubSubBroker(project_id="fastpubsub-pubsub-local", middlewares=[BrokerLevelSubscriberMiddleware], routers=[router])
+router = PubSubRouter(prefix="myawesomerouter", middlewares=[RouterSubscriberMiddleware])
+broker = PubSubBroker(project_id="fastpubsub-pubsub-local", middlewares=[BrokerSubscriberMiddleware], routers=[router])
 app = FastPubSub(broker)
-
 
 
 @broker.subscriber("broker-subscriber", 

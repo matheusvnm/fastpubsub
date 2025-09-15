@@ -1,3 +1,4 @@
+from typing import Union
 from fastpubsub.concurrency import ensure_async_callable
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
@@ -42,13 +43,20 @@ class Subscriber:
 
     def add_middleware(self, middleware: type[BaseSubscriberMiddleware]) -> None:
         if not (middleware and issubclass(middleware, BaseSubscriberMiddleware)):
-            return  # TODO Raise an exception
+            return
 
         if middleware in self.middlewares:
             return
 
         ensure_async_callable(middleware)
         self.middlewares.append(middleware)
+
+    @property
+    def callback(self) -> Union[HandleMessageCommand, BaseSubscriberMiddleware]:
+        callback = self.handler
+        for middleware in reversed(self.middlewares):
+            callback = middleware(callback)
+        return callback            
 
     def set_project_id(self, project_id: str):
         self.project_id = project_id

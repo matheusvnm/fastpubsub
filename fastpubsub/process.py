@@ -64,17 +64,17 @@ class ProcessManager:
         self.processes[subscriber.subscription_name] = process
         self.processes[subscriber.subscription_name].start()
 
-    def terminate(self, subscriber: Subscriber) -> None:
-        logger.info(f"The subscriber {subscriber.subscription_name} child process will terminate")
+    def terminate(self) -> None:
+        for subscription_name, process in self.processes.items():
+            logger.info(f"The subscriber {subscription_name} child process will terminate")
 
-        process = self.processes[subscriber.subscription_name]
-        children_processes = psutil.Process(pid=process.pid).children(recursive=True)
-        for child_process in children_processes:
-            child_process.terminate()
+            children_processes = psutil.Process(pid=process.pid).children(recursive=True)
+            for child_process in children_processes:
+                child_process.terminate()
 
-        _, alive_processes = psutil.wait_procs(children_processes, timeout=5)
-        for alive_process in alive_processes:
-            alive_process.kill()
+            _, alive_processes = psutil.wait_procs(children_processes, timeout=5)
+            for alive_process in alive_processes:
+                alive_process.kill()
 
     def probe(self) -> ProbeResponse:
         apm = observability.get_apm_provider()
