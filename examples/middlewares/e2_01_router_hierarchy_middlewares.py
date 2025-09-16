@@ -3,7 +3,7 @@
 
 
 
-from examples.middlewares.middlewares import BrokerPublisherMiddleware, BrokerSubscriberMiddleware, RouterPublisherMiddleware, RouterSubscriberMiddleware, SubRouterPublisherMiddleware, SubRouterSubscriberMiddleware
+from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubRouterMiddleware
 from fastpubsub.applications import  FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
@@ -13,30 +13,30 @@ from fastpubsub.routing.router import PubSubRouter
 
 
 
-child_router = PubSubRouter(prefix="subrouter", middlewares=[SubRouterSubscriberMiddleware, SubRouterPublisherMiddleware])
-parent_router = PubSubRouter(prefix="router", routers=[child_router], middlewares=[RouterSubscriberMiddleware, RouterPublisherMiddleware])
-broker = PubSubBroker(project_id="fastpubsub-pubsub-local", middlewares=[BrokerSubscriberMiddleware, BrokerPublisherMiddleware], routers=[parent_router])
+child_router = PubSubRouter(prefix="subrouter", middlewares=[SubRouterMiddleware])
+parent_router = PubSubRouter(prefix="router", routers=[child_router], middlewares=[RouterMiddleware])
+broker = PubSubBroker(project_id="fastpubsub-pubsub-local", middlewares=[BrokerMiddleware], routers=[parent_router])
 app = FastPubSub(broker)
 
 
-@broker.subscriber("broker-subscriber", 
-                   topic_name="some_test_topic", 
+@broker.subscriber("broker-subscriber",
+                   topic_name="some_test_topic",
                    subscription_name="tst_sub",)
 async def broker_handle(message: Message):
     logger.info("We received a message!")
 
 
-@parent_router.subscriber("parent-subscriber", 
-                   topic_name="some_test_topic2", 
+@parent_router.subscriber("parent-subscriber",
+                   topic_name="some_test_topic2",
                    subscription_name="tst_sub",)
 async def parent_router_handle(message: Message):
     logger.info("We received a message!")
 
 
-@child_router.subscriber("child-subscriber", 
-                   topic_name="some_test_topic3", 
+@child_router.subscriber("child-subscriber",
+                   topic_name="some_test_topic3",
                    subscription_name="tst_sub",)
-async def router_handle_with_middleware(message: Message):
+async def subrouter_handle(message: Message):
     logger.info("We received a message!")
 
 

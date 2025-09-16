@@ -1,3 +1,7 @@
+from abc import abstractmethod
+
+from pydantic import BaseModel
+
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,
@@ -6,33 +10,28 @@ from fastpubsub.datastructures import (
     MessageRetryPolicy,
 )
 from fastpubsub.exceptions import StarConsumersException
-from fastpubsub.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
-from fastpubsub.publisher import Publisher
-from fastpubsub.subscriber import Subscriber
+from fastpubsub.middlewares.base import BaseMiddleware
+from fastpubsub.pubsub.publisher import Publisher
+from fastpubsub.pubsub.subscriber import Subscriber
 from fastpubsub.types import DecoratedCallable, SubscribedCallable
 
 
-
-class Router:
+class BaseRouter:
     def __init__(
         self,
-        prefix: str,
-        *,
-        routers: list["Router"] = None, 
-        middlewares: list[type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]] = None
+        prefix: str = "",
+        project_id: str = "",
+        routers: list["BaseRouter"] = None,
+        middlewares: list[type[BaseMiddleware]] = None,
     ):
+        # These field is lazily loaded
         self.prefix: str = prefix
+        self.project_id: str = project_id
+
+        self.routers: list[BaseRouter] = []
         self.publishers: dict[str, Publisher] = {}
         self.subscribers: dict[str, Subscriber] = {}
-        self.routers: list[Router] = []
-        self.middlewares: list[type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]] = []
-        
-        if middlewares:
-            if not isinstance(middlewares, list):
-                raise StarConsumersException("Your routers should be passed as a list")
-
-            for middleware in middlewares:
-                self.include_middleware(middleware)
+        self.middlewares: list[type[BaseMiddleware]] = []
 
         if routers:
             if not isinstance(routers, list):
@@ -40,6 +39,13 @@ class Router:
 
             for router in routers:
                 self.include_router(router)
+
+        if middlewares:
+            if not isinstance(middlewares, list):
+                raise StarConsumersException("Your routers should be passed as a list")
+
+            for middleware in middlewares:
+                self.include_middleware(middleware)
 
     # TODO: Add param type check
     def subscriber(
@@ -60,7 +66,7 @@ class Router:
         max_backoff_delay_secs: int = 600,
         max_messages: int = 1000,
         max_messages_bytes: int = 100 * 1024 * 1024,
-        middlewares: list[type[BaseSubscriberMiddleware]] = None,
+        middlewares: list[type[BaseMiddleware]] = None,
     ) -> SubscribedCallable:
         def decorator(func: DecoratedCallable) -> DecoratedCallable:
             prefixed_alias = alias
@@ -84,6 +90,7 @@ class Router:
                 None,
             )
 
+            # TODO: Move to the initialization
             if existing_subscriber:
                 existing_subscriber_filter = existing_subscriber.delivery_policy.filter_expression
                 if existing_subscriber_filter == filter_expression:
@@ -123,6 +130,7 @@ class Router:
 
             subscriber = Subscriber(
                 func=func,
+                project_id=self.project_id,
                 topic_name=topic_name,
                 subscription_name=prefixed_subscription_name,
                 retry_policy=retry_policy,
@@ -141,39 +149,34 @@ class Router:
     # TODO: Add param type check
     def publisher(self, topic_name: str) -> Publisher:
         if topic_name not in self.publishers:
-            publisher = Publisher(topic_name=topic_name, middlewares=self.middlewares)
+            publisher = Publisher(
+                project_id=self.project_id, topic_name=topic_name, middlewares=self.middlewares
+            )
             self.publishers[topic_name] = publisher
 
         return self.publishers[topic_name]
 
+    # TODO: Add param type check
     async def publish(
         self,
         topic_name: str,
-        data: dict,
+        data: BaseModel | dict | str | bytes | bytearray,
         ordering_key: str = "",
-        attributes: dict = None,
+        attributes: dict[str, str] = None,
         autocreate: bool = True,
     ) -> None:
         publisher = self.publisher(topic_name)
-        return await publisher.publish(
+        await publisher.publish(
             data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
         )
 
-    def include_middleware(
-        self, middleware: type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]
-    ) -> None:
-        if not issubclass(
-            middleware,
-            (BaseSubscriberMiddleware | BasePublisherMiddleware),
-        ):
-                raise StarConsumersException(f"The middleware should be a class type {BasePublisherMiddleware.__name__} or {BaseSubscriberMiddleware.__name__}") 
-
-
+    # TODO: Add param type check
+    def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
         for publisher in self.publishers.values():
-            publisher.add_middleware(middleware)
+            publisher.include_middleware(middleware)
 
         for subscriber in self.subscribers.values():
-            subscriber.add_middleware(middleware)
+            subscriber.include_middleware(middleware)
 
         if middleware not in self.middlewares:
             self.middlewares.append(middleware)
@@ -181,10 +184,17 @@ class Router:
         for router in self.routers:
             router.include_middleware(middleware)
 
-    def include_router(self, router: "Router") -> None:
-        if not isinstance(router, Router):
-            raise StarConsumersException(
-                f"Your routers must be of type {Router.__name__}"
-            )
+    def get_subscribers(self) -> dict[str, Subscriber]:
+        subscribers = {}
+        subscribers.update(self.subscribers)
 
-        self.routers.append(router)
+        router: BaseRouter
+        for router in self.routers:
+            # TODO: Add alias key conflict checking
+            router_subscribers = router.get_subscribers()
+            subscribers.update(router_subscribers)
+
+        return subscribers
+
+    @abstractmethod
+    def include_router(self, router: "BaseRouter") -> None: ...

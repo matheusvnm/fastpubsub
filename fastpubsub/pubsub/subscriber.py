@@ -1,4 +1,4 @@
-from typing import Union
+
 from fastpubsub.concurrency import ensure_async_callable
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
@@ -7,7 +7,8 @@ from fastpubsub.datastructures import (
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
-from fastpubsub.middlewares import BaseSubscriberMiddleware, HandleMessageCommand
+from fastpubsub.middlewares.base import BaseMiddleware
+from fastpubsub.pubsub.commands import HandleMessageCommand
 from fastpubsub.types import AsyncCallable
 
 
@@ -23,9 +24,8 @@ class Subscriber:
         delivery_policy: MessageDeliveryPolicy,
         dead_letter_policy: DeadLetterPolicy,
         control_flow_policy: MessageControlFlowPolicy,
-        middlewares: list[type[BaseSubscriberMiddleware]] = None,
+        middlewares: list[type[BaseMiddleware]] = None,
     ):
-        
         self.project_id = project_id
         self.topic_name = topic_name
         self.subscription_name = subscription_name
@@ -35,15 +35,17 @@ class Subscriber:
         self.dead_letter_policy = dead_letter_policy
         self.control_flow_policy = control_flow_policy
         self.handler = HandleMessageCommand(target=func)
-        self.middlewares: list[type[BaseSubscriberMiddleware]] = []
+        self.middlewares: list[type[BaseMiddleware]] = []
 
         if middlewares:
             for middleware in middlewares:
-                self.add_middleware(middleware)
+                self.include_middleware(middleware)
 
-    def add_middleware(self, middleware: type[BaseSubscriberMiddleware]) -> None:
-        if not (middleware and issubclass(middleware, BaseSubscriberMiddleware)):
-            return
+    def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
+        if not (middleware and issubclass(middleware, BaseMiddleware)):
+            raise StarConsumersException(
+                f"The middleware should be a {BaseMiddleware.__name__} type."
+            )
 
         if middleware in self.middlewares:
             return
@@ -52,11 +54,11 @@ class Subscriber:
         self.middlewares.append(middleware)
 
     @property
-    def callback(self) -> Union[HandleMessageCommand, BaseSubscriberMiddleware]:
+    def callback(self) -> HandleMessageCommand | BaseMiddleware:
         callback = self.handler
         for middleware in reversed(self.middlewares):
             callback = middleware(callback)
-        return callback            
+        return callback
 
     def set_project_id(self, project_id: str):
         self.project_id = project_id

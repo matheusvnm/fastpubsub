@@ -5,32 +5,32 @@ from fastpubsub.datastructures import Message
 from fastpubsub.logger import logger
 from fastpubsub.routing.router import PubSubRouter
 
-from examples.middlewares.middlewares import SubscriberLevelSubscriberMiddleware, BrokerSubscriberMiddleware, RouterSubscriberMiddleware
+from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubcriberMiddleware
 
 
-router = PubSubRouter(prefix="myawesomerouter", middlewares=[RouterSubscriberMiddleware])
-broker = PubSubBroker(project_id="fastpubsub-pubsub-local", middlewares=[BrokerSubscriberMiddleware], routers=[router])
+router = PubSubRouter(prefix="myawesomerouter", middlewares=[RouterMiddleware])
+broker = PubSubBroker(project_id="fastpubsub-pubsub-local", middlewares=[BrokerMiddleware], routers=[router])
 app = FastPubSub(broker)
 
 
-@broker.subscriber("broker-subscriber", 
-                   topic_name="topic_one_mid", 
+@broker.subscriber("broker-subscriber",
+                   topic_name="topic_one_mid",
                    subscription_name="subscription_one_mid",)
 async def broker_handle(message: Message):
     logger.info(f"This handler has only the broker middleware")
 
 
-@router.subscriber("router-subscriber", 
-                   topic_name="topic_two_mid", 
+@router.subscriber("router-subscriber",
+                   topic_name="topic_two_mid",
                    subscription_name="subscription_two_mid",)
 async def router_handle(message: Message):
     logger.info(f"This handler has a router and broker middlewares")
 
 
-@router.subscriber("router-subscriber-with-mid", 
-                   topic_name="topic_three_mid", 
-                   subscription_name="subscription_three_mid", 
-                   middlewares=[SubscriberLevelSubscriberMiddleware])
+@router.subscriber("router-subscriber-with-mid",
+                   topic_name="topic_three_mid",
+                   subscription_name="subscription_three_mid",
+                   middlewares=[SubcriberMiddleware])
 async def router_handle_with_middleware(message: Message):
     logger.info(f"This handler has all middlewares")
 

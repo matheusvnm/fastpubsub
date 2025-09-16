@@ -1,7 +1,5 @@
-import json
 from concurrent.futures import Future
 from contextlib import suppress
-from typing import Any
 
 from google.api_core.exceptions import AlreadyExists
 from google.cloud.pubsub_v1 import PublisherClient, SubscriberClient
@@ -41,7 +39,7 @@ class PubSubPublisherClient:
                 )
 
     def publish(
-        self, *, data: dict[str, Any], attributes: dict[str, str] = {}, ordering_key: str = ""
+        self, *, data: bytes, attributes: dict[str, str] = {}, ordering_key: str = ""
     ) -> None:
         """
         Publishes some data on a configured Pub/Sub topic.
@@ -57,9 +55,8 @@ class PubSubPublisherClient:
         client = PublisherClient(publisher_options=publisher_options)
 
         try:
-            encoded_data = json.dumps(data).encode()
             future: Future[str] = client.publish(
-                topic=self.topic, data=encoded_data, ordering_key=ordering_key, **headers
+                topic=self.topic, data=data, ordering_key=ordering_key, **headers
             )
             message_id = future.result()
             logger.info(f"Message published for topic {self.topic} with id {message_id}")

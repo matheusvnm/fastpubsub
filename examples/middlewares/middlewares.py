@@ -1,50 +1,50 @@
-from typing import Any
 from fastpubsub.logger import logger
 from fastpubsub.datastructures import Message
-from fastpubsub.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
+from fastpubsub.middlewares.base import BaseMiddleware
 
 
-class BrokerSubscriberMiddleware(BaseSubscriberMiddleware):
+class BrokerMiddleware(BaseMiddleware):
 
-    async def __call__(self, message: Message):
-        logger.info(f"I'm the broker subscriber middleware! I will only be executed at broker handlers")
-        return await super().__call__(message)
+    async def on_message(self, message: Message):
+        logger.info(f"I'm the broker subscriber middleware! I will only be executed at broker handlers and its children")
+        return await super().on_message(message)
 
-class BrokerPublisherMiddleware(BasePublisherMiddleware):
+    async def on_publish(self, data: bytes, ordering_key: str, attributes: dict[str, str] | None):
+        logger.info(f"I'm the broker publish middleware! I will only be executed at broker publish and its children")
+        return await super().on_publish(data, ordering_key, attributes)
 
-    async def __call__(self, data: dict[str, Any], attributes: dict[str, str], ordering_key: str, autocreate: bool):
-        logger.info(f"I'm the broker publisher middleware! I will only be executed at broker publishers")
-        return await super().__call__(data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate)
 
-class RouterSubscriberMiddleware(BaseSubscriberMiddleware):
+class RouterMiddleware(BaseMiddleware):
 
-    async def __call__(self, message: Message):
+    async def on_message(self, message: Message):
         logger.info(f"I'm the router subscriber middleware! I will only be executed at the router handlers and its children")
-        return await super().__call__(message)
+        return await super().on_message(message)
 
-class RouterPublisherMiddleware(BasePublisherMiddleware):
-
-    async def __call__(self, data: dict[str, Any], attributes: dict[str, str], ordering_key: str, autocreate: bool):
-        logger.info(f"I'm the router publisher middleware! I will only be executed at the router publishers and its children")
-        return await super().__call__(data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate)
+    async def on_publish(self, data: bytes, ordering_key: str, attributes: dict[str, str] | None):
+        logger.info(f"I'm the router publish middleware! I will only be executed at the router publish and its children")
+        return await super().on_publish(data, ordering_key, attributes)
 
 
-class SubRouterSubscriberMiddleware(BaseSubscriberMiddleware):
+class SubRouterMiddleware(BaseMiddleware):
 
-    async def __call__(self, message: Message):
+    async def on_message(self, message: Message):
         logger.info(f"I'm the sub-router subscriber middleware! I will only be executed at the sub-child router handlers")
-        return await super().__call__(message)
+        return await super().on_message(message)
+
+    async def on_publish(self, data: bytes, ordering_key: str, attributes: dict[str, str] | None):
+        logger.info(f"I'm the sub-router publish middleware! I will only be executed at the sub-child router publishers")
+        return await super().on_publish(data, ordering_key, attributes)
 
 
-class SubRouterPublisherMiddleware(BasePublisherMiddleware):
+class SubcriberMiddleware(BaseMiddleware):
 
-    async def __call__(self, data: dict[str, Any], attributes: dict[str, str], ordering_key: str, autocreate: bool):
-        logger.info(f"I'm the sub-router publisher middleware! I will only be executed at the sub-child router publishers")
-        return await super().__call__(data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate)
+    async def on_message(self, message: Message):
+        logger.info(f"I'm the subscriber middleware! I will only be executed at subscriber level")
+        return await super().on_message(message)
 
 
-class SubscriberLevelSubscriberMiddleware(BaseSubscriberMiddleware):
+class PublisherMiddleware(BaseMiddleware):
 
-    async def __call__(self, message: Message):
-        logger.info(f"This is a subscriber-level subscriber middleware with message: {message.data}")
-        return await super().__call__(message)
+    async def on_publish(self, data: bytes, ordering_key: str, attributes: dict[str, str] | None):
+        logger.info(f"I'm the publisher middleware! I will only be executed at publisher level")
+        return await super().on_publish(data, ordering_key, attributes)

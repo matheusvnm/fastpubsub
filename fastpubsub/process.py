@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from fastpubsub import observability
 from fastpubsub.clients.sub import PubSubSubscriberClient
 from fastpubsub.logger import logger
-from fastpubsub.subscriber import Subscriber
+from fastpubsub.pubsub.subscriber import Subscriber
 
 
 class ProcessSocketConnectionAddress(BaseModel):
@@ -66,7 +66,9 @@ class ProcessManager:
 
     def terminate(self) -> None:
         for subscription_name, process in self.processes.items():
-            logger.info(f"The subscriber {subscription_name} child process will terminate")
+            logger.info(
+                f"The subscriber for subscription {subscription_name} child process will terminate"
+            )
 
             children_processes = psutil.Process(pid=process.pid).children(recursive=True)
             for child_process in children_processes:

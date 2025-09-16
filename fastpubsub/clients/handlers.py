@@ -7,7 +7,7 @@
 # It should also handle
 
 import asyncio
-import traceback
+from typing import Any
 
 from google.cloud.pubsub_v1.subscriber.exceptions import AcknowledgeError
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
@@ -15,7 +15,7 @@ from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 from fastpubsub.datastructures import Message
 from fastpubsub.exceptions import Drop, Retry
 from fastpubsub.logger import logger
-from fastpubsub.subscriber import Subscriber
+from fastpubsub.pubsub.subscriber import Subscriber
 
 
 class CallbackHandler:
@@ -23,39 +23,46 @@ class CallbackHandler:
         self.subscriber = subscriber
 
     def handle(self, message: PubSubMessage) -> None:
+        coroutine = self._handle(message)
+        asyncio.run(main=coroutine)
+
+    async def _handle(self, message: PubSubMessage):
         topic_name = self.subscriber.topic_name
         subscription_name = self.subscriber.subscription_name
 
-        with logger.contextualize(topic_name=topic_name, subscription_name=subscription_name):
+        with logger.contextualize(
+            topic_name=topic_name,
+            subscription_name=subscription_name,
+            message_id=message.message_id,
+        ):
             try:
                 try:
-                    response = self._consume(message)
+                    response = await self._consume(message)
                     message.ack()
-                    logger.info(f"Message {message.message_id} successfully processed.")
+                    logger.info("Message successfully processed.")
                     return response
                 except Drop:
-                    logger.info(f"Message {message.message_id} will be dropped")
+                    logger.info("Message will be dropped.")
                     message.ack()
                     return
                 except Retry:
-                    logger.warning(f"Message {message.message_id} processing will be retried")
+                    logger.warning("Message processing will be retried later.")
                     message.nack()
                     return
                 except Exception:
-                    logger.critical(traceback.format_exc())
-                    logger.critical(f"Unhandled exception on message {message.message_id}")
+                    logger.exception("Unhandled exception on message", stacklevel=5)
                     message.nack()
                     return
             except AcknowledgeError:
-                logger.critical(f"We failed to ack/nack the message {message.message_id}")
+                logger.exception("We failed to ack/nack the message", stacklevel=5)
                 return
 
-    def _consume(self, message: PubSubMessage):
+    async def _consume(self, message: PubSubMessage) -> Any:
         callback = self.subscriber.callback
-        deserialized_message = self._deserialize_message(message)
-        return asyncio.run(callback(deserialized_message))
+        new_message = self._translate_message(message)
+        return await callback.on_message(new_message)
 
-    def _deserialize_message(self, message: PubSubMessage) -> Message:
+    def _translate_message(self, message: PubSubMessage) -> Message:
         delivery_attempt = 0
         if message.delivery_attempt is not None:
             delivery_attempt = message.delivery_attempt

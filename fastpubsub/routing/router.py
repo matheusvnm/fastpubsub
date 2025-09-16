@@ -1,17 +1,16 @@
-from fastpubsub.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
-from fastpubsub.routing.base_router import Router
-from fastpubsub.subscriber import Subscriber
 from fastpubsub.exceptions import StarConsumersException
+from fastpubsub.middlewares.base import BaseMiddleware
+from fastpubsub.routing.base import BaseRouter
 
-class PubSubRouter(Router):
+
+class PubSubRouter(BaseRouter):
     def __init__(
         self,
         prefix: str,
         *,
         routers: list["PubSubRouter"] = None,
-        middlewares: list[type[BaseSubscriberMiddleware], type[BasePublisherMiddleware]] = None,
+        middlewares: list[type[BaseMiddleware]] = None,
     ):
-        
         # TODO: Add prefix validation
         # It must start/end with letter/numbers
         # It can have periods, slashes and underscore in the middle.
@@ -33,9 +32,7 @@ class PubSubRouter(Router):
 
     def include_router(self, router: "PubSubRouter") -> None:
         if not isinstance(router, PubSubRouter):
-            raise StarConsumersException(
-                f"Your routers must be of type {PubSubRouter.__name__}"
-            )
+            raise StarConsumersException(f"Your routers must be of type {PubSubRouter.__name__}")
 
         router.add_prefix(self.prefix)
         router.propagate_project_id(self.project_id)

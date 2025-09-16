@@ -11,7 +11,7 @@ from google.pubsub_v1.types import DeadLetterPolicy, RetryPolicy, Subscription
 from fastpubsub.clients.handlers import CallbackHandler
 from fastpubsub.exceptions import StarConsumersException
 from fastpubsub.logger import logger
-from fastpubsub.subscriber import Subscriber
+from fastpubsub.pubsub.subscriber import Subscriber
 
 
 class PubSubSubscriberClient:
@@ -67,7 +67,9 @@ class PubSubSubscriberClient:
                     logger.debug(f"Successfully created subscription: {subscription_request.name}")
                     return True
             except NotFound:
-                raise StarConsumersException(f"The topic {subscription_request.topic} was not found for subscription")
+                raise StarConsumersException(
+                    f"The topic {subscription_request.topic} was not found for subscription"
+                )
 
     def update_subscription(self, subscriber: Subscriber) -> None:
         subscription_request = self._create_subscription_request(subscriber=subscriber)

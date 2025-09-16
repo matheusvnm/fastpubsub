@@ -6,33 +6,29 @@ from fastpubsub.clients.pub import PubSubPublisherClient
 from fastpubsub.clients.sub import PubSubSubscriberClient
 from fastpubsub.exceptions import StarConsumersException
 from fastpubsub.logger import logger
-from fastpubsub.middlewares import BasePublisherMiddleware, BaseSubscriberMiddleware
+from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.process import ProcessManager
-from fastpubsub.routing.base_router import Router
+from fastpubsub.pubsub.subscriber import Subscriber
+from fastpubsub.routing.base import BaseRouter
 from fastpubsub.routing.router import PubSubRouter
-from fastpubsub.subscriber import Subscriber
 
 
-class PubSubBroker(Router):
+class PubSubBroker(BaseRouter):
     def __init__(
         self,
         project_id: str,
         routers: list[PubSubRouter] = None,
-        middlewares: list[type[BaseSubscriberMiddleware] | type[BasePublisherMiddleware]] = None,
+        middlewares: list[type[BaseMiddleware]] = None,
     ):
         if not (project_id and isinstance(project_id, str) and len(project_id.strip()) > 0):
             raise StarConsumersException(f"The project id value ({project_id}) is invalid.")
 
         self.process_manager = ProcessManager()
         super().__init__(project_id=project_id, routers=routers, middlewares=middlewares)
-        
-
 
     def include_router(self, router: PubSubRouter) -> None:
         if not isinstance(router, PubSubRouter):
-            raise StarConsumersException(
-                f"Your routers must be of type {PubSubRouter.__name__}"
-            )
+            raise StarConsumersException(f"Your routers must be of type {PubSubRouter.__name__}")
 
         router.propagate_project_id(self.project_id)
         for middleware in self.middlewares:
@@ -41,7 +37,7 @@ class PubSubBroker(Router):
         for alias in router.subscribers.keys():
             if alias in self.subscribers:
                 raise ValueError(f"Subscriber with alias '{alias}' already exists.")
-        
+
         self.routers.append(router)
 
     async def start(self) -> None:

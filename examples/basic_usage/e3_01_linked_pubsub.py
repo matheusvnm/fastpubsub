@@ -4,7 +4,7 @@ from fastpubsub.applications import FastPubSub
 from fastpubsub.logger import logger
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
-from fastpubsub.publisher import Publisher
+from fastpubsub.pubsub.publisher import Publisher
 
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")

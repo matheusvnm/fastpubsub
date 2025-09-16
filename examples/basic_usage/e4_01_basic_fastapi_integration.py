@@ -6,7 +6,7 @@ from fastpubsub.logger import logger
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
-from fastpubsub.publisher import Publisher
+from fastpubsub.pubsub.publisher import Publisher
 
 
 class UserMessage(BaseModel):
@@ -31,8 +31,3 @@ async def send_message(user_message: UserMessage):
     await publisher.publish(user_message.model_dump())
 
     return {"response": "ok"}
-
-
-
-
-
