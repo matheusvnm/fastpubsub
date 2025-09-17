@@ -67,24 +67,24 @@ class NoOpProvider(ApmProvider):
     """A provider that performs no operations."""
 
     def initialize(self) -> None:
-        pass
+        return None
 
     @contextmanager
-    def background_transaction(self, _: str) -> Generator[Any]:
+    def background_transaction(self, name: str) -> Generator[Any]:
         yield
 
     @contextmanager
-    def span(self, _: str) -> Generator[Any]:
+    def span(self, name: str) -> Generator[Any]:
         yield
 
-    def set_distributed_trace_context(self, _: dict[str, str]) -> None:
-        pass
+    def set_distributed_trace_context(self, headers: dict[str, str]) -> None:
+        return None
 
     def get_distributed_trace_context(self) -> dict[str, str]:
         return {}
 
-    def record_custom_event(self, _: str, __: dict[str, str]) -> None:
-        pass
+    def record_custom_event(self, event_type: str, params: dict[str, str]) -> None:
+        return None
 
     def get_trace_id(self) -> str | None:
         return ""
@@ -113,19 +113,23 @@ class NewRelicProvider(ApmProvider):
 
     def initialize(self) -> None:
         """Initializes and registers the agent if not already active."""
-        logger.info("Performing New Relic agent initialization.")
+        logger.info(f"Performing New Relic agent initialization for process [{os.getpid()}].")
         try:
             self._agent.initialize()
-            self._agent.register_application(timeout=1.0)
-            logger.info("New Relic initialization and registration successful.")
+            self._agent.register_application(timeout=5.0)
+            logger.info(
+                f"New Relic initialization and registration successful for process [{os.getpid()}]."
+            )
         except Exception:
-            logger.exception("Failed to initialize New Relic.")
+            logger.exception(
+                f"Failed to initialize New Relic for process [{os.getpid()}].", stacklevel=5
+            )
 
     @contextmanager
     def background_transaction(self, name: str) -> Generator[Any]:
         app = self._agent.application(activate=False)
-        with self._agent.BackgroundTask(application=app, name=name):
-            yield
+        with self._agent.BackgroundTask(application=app, name=name) as transaction:
+            yield transaction
 
     @contextmanager
     def span(self, name: str) -> Generator[Any]:
@@ -140,7 +144,6 @@ class NewRelicProvider(ApmProvider):
         context: list[tuple[str, str]] = []
         for k, v in headers.items():
             context.append((str(k).lower(), str(v)))
-
         self._agent.accept_distributed_trace_headers(context, transport_type="Queue")
 
     def get_distributed_trace_context(self) -> dict[str, str]:
@@ -171,7 +174,7 @@ class NewRelicProvider(ApmProvider):
 
     def active(self) -> bool:
         application = self._agent.application(activate=False)
-        return bool(application) and bool(application.active)
+        return application and application.active
 
 
 @cache

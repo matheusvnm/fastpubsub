@@ -1,17 +1,82 @@
+import asyncio
 import os
 from contextlib import suppress
 from datetime import timedelta
+from typing import Any
 
 from google.api_core.exceptions import AlreadyExists, NotFound
 from google.cloud.pubsub_v1 import SubscriberClient
+from google.cloud.pubsub_v1.subscriber.exceptions import AcknowledgeError
+from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 from google.cloud.pubsub_v1.types import FlowControl
 from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub_v1.types import DeadLetterPolicy, RetryPolicy, Subscription
 
-from fastpubsub.clients.handlers import CallbackHandler
-from fastpubsub.exceptions import StarConsumersException
+from fastpubsub.datastructures import Message
+from fastpubsub.exceptions import Drop, Retry, StarConsumersException
 from fastpubsub.logger import logger
+from fastpubsub.observability import get_apm_provider
 from fastpubsub.pubsub.subscriber import Subscriber
+
+
+class CallbackHandler:
+    def __init__(self, subscriber: Subscriber):
+        self.subscriber = subscriber
+
+    def handle(self, message: PubSubMessage) -> None:
+        apm = get_apm_provider()
+
+        with apm.background_transaction(name=self.subscriber.name):
+            apm.set_distributed_trace_context(message.attributes)
+            context = {
+                "span_id": apm.get_span_id(),
+                "trace_id": apm.get_trace_id(),
+                "messsage_id": message.message_id,
+                "topic_name": self.subscriber.topic_name,
+                "subscription_name": self.subscriber.subscription_name,
+            }
+
+            with logger.contextualize(**context):
+                try:
+                    try:
+                        new_message = self._translate_message(message)
+                        response = self._consume(new_message)
+                        message.ack()
+                        logger.info("Message successfully processed.")
+                        return response
+                    except Drop:
+                        logger.info("Message will be dropped.")
+                        message.ack()
+                        return
+                    except Retry:
+                        logger.warning("Message processing will be retried later.")
+                        message.nack()
+                        return
+                    except Exception:
+                        logger.exception("Unhandled exception on message", stacklevel=5)
+                        message.nack()
+                        return
+                except AcknowledgeError:
+                    logger.exception("We failed to ack/nack the message", stacklevel=5)
+                    return
+
+    def _translate_message(self, message: PubSubMessage) -> Message:
+        delivery_attempt = 0
+        if message.delivery_attempt is not None:
+            delivery_attempt = message.delivery_attempt
+
+        return Message(
+            id=message.message_id,
+            size=message.size,
+            data=message.data,
+            attributes=message.attributes,
+            delivery_attempt=delivery_attempt,
+        )
+
+    def _consume(self, message: Message) -> Any:
+        callback = self.subscriber.callback
+        coroutine = callback.on_message(message)
+        return asyncio.run(main=coroutine)
 
 
 class PubSubSubscriberClient:

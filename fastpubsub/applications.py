@@ -13,6 +13,7 @@ from starlette.routing import BaseRoute
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.concurrency import ensure_async_callable
 from fastpubsub.logger import logger
+from fastpubsub.observability import get_apm_provider
 from fastpubsub.types import CallableHook
 
 
@@ -75,16 +76,24 @@ class Application:
 
     @asynccontextmanager
     async def start_hooks(self) -> AsyncIterator[None]:
-        logger.info("Starting FastPubSub processes")
-        for func in self._on_startup:
-            await func()
+        apm = get_apm_provider()
+        with apm.background_transaction(name="start"):
+            context = {
+                "span_id": apm.get_span_id(),
+                "trace_id": apm.get_trace_id(),
+            }
 
-        yield
+            with logger.contextualize(**context):
+                logger.info("Starting FastPubSub processes")
+                for func in self._on_startup:
+                    await func()
 
-        for func in self._after_startup:
-            await func()
+                yield
 
-        logger.info("The FastPubSub processes started")
+                for func in self._after_startup:
+                    await func()
+
+                logger.info("The FastPubSub processes started")
 
     async def _shutdown(self) -> None:
         async with self.shutdown_hooks():
@@ -92,16 +101,24 @@ class Application:
 
     @asynccontextmanager
     async def shutdown_hooks(self) -> AsyncIterator[None]:
-        logger.info("Terminating FastPubSub processes")
-        for func in self._on_shutdown:
-            await func()
+        apm = get_apm_provider()
+        with apm.background_transaction(name="shutdown"):
+            context = {
+                "span_id": apm.get_span_id(),
+                "trace_id": apm.get_trace_id(),
+            }
 
-        yield
+            with logger.contextualize(**context):
+                logger.info("Terminating FastPubSub processes")
+                for func in self._on_shutdown:
+                    await func()
 
-        for func in self._after_shutdown:
-            await func()
+                yield
 
-        logger.info("The FastPubSub processes terminated")
+                for func in self._after_shutdown:
+                    await func()
+
+                logger.info("The FastPubSub processes terminated")
 
 
 class FastPubSub(FastAPI, Application):

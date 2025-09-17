@@ -26,14 +26,12 @@ class Publisher:
         self,
         data: BaseModel | dict | str | bytes | bytearray,
         ordering_key: str = "",
-        attributes: dict = None,
+        attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:
         callstack = self._build_call_stack(autocreate=autocreate)
         serialized_message = self._serialize_message(data)
-        await callstack.on_publish(
-            data=serialized_message, ordering_key=ordering_key, attributes=attributes
-        )
+        await callstack.on_publish(serialized_message, ordering_key, attributes)
 
     def _build_call_stack(self, autocreate: bool = True) -> BaseMiddleware | PublishMessageCommand:
         publish_command = PublishMessageCommand(
@@ -43,11 +41,16 @@ class Publisher:
         original_call = publish_command.on_publish
         publish_command.on_publish = functools.partial(original_call, autocreate=autocreate)
         for middleware in reversed(self.middlewares):
-            publish_command = middleware(publish_command)
+            publish_command = middleware(next_call=publish_command)
+
+        return publish_command
 
     def _serialize_message(self, data: BaseModel | dict | str | bytes | bytearray) -> bytes:
-        if isinstance(data, (bytearray | bytes)):
+        if isinstance(data, bytes):
             return data
+
+        if isinstance(data, bytearray):
+            return bytes(data)
 
         if isinstance(data, str):
             return data.encode(encoding="utf-8")

@@ -1,11 +1,3 @@
-
-
-
-
-
-from typing import Any
-
-
 from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
@@ -31,4 +23,3 @@ async def broker_handle(message: Message):
 async def after_started():
     await router.publish(topic_name="topic_b", data={"some_message": "messageA"})
     await broker.publish(topic_name="topic_a", data={"some_message": "messageA"})
-

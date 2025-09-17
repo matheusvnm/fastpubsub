@@ -1,5 +1,4 @@
 import multiprocessing
-import os
 import socket
 
 import psutil
@@ -41,9 +40,6 @@ class ProbeResponse(BaseModel):
 
 
 def spawn(subscriber: Subscriber) -> None:
-    logger.info(
-        f"Started the subscription {subscriber.subscription_name} subprocess [{os.getpid()}]"
-    )
     apm = observability.get_apm_provider()
     apm.initialize()
 

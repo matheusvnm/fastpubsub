@@ -1,4 +1,3 @@
-
 from fastpubsub.concurrency import ensure_async_callable
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
@@ -7,6 +6,7 @@ from fastpubsub.datastructures import (
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
+from fastpubsub.exceptions import StarConsumersException
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.commands import HandleMessageCommand
 from fastpubsub.types import AsyncCallable
@@ -59,6 +59,10 @@ class Subscriber:
         for middleware in reversed(self.middlewares):
             callback = middleware(callback)
         return callback
+
+    @property
+    def name(self) -> str:
+        return self.handler.target.__name__
 
     def set_project_id(self, project_id: str):
         self.project_id = project_id
