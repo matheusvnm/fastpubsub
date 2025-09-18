@@ -21,7 +21,4 @@ class BaseMiddleware:
     async def on_publish(
         self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
-        if isinstance(self.next_call, PublishMessageCommand):
-            return self.next_call.on_publish(data, ordering_key, attributes)
-
         return await self.next_call.on_publish(data, ordering_key, attributes)

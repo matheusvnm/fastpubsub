@@ -19,7 +19,7 @@ class PublishMessageCommand:
         self.project_id = project_id
         self.topic_name = topic_name
 
-    def on_publish(
+    async def on_publish(
         self, data: bytes, ordering_key: str, attributes: dict[str, str] | None, autocreate: bool
     ) -> Any:
         client = PubSubPublisherClient(project_id=self.project_id, topic_name=self.topic_name)

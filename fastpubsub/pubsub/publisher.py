@@ -42,7 +42,6 @@ class Publisher:
         publish_command.on_publish = functools.partial(original_call, autocreate=autocreate)
         for middleware in reversed(self.middlewares):
             publish_command = middleware(next_call=publish_command)
-
         return publish_command
 
     def _serialize_message(self, data: BaseModel | dict | str | bytes | bytearray) -> bytes:
