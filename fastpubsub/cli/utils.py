@@ -2,7 +2,7 @@ import logging
 import os
 from enum import StrEnum
 
-from fastpubsub.exceptions import StarConsumersCLIException
+from fastpubsub.exceptions import FastPubSubCLIException
 
 
 class LogLevels(StrEnum):
@@ -48,7 +48,7 @@ def get_log_level(level: LogLevels | str | int) -> int:
         return LOGGING_LEVEL_MAP[level.lower()]
 
     possible_values = list(LogLevels._value2member_map_.values())
-    raise StarConsumersCLIException(
+    raise FastPubSubCLIException(
         f"Invalid value for '--log-level', it should be one of {possible_values}"
     )
 
@@ -64,7 +64,7 @@ def ensure_pubsub_credentials() -> None:
     credentials = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     emulator_host = os.getenv("PUBSUB_EMULATOR_HOST")
     if not credentials and not emulator_host:
-        raise StarConsumersCLIException(
+        raise FastPubSubCLIException(
             "You should set either of the environment variables for authentication:"
             " (GOOGLE_APPLICATION_CREDENTIALS, PUBSUB_EMULATOR_HOST)"
         )

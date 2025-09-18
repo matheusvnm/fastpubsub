@@ -13,7 +13,7 @@ from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub_v1.types import DeadLetterPolicy, RetryPolicy, Subscription
 
 from fastpubsub.datastructures import Message
-from fastpubsub.exceptions import Drop, Retry, StarConsumersException
+from fastpubsub.exceptions import Drop, Retry, FastPubSubException
 from fastpubsub.logger import logger
 from fastpubsub.observability import get_apm_provider
 from fastpubsub.pubsub.subscriber import Subscriber
@@ -153,7 +153,7 @@ class PubSubSubscriberClient:
                 logger.debug(f"Successfully updated the subscription: {subscription_request.name}")
                 logger.debug(f"The subscription is now following the configuration: {response}")
             except NotFound:
-                raise StarConsumersException(
+                raise FastPubSubException(
                     "We could not update the subscription configuration. "
                     f"The topic {subscription_request.topic} or subscription {subscription_request.name} were not found. "
                     "Please, setup your @subscriber with the 'autocreate=True' option to automatically create them."

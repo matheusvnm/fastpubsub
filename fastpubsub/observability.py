@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from functools import cache
 from typing import Any
 
-from fastpubsub.exceptions import StarConsumersException
+from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.logger import logger
 
 
@@ -106,7 +106,7 @@ class NewRelicProvider(ApmProvider):
             self._agent = newrelic.agent
         except ModuleNotFoundError as e:
             logger.exception("No newrelic module found.")
-            raise StarConsumersException(
+            raise FastPubSubException(
                 "No newrelic module found. "
                 "Please install it using 'pip install fastpubsub[newrelic]'."
             ) from e

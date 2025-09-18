@@ -1,5 +1,3 @@
-"""StarConsumers application."""
-
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Coroutine, Sequence
 from contextlib import asynccontextmanager
 from typing import Any
@@ -134,7 +132,7 @@ class FastPubSub(FastAPI, Application):
         after_startup: list[CallableHook] = None,
         after_shutdown: list[CallableHook] = None,
         debug: bool = False,
-        title: str = "StarConsumers",
+        title: str = "FastPubSub",
         summary: str | None = None,
         description: str = "",
         version: str = "0.1.0",

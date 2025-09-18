@@ -1,6 +1,6 @@
 import re
 
-from fastpubsub.exceptions import StarConsumersException
+from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.routing.base import BaseRouter
 
@@ -16,7 +16,7 @@ class PubSubRouter(BaseRouter):
         middlewares: list[type[BaseMiddleware]] = None,
     ):
         if not isinstance(prefix, str) or not _PREFIX_REGEX.match(prefix):
-            raise StarConsumersException(
+            raise FastPubSubException(
                 "Prefix must be a string that starts and ends with a letter or number, "
                 "and can only contain periods, slashes, or underscores in the middle."
             )
@@ -39,11 +39,11 @@ class PubSubRouter(BaseRouter):
 
     def include_router(self, router: "PubSubRouter") -> None:
         if not (router and isinstance(router, PubSubRouter)):
-            raise StarConsumersException(f"Your routers must be of type {PubSubRouter.__name__}")
+            raise FastPubSubException(f"Your routers must be of type {PubSubRouter.__name__}")
 
         for existing_router in self.routers:
             if existing_router.prefix == router.prefix:
-                raise StarConsumersException(
+                raise FastPubSubException(
                     f"The prefix={router.prefix} is duplicated, it must be unique."
                 )
 

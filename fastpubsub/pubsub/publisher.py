@@ -6,7 +6,7 @@ import json
 from pydantic import BaseModel
 
 from fastpubsub.concurrency import ensure_async_callable
-from fastpubsub.exceptions import StarConsumersException
+from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.commands import PublishMessageCommand
 
@@ -63,14 +63,14 @@ class Publisher:
             json_data = data.model_dump_json(indent=None)
             return json_data.encode(encoding="utf-8")
 
-        raise StarConsumersException(
+        raise FastPubSubException(
             f"The message {data} is not serializable."
             "Please send as one of the following formats: BaseModel, dict, str, bytes or bytearray)"
         )
 
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
         if not (middleware and issubclass(middleware, BaseMiddleware)):
-            raise StarConsumersException(
+            raise FastPubSubException(
                 f"The middleware should be a {BaseMiddleware.__name__} type."
             )
 

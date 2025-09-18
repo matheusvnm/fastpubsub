@@ -6,7 +6,7 @@ from fastpubsub.datastructures import (
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
-from fastpubsub.exceptions import StarConsumersException
+from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.commands import HandleMessageCommand
 from fastpubsub.types import AsyncCallable
@@ -43,7 +43,7 @@ class Subscriber:
 
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
         if not (middleware and issubclass(middleware, BaseMiddleware)):
-            raise StarConsumersException(
+            raise FastPubSubException(
                 f"The middleware should be a {BaseMiddleware.__name__} type."
             )
 

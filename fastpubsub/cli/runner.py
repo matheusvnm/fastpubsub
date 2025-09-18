@@ -8,7 +8,7 @@ import uvicorn.importer
 
 from fastpubsub import logger, observability
 from fastpubsub.applications import FastPubSub
-from fastpubsub.exceptions import StarConsumersCLIException
+from fastpubsub.exceptions import FastPubSubCLIException
 
 
 @dataclass(frozen=True)
@@ -64,7 +64,7 @@ class ApplicationRunner:
 
         app = uvicorn.importer.import_from_string(path)
         if not app or not isinstance(app, FastPubSub):
-            raise StarConsumersCLIException(f"The app {path} is not a {FastPubSub} instance")
+            raise FastPubSubCLIException(f"The app {path} is not a {FastPubSub} instance")
 
     def translate_pypath_to_posix(self, pypath: str) -> Path:
         try:

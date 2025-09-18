@@ -9,7 +9,7 @@ from fastpubsub.datastructures import (
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
-from fastpubsub.exceptions import StarConsumersException
+from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.pubsub.subscriber import Subscriber
@@ -35,19 +35,19 @@ class BaseRouter:
 
         if routers:
             if not isinstance(routers, list):
-                raise StarConsumersException("Your routers should be passed as a list")
+                raise FastPubSubException("Your routers should be passed as a list")
 
             for router in routers:
                 self.include_router(router)
 
         if middlewares:
             if not isinstance(middlewares, list):
-                raise StarConsumersException("Your routers should be passed as a list")
+                raise FastPubSubException("Your routers should be passed as a list")
 
             for middleware in middlewares:
                 self.include_middleware(middleware)
 
-    @validate_call
+
     def subscriber(
         self,
         alias: str,
@@ -77,7 +77,7 @@ class BaseRouter:
                 prefixed_subscription_name = f"{self.prefix}.{prefixed_subscription_name}"
 
             if prefixed_alias in self.subscribers:
-                raise StarConsumersException(
+                raise FastPubSubException(
                     f"The alias '{prefixed_alias}' already exists."
                     " The alias must be unique among all subscribers"
                 )
@@ -93,7 +93,7 @@ class BaseRouter:
             if existing_subscriber:
                 existing_subscriber_filter = existing_subscriber.delivery_policy.filter_expression
                 if existing_subscriber_filter == filter_expression:
-                    raise StarConsumersException(
+                    raise FastPubSubException(
                         f"The subscription '{prefixed_subscription_name}' for '{filter_expression=}' already exists."
                         " We only accept one handler per subscription and filter expression combination"
                     )
@@ -145,7 +145,7 @@ class BaseRouter:
 
         return decorator
 
-    @validate_call
+
     def publisher(self, topic_name: str) -> Publisher:
         if topic_name not in self.publishers:
             publisher = Publisher(
@@ -155,7 +155,7 @@ class BaseRouter:
 
         return self.publishers[topic_name]
 
-    @validate_call
+
     async def publish(
         self,
         topic_name: str,
@@ -169,7 +169,7 @@ class BaseRouter:
             data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
         )
 
-    @validate_call
+
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
         for publisher in self.publishers.values():
             publisher.include_middleware(middleware)

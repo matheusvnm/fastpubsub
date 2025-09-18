@@ -4,7 +4,7 @@ import os
 
 from fastpubsub.clients.pub import PubSubPublisherClient
 from fastpubsub.clients.sub import PubSubSubscriberClient
-from fastpubsub.exceptions import StarConsumersException
+from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.logger import logger
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.process import ProcessManager
@@ -21,18 +21,18 @@ class PubSubBroker(BaseRouter):
         middlewares: list[type[BaseMiddleware]] = None,
     ):
         if not (project_id and isinstance(project_id, str) and len(project_id.strip()) > 0):
-            raise StarConsumersException(f"The project id value ({project_id}) is invalid.")
+            raise FastPubSubException(f"The project id value ({project_id}) is invalid.")
 
         self.process_manager = ProcessManager()
         super().__init__(project_id=project_id, routers=routers, middlewares=middlewares)
 
     def include_router(self, router: PubSubRouter) -> None:
         if not (router and isinstance(router, PubSubRouter)):
-            raise StarConsumersException(f"Your routers must be of type {PubSubRouter.__name__}")
+            raise FastPubSubException(f"Your routers must be of type {PubSubRouter.__name__}")
 
         for existing_router in self.routers:
             if existing_router.prefix == router.prefix:
-                raise StarConsumersException(
+                raise FastPubSubException(
                     f"The prefixes must be unique. The prefix={router.prefix} is duplicated."
                 )
 
@@ -88,7 +88,7 @@ class PubSubBroker(BaseRouter):
             found_subscribers.append(subscribers[selected_subscriber])
 
         if not found_subscribers:
-            raise StarConsumersException(
+            raise FastPubSubException(
                 f"No subscriber found for '{selected_subscriber}'. It should be one of {list(subscribers.keys())}"
             )
 
