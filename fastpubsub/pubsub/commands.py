@@ -1,4 +1,3 @@
-# TODO: Remove commands from middlewares
 from typing import Any
 
 from fastpubsub.clients.pub import PubSubPublisherClient

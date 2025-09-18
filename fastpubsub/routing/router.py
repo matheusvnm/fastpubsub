@@ -1,6 +1,10 @@
+import re
+
 from fastpubsub.exceptions import StarConsumersException
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.routing.base import BaseRouter
+
+_PREFIX_REGEX = re.compile(r"^[a-zA-Z0-9]([a-zA-Z0-9_./]*[a-zA-Z0-9])?$")
 
 
 class PubSubRouter(BaseRouter):
@@ -11,9 +15,12 @@ class PubSubRouter(BaseRouter):
         routers: list["PubSubRouter"] = None,
         middlewares: list[type[BaseMiddleware]] = None,
     ):
-        # TODO: Add prefix validation
-        # It must start/end with letter/numbers
-        # It can have periods, slashes and underscore in the middle.
+        if not isinstance(prefix, str) or not _PREFIX_REGEX.match(prefix):
+            raise StarConsumersException(
+                "Prefix must be a string that starts and ends with a letter or number, "
+                "and can only contain periods, slashes, or underscores in the middle."
+            )
+
         super().__init__(prefix=prefix, routers=routers, middlewares=middlewares)
 
     def propagate_project_id(self, project_id: str) -> None:
@@ -31,8 +38,14 @@ class PubSubRouter(BaseRouter):
             subscriber.set_project_id(self.project_id)
 
     def include_router(self, router: "PubSubRouter") -> None:
-        if not isinstance(router, PubSubRouter):
+        if not (router and isinstance(router, PubSubRouter)):
             raise StarConsumersException(f"Your routers must be of type {PubSubRouter.__name__}")
+
+        for existing_router in self.routers:
+            if existing_router.prefix == router.prefix:
+                raise StarConsumersException(
+                    f"The prefix={router.prefix} is duplicated, it must be unique."
+                )
 
         router.add_prefix(self.prefix)
         router.propagate_project_id(self.project_id)

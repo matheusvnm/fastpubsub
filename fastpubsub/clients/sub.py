@@ -125,16 +125,11 @@ class PubSubSubscriberClient:
         subscription_request = self._create_subscription_request(subscriber=subscriber)
 
         with suppress(AlreadyExists):
-            try:
-                with SubscriberClient() as client:
-                    logger.debug(f"Attempting to create subscription: {subscription_request.name}")
-                    client.create_subscription(request=subscription_request)
-                    logger.debug(f"Successfully created subscription: {subscription_request.name}")
-                    return True
-            except NotFound:
-                raise StarConsumersException(
-                    f"The topic {subscription_request.topic} was not found for subscription"
-                )
+            with SubscriberClient() as client:
+                logger.debug(f"Attempting to create subscription: {subscription_request.name}")
+                client.create_subscription(request=subscription_request)
+                logger.debug(f"Successfully created subscription: {subscription_request.name}")
+                return True
 
     def update_subscription(self, subscriber: Subscriber) -> None:
         subscription_request = self._create_subscription_request(subscriber=subscriber)
@@ -150,12 +145,19 @@ class PubSubSubscriberClient:
 
         update_mask = FieldMask(paths=update_fields)
         with SubscriberClient() as client:
-            logger.debug(f"Attempting to update the subscription: {subscription_request.name}")
-            response = client.update_subscription(
-                subscription=subscription_request, update_mask=update_mask
-            )
-            logger.debug(f"Successfully updated the subscription: {subscription_request.name}")
-            logger.debug(f"The subscription is now following the configuration: {response}")
+            try:
+                logger.debug(f"Attempting to update the subscription: {subscription_request.name}")
+                response = client.update_subscription(
+                    subscription=subscription_request, update_mask=update_mask
+                )
+                logger.debug(f"Successfully updated the subscription: {subscription_request.name}")
+                logger.debug(f"The subscription is now following the configuration: {response}")
+            except NotFound:
+                raise StarConsumersException(
+                    "We could not update the subscription configuration. "
+                    f"The topic {subscription_request.topic} or subscription {subscription_request.name} were not found. "
+                    "Please, setup your @subscriber with the 'autocreate=True' option to automatically create them."
+                )
 
     def subscribe(self, subscriber: Subscriber) -> None:
         """

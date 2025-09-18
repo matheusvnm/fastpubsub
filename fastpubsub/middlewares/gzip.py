@@ -1,6 +1,3 @@
-# TODO: Implementar o middleware de gzip de mensagens.
-
-
 import gzip
 from typing import Any, Union
 

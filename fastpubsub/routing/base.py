@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validate_call
 
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
@@ -24,7 +24,7 @@ class BaseRouter:
         routers: list["BaseRouter"] = None,
         middlewares: list[type[BaseMiddleware]] = None,
     ):
-        # These field is lazily loaded
+        # These field are lazily loaded
         self.prefix: str = prefix
         self.project_id: str = project_id
 
@@ -47,7 +47,7 @@ class BaseRouter:
             for middleware in middlewares:
                 self.include_middleware(middleware)
 
-    # TODO: Add param type check
+    @validate_call
     def subscriber(
         self,
         alias: str,
@@ -90,7 +90,6 @@ class BaseRouter:
                 None,
             )
 
-            # TODO: Move to the initialization
             if existing_subscriber:
                 existing_subscriber_filter = existing_subscriber.delivery_policy.filter_expression
                 if existing_subscriber_filter == filter_expression:
@@ -146,7 +145,7 @@ class BaseRouter:
 
         return decorator
 
-    # TODO: Add param type check
+    @validate_call
     def publisher(self, topic_name: str) -> Publisher:
         if topic_name not in self.publishers:
             publisher = Publisher(
@@ -156,7 +155,7 @@ class BaseRouter:
 
         return self.publishers[topic_name]
 
-    # TODO: Add param type check
+    @validate_call
     async def publish(
         self,
         topic_name: str,
@@ -170,7 +169,7 @@ class BaseRouter:
             data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
         )
 
-    # TODO: Add param type check
+    @validate_call
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
         for publisher in self.publishers.values():
             publisher.include_middleware(middleware)
@@ -185,12 +184,11 @@ class BaseRouter:
             router.include_middleware(middleware)
 
     def get_subscribers(self) -> dict[str, Subscriber]:
-        subscribers = {}
+        subscribers: dict[str, Subscriber] = {}
         subscribers.update(self.subscribers)
 
         router: BaseRouter
         for router in self.routers:
-            # TODO: Add alias key conflict checking
             router_subscribers = router.get_subscribers()
             subscribers.update(router_subscribers)
 

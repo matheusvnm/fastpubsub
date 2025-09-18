@@ -27,8 +27,14 @@ class PubSubBroker(BaseRouter):
         super().__init__(project_id=project_id, routers=routers, middlewares=middlewares)
 
     def include_router(self, router: PubSubRouter) -> None:
-        if not isinstance(router, PubSubRouter):
+        if not (router and isinstance(router, PubSubRouter)):
             raise StarConsumersException(f"Your routers must be of type {PubSubRouter.__name__}")
+
+        for existing_router in self.routers:
+            if existing_router.prefix == router.prefix:
+                raise StarConsumersException(
+                    f"The prefixes must be unique. The prefix={router.prefix} is duplicated."
+                )
 
         router.propagate_project_id(self.project_id)
         for middleware in self.middlewares:
@@ -115,7 +121,6 @@ class PubSubBroker(BaseRouter):
     async def _update_subscription(self, subscriber: Subscriber) -> None:
         client = PubSubSubscriberClient()
         client.update_subscription(subscriber=subscriber)
-        # TODO: Checar o que ocorre se uma inscrição não criada for atualizada
 
     async def shutdown(self) -> None:
         self.process_manager.terminate()
