@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-from pydantic import BaseModel, validate_call
+from pydantic import BaseModel
 
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
@@ -46,7 +46,6 @@ class BaseRouter:
 
             for middleware in middlewares:
                 self.include_middleware(middleware)
-
 
     def subscriber(
         self,
@@ -145,7 +144,6 @@ class BaseRouter:
 
         return decorator
 
-
     def publisher(self, topic_name: str) -> Publisher:
         if topic_name not in self.publishers:
             publisher = Publisher(
@@ -154,7 +152,6 @@ class BaseRouter:
             self.publishers[topic_name] = publisher
 
         return self.publishers[topic_name]
-
 
     async def publish(
         self,
@@ -168,7 +165,6 @@ class BaseRouter:
         await publisher.publish(
             data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
         )
-
 
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
         for publisher in self.publishers.values():

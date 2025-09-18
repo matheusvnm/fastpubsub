@@ -5,7 +5,7 @@ import json
 
 from pydantic import BaseModel
 
-from fastpubsub.concurrency import ensure_async_callable
+from fastpubsub.concurrency.utils import ensure_async_callable
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.commands import PublishMessageCommand
@@ -29,11 +29,11 @@ class Publisher:
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:
-        callstack = self._build_call_stack(autocreate=autocreate)
+        callstack = self._build_callstack(autocreate=autocreate)
         serialized_message = self._serialize_message(data)
         await callstack.on_publish(serialized_message, ordering_key, attributes)
 
-    def _build_call_stack(self, autocreate: bool = True) -> BaseMiddleware | PublishMessageCommand:
+    def _build_callstack(self, autocreate: bool = True) -> BaseMiddleware | PublishMessageCommand:
         publish_command = PublishMessageCommand(
             project_id=self.project_id, topic_name=self.topic_name
         )
@@ -69,9 +69,7 @@ class Publisher:
 
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
         if not (middleware and issubclass(middleware, BaseMiddleware)):
-            raise FastPubSubException(
-                f"The middleware should be a {BaseMiddleware.__name__} type."
-            )
+            raise FastPubSubException(f"The middleware should be a {BaseMiddleware.__name__} type.")
 
         if middleware in self.middlewares:
             return

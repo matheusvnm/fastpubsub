@@ -6,7 +6,7 @@ from pathlib import Path
 import uvicorn
 import uvicorn.importer
 
-from fastpubsub import logger, observability
+from fastpubsub import logger
 from fastpubsub.applications import FastPubSub
 from fastpubsub.exceptions import FastPubSubCLIException
 
@@ -35,10 +35,10 @@ class ApplicationRunner:
         self.setup_enviroment(app_config=app_config)
 
         logger.setup_logger()
-        observability.get_apm_provider().initialize()
 
         self.validate_application(app_config.app)
 
+        # TODO: Implement a ASGIMultiprocess
         uvicorn.run(
             app_config.app,
             lifespan="on",

@@ -9,7 +9,7 @@ from starlette.applications import Starlette
 from starlette.routing import BaseRoute
 
 from fastpubsub.broker import PubSubBroker
-from fastpubsub.concurrency import ensure_async_callable
+from fastpubsub.concurrency.utils import ensure_async_callable
 from fastpubsub.logger import logger
 from fastpubsub.observability import get_apm_provider
 from fastpubsub.types import CallableHook
@@ -69,12 +69,8 @@ class Application:
         return func
 
     async def _start(self) -> None:
-        async with self.start_hooks():
-            await self.broker.start()
-
-    @asynccontextmanager
-    async def start_hooks(self) -> AsyncIterator[None]:
         apm = get_apm_provider()
+        apm.initialize()
         with apm.background_transaction(name="start"):
             context = {
                 "span_id": apm.get_span_id(),
@@ -82,41 +78,45 @@ class Application:
             }
 
             with logger.contextualize(**context):
-                logger.info("Starting FastPubSub processes")
-                for func in self._on_startup:
-                    await func()
-
-                yield
-
-                for func in self._after_startup:
-                    await func()
-
-                logger.info("The FastPubSub processes started")
-
-    async def _shutdown(self) -> None:
-        async with self.shutdown_hooks():
-            await self.broker.shutdown()
+                async with self.start_hooks():
+                    await self.broker.start()
 
     @asynccontextmanager
-    async def shutdown_hooks(self) -> AsyncIterator[None]:
+    async def start_hooks(self) -> AsyncIterator[None]:
+        logger.info("Starting FastPubSub processes")
+        for func in self._on_startup:
+            await func()
+
+        yield
+
+        for func in self._after_startup:
+            await func()
+
+        logger.info("The FastPubSub processes started")
+
+    async def _shutdown(self) -> None:
         apm = get_apm_provider()
         with apm.background_transaction(name="shutdown"):
             context = {
                 "span_id": apm.get_span_id(),
                 "trace_id": apm.get_trace_id(),
             }
-
             with logger.contextualize(**context):
-                logger.info("Terminating FastPubSub processes")
-                for func in self._on_shutdown:
-                    await func()
+                async with self.shutdown_hooks():
+                    await self.broker.shutdown()
 
-                yield
+    @asynccontextmanager
+    async def shutdown_hooks(self) -> AsyncIterator[None]:
+        logger.info("Terminating FastPubSub processes")
+        for func in self._on_shutdown:
+            await func()
 
-                for func in self._after_shutdown:
-                    await func()
+        yield
 
-                logger.info("The FastPubSub processes terminated")
+        for func in self._after_shutdown:
+            await func()
+
+        logger.info("The FastPubSub processes terminated")
 
 
 class FastPubSub(FastAPI, Application):
@@ -224,4 +224,5 @@ class FastPubSub(FastAPI, Application):
                 await self._shutdown()
 
     async def _health(self, request: Request):
+        self.broker.probe()
         return {"health": "ok"}

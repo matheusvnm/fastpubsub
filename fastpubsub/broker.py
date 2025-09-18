@@ -4,10 +4,10 @@ import os
 
 from fastpubsub.clients.pub import PubSubPublisherClient
 from fastpubsub.clients.sub import PubSubSubscriberClient
+from fastpubsub.concurrency.process import ProcessManager
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.logger import logger
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.process import ProcessManager
 from fastpubsub.pubsub.subscriber import Subscriber
 from fastpubsub.routing.base import BaseRouter
 from fastpubsub.routing.router import PubSubRouter
@@ -68,7 +68,12 @@ class PubSubBroker(BaseRouter):
             if subscriber.lifecycle_policy.autoupdate:
                 await self._update_subscription(subscriber)
 
-            self.process_manager.spawn(subscriber)
+            self.process_manager.add_subscriber(subscriber)
+
+        self.process_manager.start()
+
+    def probe(self):
+        self.process_manager.probe()
 
     async def _filter_subscribers(self) -> list[Subscriber]:
         subscribers = self.get_subscribers()

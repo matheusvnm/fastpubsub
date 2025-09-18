@@ -1,4 +1,4 @@
-from fastpubsub.concurrency import ensure_async_callable
+from fastpubsub.concurrency.utils import ensure_async_callable
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,
@@ -43,9 +43,7 @@ class Subscriber:
 
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
         if not (middleware and issubclass(middleware, BaseMiddleware)):
-            raise FastPubSubException(
-                f"The middleware should be a {BaseMiddleware.__name__} type."
-            )
+            raise FastPubSubException(f"The middleware should be a {BaseMiddleware.__name__} type.")
 
         if middleware in self.middlewares:
             return

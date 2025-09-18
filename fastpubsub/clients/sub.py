@@ -13,7 +13,7 @@ from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub_v1.types import DeadLetterPolicy, RetryPolicy, Subscription
 
 from fastpubsub.datastructures import Message
-from fastpubsub.exceptions import Drop, Retry, FastPubSubException
+from fastpubsub.exceptions import Drop, FastPubSubException, Retry
 from fastpubsub.logger import logger
 from fastpubsub.observability import get_apm_provider
 from fastpubsub.pubsub.subscriber import Subscriber
@@ -170,7 +170,7 @@ class PubSubSubscriberClient:
         callback_handler = CallbackHandler(subscriber)
 
         with SubscriberClient() as client:
-            logger.debug(f"Listening for messages on {subscription_path}")
+            logger.info(f"Listening for messages on {subscription_path}")
             streaming_pull_future = client.subscribe(
                 subscription_path,
                 await_callbacks_on_shutdown=True,
