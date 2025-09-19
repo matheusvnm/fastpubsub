@@ -2,7 +2,7 @@ from fastpubsub.applications import  FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
 from fastpubsub.logger import logger
-from fastpubsub.routing.router import PubSubRouter
+from fastpubsub.router import PubSubRouter
 
 from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubcriberMiddleware
 

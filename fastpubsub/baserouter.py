@@ -90,12 +90,9 @@ class BaseRouter:
             )
 
             if existing_subscriber:
-                existing_subscriber_filter = existing_subscriber.delivery_policy.filter_expression
-                if existing_subscriber_filter == filter_expression:
-                    raise FastPubSubException(
-                        f"The subscription '{prefixed_subscription_name}' for '{filter_expression=}' already exists."
-                        " We only accept one handler per subscription and filter expression combination"
-                    )
+                raise FastPubSubException(
+                    f"The subscription '{prefixed_subscription_name}' must be unique among handlers."
+                )
 
             dead_letter_policy = None
             if dead_letter_topic:

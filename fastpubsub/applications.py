@@ -7,6 +7,7 @@ from fastapi.middleware import Middleware
 from fastapi.responses import JSONResponse
 from starlette.applications import Starlette
 from starlette.routing import BaseRoute
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.concurrency.utils import ensure_async_callable
@@ -120,7 +121,7 @@ class Application:
 
 
 class FastPubSub(FastAPI, Application):
-    # TODO: Adicionar na adição de subscribers (handlers) uma validação para
+    # : Adicionar na adição de subscribers (handlers) uma validação para
     #  impedir adição de Depends() do fastapi e outros tipos do mesmo
 
     def __init__(
@@ -144,7 +145,9 @@ class FastPubSub(FastAPI, Application):
         redirect_slashes: bool = True,
         docs_url: str = "/docs",
         redoc_url: str = "/redoc",
-        health_check_url: str = "/consumers/health",
+        info_url: str = "/consumers/info",
+        liveness_url: str = "/consumers/alive",
+        readiness_url: str = "/consumers/ready",
         swagger_ui_oauth2_redirect_url: str | None = None,
         middleware: Sequence[Middleware] | None = None,
         exception_handlers: dict[
@@ -208,8 +211,10 @@ class FastPubSub(FastAPI, Application):
         )
 
         self.lifespan_context = lifespan
-        # TODO: Create setup method for that
-        self.add_api_route(path=health_check_url, endpoint=self._health, methods=["GET"])
+        self.add_api_route(path=info_url, endpoint=self._get_info, methods=["GET"])
+        self.add_api_route(path=liveness_url, endpoint=self._get_liveness, methods=["GET"])
+        self.add_api_route(path=readiness_url, endpoint=self._get_readiness, methods=["GET"])
+
 
     @asynccontextmanager
     async def run(self, app: "FastPubSub") -> AsyncGenerator[None]:
@@ -223,6 +228,21 @@ class FastPubSub(FastAPI, Application):
                 yield
                 await self._shutdown()
 
-    async def _health(self, request: Request):
-        self.broker.probe()
-        return {"health": "ok"}
+    async def _get_info(self, request: Request) -> JSONResponse:
+        return self.broker.info()
+
+    async def _get_liveness(self, request: Request, response: Response) -> JSONResponse:
+        alive = self.broker.alive()
+        if not alive:
+            response.status_code = HTTP_500_INTERNAL_SERVER_ERROR
+            return {"alive": alive}
+
+        return {"alive": alive}
+
+    async def _get_readiness(self, request: Request, response: Response) -> JSONResponse:
+        ready = self.broker.ready()
+        if not ready:
+            response.status_code = HTTP_500_INTERNAL_SERVER_ERROR
+            return {"ready": ready}
+
+        return {"ready": ready}

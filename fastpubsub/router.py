@@ -1,8 +1,8 @@
 import re
 
+from fastpubsub.baserouter import BaseRouter
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.routing.base import BaseRouter
 
 _PREFIX_REGEX = re.compile(r"^[a-zA-Z0-9]([a-zA-Z0-9_./]*[a-zA-Z0-9])?$")
 

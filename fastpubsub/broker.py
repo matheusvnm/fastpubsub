@@ -1,16 +1,47 @@
 """Broker implementation."""
 
 import os
+from typing import Any
 
+from fastpubsub.baserouter import BaseRouter
 from fastpubsub.clients.pub import PubSubPublisherClient
 from fastpubsub.clients.sub import PubSubSubscriberClient
-from fastpubsub.concurrency.process import ProcessManager
+from fastpubsub.concurrency.controller import ProcessController
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.logger import logger
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.subscriber import Subscriber
-from fastpubsub.routing.base import BaseRouter
-from fastpubsub.routing.router import PubSubRouter
+from fastpubsub.router import PubSubRouter
+
+
+class BrokerConfigurator:
+    def __init__(self, project_id: str):
+        self.project_id = project_id
+        self.created_topics = set()
+
+    def create_topics(self, subscriber: Subscriber):
+        target_topic = subscriber.topic_name
+        self._new_topic(target_topic, create_default_subscription=False)
+
+        if subscriber.dead_letter_policy:
+            target_topic = subscriber.dead_letter_policy.topic_name
+            self._new_topic(target_topic)
+
+    def _new_topic(self, topic_name: str, create_default_subscription=True):
+        if topic_name in self.created_topics:
+            return
+
+        client = PubSubPublisherClient(project_id=self.project_id, topic_name=topic_name)
+        client.create_topic(create_default_subscription)
+        self.created_topics.add(topic_name)
+
+    def create_subscription(self, subscriber: Subscriber) -> None:
+        client = PubSubSubscriberClient()
+        client.create_subscription(subscriber=subscriber)
+
+    def update_subscription(self, subscriber: Subscriber) -> None:
+        client = PubSubSubscriberClient()
+        client.update_subscription(subscriber=subscriber)
 
 
 class PubSubBroker(BaseRouter):
@@ -23,7 +54,8 @@ class PubSubBroker(BaseRouter):
         if not (project_id and isinstance(project_id, str) and len(project_id.strip()) > 0):
             raise FastPubSubException(f"The project id value ({project_id}) is invalid.")
 
-        self.process_manager = ProcessManager()
+        self.process_manager = ProcessController()
+        self.broker_configurator = BrokerConfigurator(project_id=project_id)
         super().__init__(project_id=project_id, routers=routers, middlewares=middlewares)
 
     def include_router(self, router: PubSubRouter) -> None:
@@ -49,31 +81,52 @@ class PubSubBroker(BaseRouter):
     async def start(self) -> None:
         subscribers = await self._filter_subscribers()
 
-        created_topics = set()
         for subscriber in subscribers:
-            target_topic = subscriber.topic_name
             if subscriber.lifecycle_policy.autocreate:
-                if target_topic not in created_topics:
-                    await self._create_topic(target_topic)
-                    created_topics.add(target_topic)
-
-                if subscriber.dead_letter_policy:
-                    target_topic = subscriber.dead_letter_policy.topic_name
-                    if target_topic not in created_topics:
-                        await self._create_topic(target_topic, create_default_subscription=True)
-                        created_topics.add(target_topic)
-
-                await self._create_subscription(subscriber)
+                self.broker_configurator.create_topics(subscriber=subscriber)
+                self.broker_configurator.create_subscription(subscriber=subscriber)
 
             if subscriber.lifecycle_policy.autoupdate:
-                await self._update_subscription(subscriber)
+                await self.broker_configurator.update_subscription(subscriber)
 
             self.process_manager.add_subscriber(subscriber)
 
+        if not subscribers:
+            logger.info("No subscriber detected, we will run as an API-only.")
+
         self.process_manager.start()
 
-    def probe(self):
-        self.process_manager.probe()
+    def info(self) -> dict[str, Any]:
+        return self.process_manager.get_info()
+
+    def alive(self) -> bool:
+        subscribers = self.process_manager.get_liveness()
+        if not subscribers:
+            logger.info("The subscribers are not active. May be they are deactivated?")
+            return False
+
+        alive = True
+        for name, liveness in subscribers.items():
+            if not liveness:
+                logger.error(f"The {name} subscriber handler is not alive")
+                alive = False
+
+        return alive
+
+    def ready(self) -> bool:
+        subscribers = self.process_manager.get_readiness()
+        if not subscribers:
+            logger.info("The subscribers are not active. May be they are deactivated?")
+            return False
+
+        ready = True
+        for name, readiness in subscribers.items():
+            if not readiness:
+                logger.error(f"The {name} subscriber handler is not ready")
+                ready = False
+                return ready
+
+        return ready
 
     async def _filter_subscribers(self) -> list[Subscriber]:
         subscribers = self.get_subscribers()
@@ -92,15 +145,11 @@ class PubSubBroker(BaseRouter):
             logger.debug(f"We have found the subscriber '{selected_subscriber}'")
             found_subscribers.append(subscribers[selected_subscriber])
 
-        if not found_subscribers:
-            raise FastPubSubException(
-                f"No subscriber found for '{selected_subscriber}'. It should be one of {list(subscribers.keys())}"
-            )
-
         return found_subscribers
 
     def _get_selected_subscribers(self) -> set[str]:
         selected_subscribers = set()
+        # TODO: Add API Only feature
         subscribers_text = os.getenv("FASTPUBSUB_SUBSCRIBERS", "")
         if not subscribers_text:
             return selected_subscribers
@@ -112,20 +161,6 @@ class PubSubBroker(BaseRouter):
                 selected_subscribers.add(clean_alias)
 
         return selected_subscribers
-
-    async def _create_topic(
-        self, topic_name: str, create_default_subscription: bool = False
-    ) -> None:
-        client = PubSubPublisherClient(project_id=self.project_id, topic_name=topic_name)
-        client.create_topic(create_default_subscription)
-
-    async def _create_subscription(self, subscriber: Subscriber) -> None:
-        client = PubSubSubscriberClient()
-        client.create_subscription(subscriber=subscriber)
-
-    async def _update_subscription(self, subscriber: Subscriber) -> None:
-        client = PubSubSubscriberClient()
-        client.update_subscription(subscriber=subscriber)
 
     async def shutdown(self) -> None:
         self.process_manager.terminate()

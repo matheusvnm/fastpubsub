@@ -1,12 +1,14 @@
 import asyncio
 import os
-from contextlib import suppress
+from collections.abc import Generator
+from contextlib import contextmanager, suppress
 from datetime import timedelta
 from typing import Any
 
 from google.api_core.exceptions import AlreadyExists, NotFound
 from google.cloud.pubsub_v1 import SubscriberClient
 from google.cloud.pubsub_v1.subscriber.exceptions import AcknowledgeError
+from google.cloud.pubsub_v1.subscriber.futures import StreamingPullFuture
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 from google.cloud.pubsub_v1.types import FlowControl
 from google.protobuf.field_mask_pb2 import FieldMask
@@ -159,7 +161,8 @@ class PubSubSubscriberClient:
                     "Please, setup your @subscriber with the 'autocreate=True' option to automatically create them."
                 )
 
-    def subscribe(self, subscriber: Subscriber) -> None:
+    @contextmanager
+    def subscribe(self, subscriber: Subscriber) -> Generator[StreamingPullFuture]:
         """
         Starts listening for messages on the configured Pub/Sub subscription.
         This method is blocking and will run indefinitely.
@@ -180,6 +183,9 @@ class PubSubSubscriberClient:
                     max_bytes=subscriber.control_flow_policy.max_bytes,
                 ),
             )
+
+            yield streaming_pull_future
+
             try:
                 streaming_pull_future.result()
             except KeyboardInterrupt:

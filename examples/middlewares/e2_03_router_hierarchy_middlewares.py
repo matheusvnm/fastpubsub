@@ -1,11 +1,11 @@
 
 
-from examples.middlewares.middlewares import BrokerPublisherMiddleware, BrokerMiddleware, RouterMiddleware, RouterPublisherMiddleware, RouterSubscriberMiddleware, SubRouterMiddleware, SubRouterPublisherMiddleware, SubRouterSubscriberMiddleware
+from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubRouterMiddleware
 from fastpubsub.applications import  FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
 from fastpubsub.logger import logger
-from fastpubsub.routing.router import PubSubRouter
+from fastpubsub.router import PubSubRouter
 
 
 # It works in any order!!!
