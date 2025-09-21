@@ -1,3 +1,4 @@
+from typing import cast
 from fastpubsub.concurrency.utils import ensure_async_callable
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
@@ -22,10 +23,10 @@ class Subscriber:
         retry_policy: MessageRetryPolicy,
         lifecycle_policy: LifecyclePolicy,
         delivery_policy: MessageDeliveryPolicy,
-        dead_letter_policy: DeadLetterPolicy,
         control_flow_policy: MessageControlFlowPolicy,
-        middlewares: list[type[BaseMiddleware]] = None,
-    ):
+        dead_letter_policy: DeadLetterPolicy | None = None,
+        middlewares: list[type[BaseMiddleware]] | None = None,
+    ) -> None:
         self.project_id = project_id
         self.topic_name = topic_name
         self.subscription_name = subscription_name
@@ -53,7 +54,7 @@ class Subscriber:
 
     @property
     def callback(self) -> HandleMessageCommand | BaseMiddleware:
-        callback = self.handler
+        callback: HandleMessageCommand | BaseMiddleware = self.handler
         for middleware in reversed(self.middlewares):
             callback = middleware(callback)
         return callback
@@ -62,8 +63,8 @@ class Subscriber:
     def name(self) -> str:
         return self.handler.target.__name__
 
-    def set_project_id(self, project_id: str):
+    def set_project_id(self, project_id: str) -> None:
         self.project_id = project_id
 
-    def add_prefix(self, new_prefix: str):
+    def add_prefix(self, new_prefix: str) -> None:
         self.subscription_name = f"{new_prefix}.{self.subscription_name}"

@@ -174,7 +174,7 @@ class NewRelicProvider(ApmProvider):
 
     def active(self) -> bool:
         application = self._agent.application(activate=False)
-        return application and application.active
+        return bool(application) and bool(application.active)
 
 
 @cache

@@ -2,7 +2,7 @@ import contextlib
 from dataclasses import dataclass
 from multiprocessing import ProcessError
 from multiprocessing.connection import Connection
-from multiprocessing.context import BaseContext
+from multiprocessing.context import DefaultContext
 from multiprocessing.process import BaseProcess
 from time import sleep, time
 from typing import Any
@@ -23,7 +23,7 @@ from fastpubsub.logger import logger
 from fastpubsub.pubsub.subscriber import Subscriber
 
 
-def start_subscriber_worker(subscriber: Subscriber, connection: Connection):
+def start_subscriber_worker(subscriber: Subscriber, connection: Connection) -> None:
     """Target function to create and run a SubscriberWorker in a new process."""
     worker = SubscriberWorker(subscriber, connection)
     worker.run()
@@ -42,14 +42,14 @@ class ManagerWorker:
     """A worker that manages a fleet of SubscriberWorkers."""
 
     def __init__(
-        self, subscribers: list[Subscriber], connection: Connection, mp_context: BaseContext
-    ):
+        self, subscribers: list[Subscriber], connection: Connection, mp_context: DefaultContext
+    ) -> None:
         self.subscribers = subscribers
         self.parent_connection = connection
         self.mp_context = mp_context
         self._managed_processes: dict[int, ManagedProcess] = {}
 
-    def run(self):
+    def run(self) -> None:
         """The main entry point for the manager process."""
         self._startup()
         with contextlib.suppress(KeyboardInterrupt):
@@ -59,12 +59,12 @@ class ManagerWorker:
                     self._restart()
                 sleep(1)
 
-    def _startup(self):
+    def _startup(self) -> None:
         """Initializes and starts all configured subscriber workers."""
         for subscriber in self.subscribers:
             self._create_subscriber_worker(subscriber)
 
-    def _create_subscriber_worker(self, subscriber: Subscriber):
+    def _create_subscriber_worker(self, subscriber: Subscriber) -> None:
         """Creates, starts, and registers a single SubscriberWorker."""
         parent_conn, child_conn = self.mp_context.Pipe()
         process = self.mp_context.Process(
@@ -81,7 +81,7 @@ class ManagerWorker:
         )
         self._managed_processes[process.pid] = managed_process
 
-    def _poll_for_requests(self):
+    def _poll_for_requests(self) -> None:
         """Non-blocking check for requests from the parent controller."""
         if self.parent_connection.poll():
             try:
@@ -106,7 +106,7 @@ class ManagerWorker:
     ) -> dict[str, Any]:
         """Helper to send a request to all children and gather responses."""
         pending_procs = {p.process.pid: p for p in list(self._managed_processes.values())}
-        final_results = {}
+        final_results: dict[str, Any] = {}
         for pid, managed_proc in list(pending_procs.items()):
             try:
                 managed_proc.connection.send(request)
@@ -126,15 +126,15 @@ class ManagerWorker:
 
         return final_results
 
-    def _handle_liveness_probe(self, request: LivenessProbeRequest):
+    def _handle_liveness_probe(self, request: LivenessProbeRequest) -> None:
         results = self._propagate_request_and_collect(request, timeout=request.timeout)
         self.parent_connection.send(LivenessProbeResponse(results=results))
 
-    def _handle_readiness_probe(self, request: ReadinessProbeRequest):
+    def _handle_readiness_probe(self, request: ReadinessProbeRequest) -> None:
         results = self._propagate_request_and_collect(request, timeout=10.0)
         self.parent_connection.send(ReadinessProbeResponse(results=results))
 
-    def _handle_info_request(self, request: InfoRequest):
+    def _handle_info_request(self, request: InfoRequest) -> None:
         subscriber_infos = self._propagate_request_and_collect(request, timeout=10.0)
         worker_info = WorkerInfo(
             process_info=get_process_info(),
@@ -146,7 +146,7 @@ class ManagerWorker:
         """Checks if any managed process has died."""
         return not all(p.process.is_alive() for p in self._managed_processes.values())
 
-    def _restart(self):
+    def _restart(self) -> None:
         """Finds and restarts any dead subscriber workers."""
         for pid, managed_proc in list(self._managed_processes.items()):
             if managed_proc.process.is_alive():

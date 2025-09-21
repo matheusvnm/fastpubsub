@@ -17,13 +17,13 @@ repos:
   hooks:
     - id: format
       name: format and sort imports
-      entry: /bin/bash ./scripts/format.sh
+      entry: just format
       language: system
       types: [python]
       pass_filenames: false
     - id: lint
       name: lint and type check
-      entry: /bin/bash ./scripts/lint.sh
+      entry: just lint
       language: system
       types: [python]
       pass_filenames: false

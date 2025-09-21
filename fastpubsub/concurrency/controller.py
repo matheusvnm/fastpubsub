@@ -2,7 +2,7 @@ import contextlib
 from dataclasses import asdict
 from multiprocessing import get_context
 from multiprocessing.connection import Connection
-from multiprocessing.context import BaseContext
+from multiprocessing.context import BaseContext, DefaultContext
 from multiprocessing.process import BaseProcess
 from typing import Any, cast
 
@@ -24,8 +24,8 @@ from fastpubsub.pubsub.subscriber import Subscriber
 
 
 def start_manager_worker(
-    subscribers: list[Subscriber], connection: Connection, mp_context: BaseContext
-):
+    subscribers: list[Subscriber], connection: Connection, mp_context: DefaultContext
+) -> None:
     """Target function to create and run a ManagerWorker in a new process."""
     worker = ManagerWorker(subscribers, connection, mp_context)
     worker.run()
@@ -34,19 +34,19 @@ def start_manager_worker(
 class ProcessController:
     """Public-facing controller for managing a fleet of subscriber processes."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._subscribers: list[Subscriber] = []
-        self._manager_process: BaseProcess | None = None
         self._connection: Connection | None = None
+        self._manager_process: BaseProcess | None = None
         self._mp_context = get_context("spawn")
 
-    def add_subscriber(self, subscriber: Subscriber):
+    def add_subscriber(self, subscriber: Subscriber) -> None:
         """Registers a subscriber configuration to be managed."""
         if self._manager_process and self._manager_process.is_alive():
             raise RuntimeError("Cannot add subscribers after the manager has started.")
         self._subscribers.append(subscriber)
 
-    def start(self):
+    def start(self) -> None:
         """Starts the child manager process using a 'spawn' context."""
         if not self._subscribers:
             return
@@ -69,10 +69,12 @@ class ProcessController:
             self._connection.send(request)
             if self._connection.poll(timeout):
                 response = self._connection.recv()
-                return cast(InterprocessRequest, response)
+                response = cast(InterprocessRequest, response)
+                return response
         except (BrokenPipeError, EOFError):
-            logger.error("Pipe to manager process is broken.")
-            return None
+            logger.error("Pipe to manager process is broken.")        
+
+        return None
 
     def get_liveness(self, timeout: float = 10.0) -> dict[str, bool]:
         """Checks if the managed subscriber processes are alive."""
@@ -102,7 +104,7 @@ class ProcessController:
             "manager": manager_info,
         }
 
-    def terminate(self):
+    def terminate(self) -> None:
         """Terminates the manager process and all its children gracefully."""
         if not self._manager_process or not self._manager_process.pid:
             return

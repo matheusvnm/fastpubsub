@@ -22,7 +22,8 @@ AppNumWorkersOption = Annotated[
         "-w",
         "--workers",
         show_default=True,
-        help="Run [workers] applications with process spawning. If set with --reload flag, it will be ignored.",
+        help="Run [workers] applications with process spawning. "
+        "If set with --reload flag, it will be ignored.",
         envvar="FASTPUBSUB_WORKERS",
     ),
 ]
@@ -32,8 +33,7 @@ AppSelectedSubscribersOption = Annotated[
     typer.Option(
         "-s",
         "--subscribers",
-        help="Specify the subscribers to run. "
-        "Can be set with FASTPUBSUB_SELECTED_SUBSCRIBERS env var as a comma-separated list of subscribers aliases.",
+        help="Specify the subscribers to run. If not selected, all will run.",
         envvar="FASTPUBSUB_SELECTED_SUBSCRIBERS",
     ),
 ]

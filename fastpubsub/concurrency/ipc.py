@@ -34,9 +34,11 @@ class ReadinessProbeRequest(InterprocessRequest):
 
     pass
 
+
 @dataclass(frozen=True)
 class ReadinessProbeResponse(InterprocessResponse):
     """Response containing the readiness status of all subscribers."""
+
     results: dict[str, bool]
 
 
@@ -60,6 +62,7 @@ class ConnectionInfo:
 @dataclass(frozen=True)
 class ProcessInfo:
     """Detailed information about a single OS process."""
+
     pid: int
     running: bool
     num_threads: int
@@ -69,6 +72,7 @@ class ProcessInfo:
 @dataclass(frozen=True)
 class SubscriberInfo:
     """Aggregated information about a SubscriberWorker."""
+
     process_info: ProcessInfo
 
 

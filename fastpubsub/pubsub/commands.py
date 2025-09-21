@@ -15,15 +15,16 @@ class HandleMessageCommand:
 
 
 class PublishMessageCommand:
-    def __init__(self, *, project_id: str, topic_name: str):
+    def __init__(self, *, project_id: str, topic_name: str, autocreate: bool = True):
         self.project_id = project_id
         self.topic_name = topic_name
+        self.autocreate = autocreate
 
     async def on_publish(
-        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None, autocreate: bool
+        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
         client = PubSubPublisherClient(project_id=self.project_id, topic_name=self.topic_name)
-        if autocreate:
+        if self.autocreate:
             client.create_topic()
 
         client.publish(data=data, ordering_key=ordering_key, attributes=attributes)

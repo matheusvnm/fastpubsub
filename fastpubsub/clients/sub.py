@@ -25,7 +25,7 @@ class CallbackHandler:
     def __init__(self, subscriber: Subscriber):
         self.subscriber = subscriber
 
-    def handle(self, message: PubSubMessage) -> None:
+    def handle(self, message: PubSubMessage) -> Any:
         apm = get_apm_provider()
 
         with apm.background_transaction(name=self.subscriber.name):
@@ -82,7 +82,7 @@ class CallbackHandler:
 
 
 class PubSubSubscriberClient:
-    def __init__(self):
+    def __init__(self) -> None:
         self.is_emulator = True if os.getenv("PUBSUB_EMULATOR_HOST") else False
 
     def _create_subscription_request(self, subscriber: Subscriber) -> Subscription:
@@ -119,7 +119,7 @@ class PubSubSubscriberClient:
             enable_exactly_once_delivery=subscriber.delivery_policy.enable_exactly_once_delivery,
         )
 
-    def create_subscription(self, subscriber: Subscriber) -> bool:
+    def create_subscription(self, subscriber: Subscriber) -> None:
         """
         Creates the Pub/Sub subscription if it doesn't exist.
         Handles AlreadyExists errors gracefully.
@@ -131,7 +131,6 @@ class PubSubSubscriberClient:
                 logger.debug(f"Attempting to create subscription: {subscription_request.name}")
                 client.create_subscription(request=subscription_request)
                 logger.debug(f"Successfully created subscription: {subscription_request.name}")
-                return True
 
     def update_subscription(self, subscriber: Subscriber) -> None:
         subscription_request = self._create_subscription_request(subscriber=subscriber)
@@ -154,12 +153,14 @@ class PubSubSubscriberClient:
                 )
                 logger.debug(f"Successfully updated the subscription: {subscription_request.name}")
                 logger.debug(f"The subscription is now following the configuration: {response}")
-            except NotFound:
+            except NotFound as e:
                 raise FastPubSubException(
                     "We could not update the subscription configuration. "
-                    f"The topic {subscription_request.topic} or subscription {subscription_request.name} were not found. "
-                    "Please, setup your @subscriber with the 'autocreate=True' option to automatically create them."
-                )
+                    f"The topic {subscription_request.topic} or "
+                    f"subscription {subscription_request.name} were not found. "
+                    "Please, setup your @subscriber with the 'autocreate=True' "
+                    "option to automatically create them."
+                ) from e
 
     @contextmanager
     def subscribe(self, subscriber: Subscriber) -> Generator[StreamingPullFuture]:

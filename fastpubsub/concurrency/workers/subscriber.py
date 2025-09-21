@@ -20,18 +20,16 @@ from fastpubsub.pubsub.subscriber import Subscriber
 class SubscriberWorker:
     """A worker that runs a single Pub/Sub subscriber."""
 
-    def __init__(self, subscriber: Subscriber, connection: Connection):
+    def __init__(self, subscriber: Subscriber, connection: Connection) -> None:
         self.subscriber = subscriber
         self.parent_connection = connection
-
-        self._last_received_timestamp: float | None = None
-        self._streaming_pull_future: StreamingPullFuture | None = None
+        self._streaming_pull_future: StreamingPullFuture = None
 
     def get_readiness_status(self) -> bool:
         """Gets the current readiness status."""
-        return self._streaming_pull_future.running()
+        return bool(self._streaming_pull_future.running())
 
-    def run(self):
+    def run(self) -> None:
         """Starts the command handler and then the Pub/Sub subscription."""
         command_thread = Thread(target=self._command_loop, daemon=True)
         command_thread.start()
@@ -40,7 +38,7 @@ class SubscriberWorker:
         with client.subscribe(self.subscriber) as future:
             self._streaming_pull_future = future
 
-    def _command_loop(self):
+    def _command_loop(self) -> None:
         """A reusable blocking loop that waits for and handles requests."""
         while True:
             try:
@@ -64,13 +62,13 @@ class SubscriberWorker:
 
         logger.warning(f"The worker has no handler for {type(request).__name__}")
 
-    def _handle_liveness_probe(self, request: LivenessProbeRequest):
+    def _handle_liveness_probe(self, request: LivenessProbeRequest) -> None:
         self.parent_connection.send(True)
 
-    def _handle_readiness_probe(self, request: ReadinessProbeRequest):
+    def _handle_readiness_probe(self, request: ReadinessProbeRequest) -> None:
         self.parent_connection.send(self.get_readiness_status())
 
-    def _handle_info_request(self, request: InfoRequest):
+    def _handle_info_request(self, request: InfoRequest) -> None:
         info = SubscriberInfo(process_info=get_process_info())
         self.parent_connection.send(info)
 

@@ -1,70 +1,72 @@
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Coroutine, Sequence
 from contextlib import asynccontextmanager
-from typing import Any
+from ctypes import cast
+from typing import Any, TypeVar
 
-from fastapi import Depends, FastAPI, Request, Response, routing
+from fastapi import FastAPI, Request, Response, routing
 from fastapi.middleware import Middleware
 from fastapi.responses import JSONResponse
 from starlette.applications import Starlette
 from starlette.routing import BaseRoute
-from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
+from fastapi.params import Depends
 
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.concurrency.utils import ensure_async_callable
 from fastpubsub.logger import logger
 from fastpubsub.observability import get_apm_provider
-from fastpubsub.types import CallableHook
+from fastpubsub.types import AsyncRequestHandler, ExceptionMarker, NoArgAsyncCallable
+from starlette.types import Lifespan
+
 
 
 class Application:
     def __init__(
         self,
         broker: PubSubBroker,
-        on_startup: tuple[CallableHook] = None,
-        on_shutdown: tuple[CallableHook] = None,
-        after_startup: tuple[CallableHook] = None,
-        after_shutdown: tuple[CallableHook] = None,
+        on_startup: tuple[NoArgAsyncCallable] | None = None,
+        on_shutdown: tuple[NoArgAsyncCallable] | None = None,
+        after_startup: tuple[NoArgAsyncCallable] | None = None,
+        after_shutdown: tuple[NoArgAsyncCallable] | None = None,
     ):
         self.broker = broker
 
-        self._on_startup = []
+        self._on_startup: list[NoArgAsyncCallable] = []
         if on_startup and isinstance(on_startup, tuple):
             for func in on_startup:
                 self.on_startup(func)
 
-        self._on_shutdown = []
+        self._on_shutdown: list[NoArgAsyncCallable] = []
         if on_shutdown and isinstance(on_shutdown, tuple):
             for func in on_shutdown:
                 self.on_shutdown(func)
 
-        self._after_startup = []
+        self._after_startup: list[NoArgAsyncCallable] = []
         if after_startup and isinstance(after_startup, tuple):
             for func in after_startup:
                 self.after_startup(func)
 
-        self._after_shutdown = []
+        self._after_shutdown: list[NoArgAsyncCallable] = []
         if after_shutdown and isinstance(after_shutdown, tuple):
             for func in after_shutdown:
                 self.after_shutdown(func)
 
-        self.should_exit = False
-
-    def on_startup(self, func: CallableHook) -> CallableHook:
+    def on_startup(self, func: NoArgAsyncCallable) -> NoArgAsyncCallable:
         ensure_async_callable(func)
         self._on_startup.append(func)
         return func
 
-    def on_shutdown(self, func: CallableHook) -> CallableHook:
+    def on_shutdown(self, func: NoArgAsyncCallable) -> NoArgAsyncCallable:
         ensure_async_callable(func)
         self._on_shutdown.append(func)
         return func
 
-    def after_startup(self, func: CallableHook) -> CallableHook:
+    def after_startup(self, func: NoArgAsyncCallable) -> NoArgAsyncCallable:
         ensure_async_callable(func)
         self._after_startup.append(func)
         return func
 
-    def after_shutdown(self, func: CallableHook) -> CallableHook:
+    def after_shutdown(self, func: NoArgAsyncCallable) -> NoArgAsyncCallable:
         ensure_async_callable(func)
         self._after_shutdown.append(func)
         return func
@@ -128,19 +130,19 @@ class FastPubSub(FastAPI, Application):
         self,
         broker: PubSubBroker,
         *,
-        on_startup: list[CallableHook] = None,
-        on_shutdown: list[CallableHook] = None,
-        after_startup: list[CallableHook] = None,
-        after_shutdown: list[CallableHook] = None,
+        on_startup: tuple[NoArgAsyncCallable] | None = None,
+        on_shutdown: tuple[NoArgAsyncCallable] | None = None,
+        after_startup: tuple[NoArgAsyncCallable] | None = None,
+        after_shutdown: tuple[NoArgAsyncCallable] | None = None,
         debug: bool = False,
         title: str = "FastPubSub",
         summary: str | None = None,
         description: str = "",
         version: str = "0.1.0",
         openapi_url: str = "/openapi.json",
-        openapi_tags: str = None,
-        servers: list[dict[str, str | Any]] = None,
-        dependencies: Sequence[Depends] = None,  #
+        openapi_tags: list[dict[str, Any]] | None  = None,
+        servers: list[dict[str, str | Any]] | None = None,
+        dependencies: Sequence[Depends] | None = None,  #
         default_response_class: type[Response] = JSONResponse,
         redirect_slashes: bool = True,
         docs_url: str = "/docs",
@@ -150,11 +152,8 @@ class FastPubSub(FastAPI, Application):
         readiness_url: str = "/consumers/ready",
         swagger_ui_oauth2_redirect_url: str | None = None,
         middleware: Sequence[Middleware] | None = None,
-        exception_handlers: dict[
-            int | type[Exception] | Callable[[Request, Any], Coroutine[Any, Any, Response]]
-        ]
-        | None = None,
-        lifespan: Callable | None = None,
+        exception_handlers: dict[ExceptionMarker, AsyncRequestHandler] | None = None,
+        lifespan: Lifespan["FastPubSub"] | None = None,
         terms_of_service: str | None = None,
         contact: dict[str, str | Any] | None = None,
         license_info: dict[str, str | Any] | None = None,
@@ -215,7 +214,6 @@ class FastPubSub(FastAPI, Application):
         self.add_api_route(path=liveness_url, endpoint=self._get_liveness, methods=["GET"])
         self.add_api_route(path=readiness_url, endpoint=self._get_readiness, methods=["GET"])
 
-
     @asynccontextmanager
     async def run(self, app: "FastPubSub") -> AsyncGenerator[None]:
         if not self.lifespan_context:
@@ -228,21 +226,24 @@ class FastPubSub(FastAPI, Application):
                 yield
                 await self._shutdown()
 
-    async def _get_info(self, request: Request) -> JSONResponse:
-        return self.broker.info()
+    async def _get_info(self, _: Request) -> JSONResponse:
+        content = self.broker.info()
+        return JSONResponse(content=content)
 
-    async def _get_liveness(self, request: Request, response: Response) -> JSONResponse:
+    async def _get_liveness(self, _: Request) -> JSONResponse:
         alive = self.broker.alive()
+
+        status_code = HTTP_200_OK
         if not alive:
-            response.status_code = HTTP_500_INTERNAL_SERVER_ERROR
-            return {"alive": alive}
+            status_code = HTTP_500_INTERNAL_SERVER_ERROR
 
-        return {"alive": alive}
+        return JSONResponse(content={"alive": alive}, status_code=status_code)
 
-    async def _get_readiness(self, request: Request, response: Response) -> JSONResponse:
+    async def _get_readiness(self, _: Request) -> JSONResponse:
         ready = self.broker.ready()
+        
+        status_code = HTTP_200_OK
         if not ready:
-            response.status_code = HTTP_500_INTERNAL_SERVER_ERROR
-            return {"ready": ready}
+            status_code = HTTP_500_INTERNAL_SERVER_ERROR
 
-        return {"ready": ready}
+        return JSONResponse(content={"ready": ready}, status_code=status_code)

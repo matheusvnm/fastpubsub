@@ -16,10 +16,10 @@ from fastpubsub.router import PubSubRouter
 
 class BrokerConfigurator:
     def __init__(self, project_id: str):
-        self.project_id = project_id
-        self.created_topics = set()
+        self.project_id: str = project_id
+        self.created_topics: set[str] = set()
 
-    def create_topics(self, subscriber: Subscriber):
+    def create_topics(self, subscriber: Subscriber) -> None:
         target_topic = subscriber.topic_name
         self._new_topic(target_topic, create_default_subscription=False)
 
@@ -27,7 +27,7 @@ class BrokerConfigurator:
             target_topic = subscriber.dead_letter_policy.topic_name
             self._new_topic(target_topic)
 
-    def _new_topic(self, topic_name: str, create_default_subscription=True):
+    def _new_topic(self, topic_name: str, create_default_subscription: bool = True) -> None:
         if topic_name in self.created_topics:
             return
 
@@ -48,8 +48,8 @@ class PubSubBroker(BaseRouter):
     def __init__(
         self,
         project_id: str,
-        routers: list[PubSubRouter] = None,
-        middlewares: list[type[BaseMiddleware]] = None,
+        routers: tuple[BaseRouter] | None = None,
+        middlewares: tuple[type[BaseMiddleware]] | None = None,
     ):
         if not (project_id and isinstance(project_id, str) and len(project_id.strip()) > 0):
             raise FastPubSubException(f"The project id value ({project_id}) is invalid.")
@@ -58,7 +58,7 @@ class PubSubBroker(BaseRouter):
         self.broker_configurator = BrokerConfigurator(project_id=project_id)
         super().__init__(project_id=project_id, routers=routers, middlewares=middlewares)
 
-    def include_router(self, router: PubSubRouter) -> None:
+    def include_router(self, router: BaseRouter) -> None:
         if not (router and isinstance(router, PubSubRouter)):
             raise FastPubSubException(f"Your routers must be of type {PubSubRouter.__name__}")
 
@@ -87,7 +87,7 @@ class PubSubBroker(BaseRouter):
                 self.broker_configurator.create_subscription(subscriber=subscriber)
 
             if subscriber.lifecycle_policy.autoupdate:
-                await self.broker_configurator.update_subscription(subscriber)
+                self.broker_configurator.update_subscription(subscriber)
 
             self.process_manager.add_subscriber(subscriber)
 
@@ -148,7 +148,7 @@ class PubSubBroker(BaseRouter):
         return found_subscribers
 
     def _get_selected_subscribers(self) -> set[str]:
-        selected_subscribers = set()
+        selected_subscribers: set[str] = set()
         # TODO: Add API Only feature
         subscribers_text = os.getenv("FASTPUBSUB_SUBSCRIBERS", "")
         if not subscribers_text:

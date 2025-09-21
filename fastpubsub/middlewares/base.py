@@ -14,11 +14,17 @@ class BaseMiddleware:
         self.next_call = next_call
 
     @abstractmethod
-    async def on_message(self, message: Message):
+    async def on_message(self, message: Message) -> Any:
+        if isinstance(self.next_call, PublishMessageCommand):
+            raise TypeError(f"Incorrect middleware stack build for {self.__class__.__name__}")
+
         return await self.next_call.on_message(message)
 
     @abstractmethod
     async def on_publish(
         self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
+        if isinstance(self.next_call, HandleMessageCommand):
+            raise TypeError(f"Incorrect middleware stack build for {self.__class__.__name__}")
+
         return await self.next_call.on_publish(data, ordering_key, attributes)

@@ -2,7 +2,7 @@ import inspect
 import socket
 from collections.abc import Callable
 from types import FunctionType
-from typing import ParamSpec, TypeVar
+from typing import Any
 
 import psutil
 
@@ -10,32 +10,23 @@ from fastpubsub.concurrency.ipc import ConnectionInfo, ProcessInfo
 from fastpubsub.logger import logger
 from fastpubsub.middlewares.base import BaseMiddleware
 
-P = ParamSpec("P")
-T = TypeVar("T")
 
-
-def ensure_async_callable(obj: Callable[P, T]):
-    if isinstance(obj, FunctionType):
-        if not inspect.iscoroutinefunction(obj):
-            raise TypeError(f"The function {obj} must be async.")
+def ensure_async_callable(callable_object: Callable[[], Any] | type[BaseMiddleware]) -> None:
+    if isinstance(callable_object, FunctionType):
+        if not inspect.iscoroutinefunction(callable_object):
+            raise TypeError(f"The function {callable_object} must be async.")
         return
 
-    if issubclass(obj, BaseMiddleware):
+    # TODO: Refazer essa função!
+    if issubclass(callable_object, BaseMiddleware):
         if not (
-            inspect.iscoroutinefunction(obj.on_message)
-            and inspect.iscoroutinefunction(obj.on_publish)
+            inspect.iscoroutinefunction(callable_object.on_message)
+            and inspect.iscoroutinefunction(callable_object.on_publish)
         ):
-            raise TypeError(f"The on_message and on_publish from class {obj} must be async.")
+            raise TypeError(
+                f"The on_message and on_publish from class {callable_object} must be async."
+            )
         return
-
-    if inspect.isclass(obj):
-        if not callable(obj):
-            raise TypeError(f"The class {obj} must implement a async def __call__.")
-
-        if not inspect.iscoroutinefunction(obj.__call__):
-            raise TypeError(f"The class {obj} __call__ function must be async.")
-        return
-    return
 
 
 def get_process_info() -> ProcessInfo:

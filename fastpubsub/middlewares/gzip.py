@@ -18,7 +18,7 @@ class GzipMiddleware(BaseMiddleware):
         super().__init__(next_call)
         self.compress_level = compress_level
 
-    async def on_message(self, message: Message):
+    async def on_message(self, message: Message) -> Any:
         if message.attributes and message.attributes.get("Content-Encoding") == "gzip":
             decompressed_data = gzip.decompress(data=message.data)
             new_message = Message(

@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -21,8 +22,8 @@ class BaseRouter:
         self,
         prefix: str = "",
         project_id: str = "",
-        routers: list["BaseRouter"] = None,
-        middlewares: list[type[BaseMiddleware]] = None,
+        routers: tuple["BaseRouter"] | None = None,
+        middlewares: tuple[type[BaseMiddleware]] | None = None,
     ):
         # These field are lazily loaded
         self.prefix: str = prefix
@@ -34,14 +35,14 @@ class BaseRouter:
         self.middlewares: list[type[BaseMiddleware]] = []
 
         if routers:
-            if not isinstance(routers, list):
+            if not isinstance(routers, tuple):
                 raise FastPubSubException("Your routers should be passed as a list")
 
             for router in routers:
                 self.include_router(router)
 
         if middlewares:
-            if not isinstance(middlewares, list):
+            if not isinstance(middlewares, tuple):
                 raise FastPubSubException("Your routers should be passed as a list")
 
             for middleware in middlewares:
@@ -65,7 +66,7 @@ class BaseRouter:
         max_backoff_delay_secs: int = 600,
         max_messages: int = 1000,
         max_messages_bytes: int = 100 * 1024 * 1024,
-        middlewares: list[type[BaseMiddleware]] = None,
+        middlewares: tuple[type[BaseMiddleware]] | Any = None,
     ) -> SubscribedCallable:
         def decorator(func: DecoratedCallable) -> DecoratedCallable:
             prefixed_alias = alias
@@ -91,7 +92,8 @@ class BaseRouter:
 
             if existing_subscriber:
                 raise FastPubSubException(
-                    f"The subscription '{prefixed_subscription_name}' must be unique among handlers."
+                    f"The subscription '{prefixed_subscription_name}' "
+                    "must be unique among handlers."
                 )
 
             dead_letter_policy = None
@@ -144,7 +146,9 @@ class BaseRouter:
     def publisher(self, topic_name: str) -> Publisher:
         if topic_name not in self.publishers:
             publisher = Publisher(
-                project_id=self.project_id, topic_name=topic_name, middlewares=self.middlewares
+                project_id=self.project_id, 
+                topic_name=topic_name, 
+                middlewares=self.middlewares
             )
             self.publishers[topic_name] = publisher
 
@@ -153,9 +157,9 @@ class BaseRouter:
     async def publish(
         self,
         topic_name: str,
-        data: BaseModel | dict | str | bytes | bytearray,
+        data: BaseModel | dict[str, Any] | str | bytes | bytearray,
         ordering_key: str = "",
-        attributes: dict[str, str] = None,
+        attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:
         publisher = self.publisher(topic_name)

@@ -17,13 +17,13 @@ class ServerConfiguration:
     port: int
     workers: int
     reload: bool
-    log_level: bool
+    log_level: int
 
 
 @dataclass(frozen=True)
 class AppConfiguration:
     app: str
-    log_level: bool
+    log_level: int
     log_serialize: bool
     log_colorize: bool
     apm_provider: str
@@ -49,7 +49,7 @@ class ApplicationRunner:
             reload=server_config.reload,
         )
 
-    def setup_enviroment(self, app_config: AppConfiguration):
+    def setup_enviroment(self, app_config: AppConfiguration) -> None:
         os.environ["FASTPUBSUB_LOG_LEVEL"] = str(app_config.log_level)
         os.environ["FASTPUBSUB_ENABLE_LOG_SERIALIZE"] = (
             str(1) if app_config.log_serialize else str(0)
@@ -58,7 +58,7 @@ class ApplicationRunner:
         os.environ["FASTPUBSUB_SUBSCRIBERS"] = ",".join(app_config.subscribers)
         os.environ["FASTPUBSUB_APM_PROVIDER"] = app_config.apm_provider
 
-    def validate_application(self, path: str):
+    def validate_application(self, path: str) -> None:
         posix_path = self.translate_pypath_to_posix(pypath=path)
         self.resolve_application_posix_path(posix_path=posix_path)
 

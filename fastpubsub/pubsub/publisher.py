@@ -2,6 +2,7 @@
 
 import functools
 import json
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -15,7 +16,6 @@ class Publisher:
     def __init__(self, project_id: str, topic_name: str, middlewares: list[type[BaseMiddleware]]):
         self.project_id = project_id
         self.topic_name = topic_name
-        self.middlewares = middlewares
         self.middlewares: list[type[BaseMiddleware]] = []
 
         if middlewares:
@@ -24,7 +24,7 @@ class Publisher:
 
     async def publish(
         self,
-        data: BaseModel | dict | str | bytes | bytearray,
+        data: BaseModel | dict[str, Any] | str | bytes | bytearray,
         ordering_key: str = "",
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
@@ -33,18 +33,17 @@ class Publisher:
         serialized_message = self._serialize_message(data)
         await callstack.on_publish(serialized_message, ordering_key, attributes)
 
-    def _build_callstack(self, autocreate: bool = True) -> BaseMiddleware | PublishMessageCommand:
-        publish_command = PublishMessageCommand(
-            project_id=self.project_id, topic_name=self.topic_name
+    def _build_callstack(self, autocreate: bool = True) -> PublishMessageCommand | BaseMiddleware:
+        publish_command: PublishMessageCommand | BaseMiddleware = PublishMessageCommand(
+            project_id=self.project_id, topic_name=self.topic_name,
+            autocreate=autocreate
         )
 
-        original_call = publish_command.on_publish
-        publish_command.on_publish = functools.partial(original_call, autocreate=autocreate)
         for middleware in reversed(self.middlewares):
             publish_command = middleware(next_call=publish_command)
         return publish_command
 
-    def _serialize_message(self, data: BaseModel | dict | str | bytes | bytearray) -> bytes:
+    def _serialize_message(self, data: BaseModel | dict[str, Any] | str | bytes | bytearray) -> bytes:
         if isinstance(data, bytes):
             return data
 
@@ -77,5 +76,5 @@ class Publisher:
         ensure_async_callable(middleware)
         self.middlewares.append(middleware)
 
-    def set_project_id(self, project_id: str):
+    def set_project_id(self, project_id: str) -> None:
         self.project_id = project_id

@@ -82,7 +82,6 @@ def main(
 
 @app.command()
 def run(
-    ctx: CLIContext,
     app: AppArgument,
     workers: AppNumWorkersOption = 1,
     subscribers: AppSelectedSubscribersOption = [],
@@ -103,7 +102,7 @@ def run(
         log_serialize=log_serialize,
         log_colorize=log_colorize,
         apm_provider=apm_provider,
-        subscribers=set(subscribers),
+        subscribers=set(subscribers) if subscribers else set(),
     )
 
     translated_server_log_level = get_log_level(server_log_level)

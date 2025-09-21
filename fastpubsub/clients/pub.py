@@ -39,7 +39,7 @@ class PubSubPublisherClient:
                 )
 
     def publish(
-        self, *, data: bytes, attributes: dict[str, str] = {}, ordering_key: str = ""
+        self, *, data: bytes, ordering_key: str, attributes: dict[str, str] | None,
     ) -> None:
         """
         Publishes some data on a configured Pub/Sub topic.
@@ -60,7 +60,7 @@ class PubSubPublisherClient:
             )
             message_id = future.result()
             logger.info(f"Message published for topic {self.topic} with id {message_id}")
-            logger.debug(f"We sent {data} with metadata {attributes}")
+            logger.debug(f"We sent {data.decode()} with metadata {attributes}")
         except Exception:
             logger.exception("Publisher failure", stacklevel=5)
             raise

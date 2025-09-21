@@ -1,4 +1,5 @@
 import re
+from typing import cast
 
 from fastpubsub.baserouter import BaseRouter
 from fastpubsub.exceptions import FastPubSubException
@@ -12,8 +13,8 @@ class PubSubRouter(BaseRouter):
         self,
         prefix: str,
         *,
-        routers: list["PubSubRouter"] = None,
-        middlewares: list[type[BaseMiddleware]] = None,
+        routers: tuple["PubSubRouter"] | None = None,
+        middlewares: tuple[type[BaseMiddleware]] | None = None,
     ):
         if not isinstance(prefix, str) or not _PREFIX_REGEX.match(prefix):
             raise FastPubSubException(
@@ -26,8 +27,8 @@ class PubSubRouter(BaseRouter):
     def propagate_project_id(self, project_id: str) -> None:
         self.project_id = project_id
 
-        router: PubSubRouter
         for router in self.routers:
+            router = cast(PubSubRouter, router)
             router.add_prefix(self.prefix)
             router.propagate_project_id(project_id)
 
@@ -35,9 +36,9 @@ class PubSubRouter(BaseRouter):
             publisher.set_project_id(self.project_id)
 
         for subscriber in self.subscribers.values():
-            subscriber.set_project_id(self.project_id)
+            subscriber.set_project_id(self.project_id) 
 
-    def include_router(self, router: "PubSubRouter") -> None:
+    def include_router(self, router: BaseRouter) -> None:
         if not (router and isinstance(router, PubSubRouter)):
             raise FastPubSubException(f"Your routers must be of type {PubSubRouter.__name__}")
 
@@ -54,7 +55,7 @@ class PubSubRouter(BaseRouter):
 
         self.routers.append(router)
 
-    def add_prefix(self, new_prefix: str):
+    def add_prefix(self, new_prefix: str) -> None:
         if new_prefix in self.prefix:
             return
 
