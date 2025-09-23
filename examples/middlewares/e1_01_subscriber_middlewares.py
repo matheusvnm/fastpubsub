@@ -12,21 +12,21 @@ broker = PubSubBroker(project_id="fastpubsub-pubsub-local", middlewares=[BrokerM
 app = FastPubSub(broker)
 
 
-@broker.subscriber("broker-subscriber",
+@broker._add_subscriber("broker-subscriber",
                    topic_name="topic_one_mid",
                    subscription_name="subscription_one_mid",)
 async def broker_handle(message: Message):
     logger.info("This handler has only the broker middleware")
 
 
-@router.subscriber("router-subscriber",
+@router._add_subscriber("router-subscriber",
                    topic_name="topic_two_mid",
                    subscription_name="subscription_two_mid",)
 async def router_handle(message: Message):
     logger.info("This handler has a router and broker middlewares")
 
 
-@router.subscriber("router-subscriber-with-mid",
+@router._add_subscriber("router-subscriber-with-mid",
                    topic_name="topic_three_mid",
                    subscription_name="subscription_three_mid",
                    middlewares=[SubcriberMiddleware])

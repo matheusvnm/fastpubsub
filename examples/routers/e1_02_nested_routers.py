@@ -23,14 +23,14 @@ broker.include_router(router_core)
 app = FastPubSub(broker)
 
 
-@router_core.subscriber("some-alias",
+@router_core._add_subscriber("some-alias",
                    topic_name="some-router-topic",
                    subscription_name="some-router-sub",)
 async def handler_on_core_router(message: Message):
     logger.info(f"Processed message on core router: {message}")
 
 
-@router_sales.subscriber("some-alias",
+@router_sales._add_subscriber("some-alias",
                    topic_name="some-router-topic",
                    subscription_name="some-router-sub",)
 async def handler_on_sales_router(message: Message):
@@ -38,7 +38,7 @@ async def handler_on_sales_router(message: Message):
 
 
 
-@router_logistics.subscriber("some-alias",
+@router_logistics._add_subscriber("some-alias",
                    topic_name="some-router-topic",
                    subscription_name="some-router-sub",)
 async def handler_on_logistics_router(message: Message):

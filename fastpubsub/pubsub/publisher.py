@@ -12,8 +12,8 @@ from fastpubsub.pubsub.commands import PublishMessageCommand
 
 
 class Publisher:
-    def __init__(self, project_id: str, topic_name: str, middlewares: list[type[BaseMiddleware]]):
-        self.project_id = project_id
+    def __init__(self, topic_name: str, middlewares: list[type[BaseMiddleware]]):
+        self.project_id = ""
         self.topic_name = topic_name
         self.middlewares: list[type[BaseMiddleware]] = []
 

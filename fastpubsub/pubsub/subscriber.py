@@ -16,7 +16,6 @@ class Subscriber:
     def __init__(
         self,
         func: AsyncCallable,
-        project_id: str,
         topic_name: str,
         subscription_name: str,
         retry_policy: MessageRetryPolicy,
@@ -26,7 +25,7 @@ class Subscriber:
         dead_letter_policy: DeadLetterPolicy | None = None,
         middlewares: list[type[BaseMiddleware]] | None = None,
     ) -> None:
-        self.project_id = project_id
+        self.project_id = ""
         self.topic_name = topic_name
         self.subscription_name = subscription_name
         self.retry_policy = retry_policy
@@ -66,4 +65,5 @@ class Subscriber:
         self.project_id = project_id
 
     def add_prefix(self, new_prefix: str) -> None:
-        self.subscription_name = f"{new_prefix}.{self.subscription_name}"
+        subscription_name = self.subscription_name.split(".")[-1]
+        self.subscription_name = f"{new_prefix}.{subscription_name}"

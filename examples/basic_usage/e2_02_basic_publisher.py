@@ -12,7 +12,7 @@ app = FastPubSub(broker)
 
 publisher: Publisher = broker.publisher("test-topic")
 
-@broker.subscriber("test-alias",
+@broker._add_subscriber("test-alias",
                    topic_name="test-topic",
                    subscription_name="test-publish",)
 async def handle(message: Message):

@@ -47,7 +47,6 @@ python_files = ["test_*.py", "tests_*.py"]
 verbosity_test_cases = 3
 
 [tool.coverage.run]
-parallel = true
 source = ["fastpubsub"]
 
 [tool.coverage.report]

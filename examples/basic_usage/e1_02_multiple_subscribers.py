@@ -8,21 +8,21 @@ broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 app = FastPubSub(broker)
 
 
-@broker.subscriber("first-alias",
+@broker._add_subscriber("first-alias",
                    topic_name="first-topic",
                    subscription_name="test-multi-subscription",)
 async def handle_response(message: Message):
     logger.info(f"Processed message: {message}")
 
 
-@broker.subscriber("second-alias",
+@broker._add_subscriber("second-alias",
                    topic_name="first-topic",
                    subscription_name="test-multi-subscription2",)
 async def handle_response_another_subscription(message: Message):
     logger.info(f"Processed message: {message}")
 
 
-@broker.subscriber("third-alias",
+@broker._add_subscriber("third-alias",
                    topic_name="second-topic",
                    subscription_name="test-multi-subscription3",)
 async def handle_another_response_another_topic(message: Message):

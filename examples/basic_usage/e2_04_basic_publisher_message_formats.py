@@ -15,7 +15,7 @@ class TestMessage(BaseModel):
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 app = FastPubSub(broker)
 
-@broker.subscriber("test-alias",
+@broker._add_subscriber("test-alias",
                    topic_name="test-topic-pydantic",
                    subscription_name="test-publish-pydantic",)
 async def handle(message: Message):

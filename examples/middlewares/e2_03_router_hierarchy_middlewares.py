@@ -23,21 +23,21 @@ broker.include_middleware(BrokerMiddleware)
 
 app = FastPubSub(broker)
 
-@broker.subscriber("broker-subscriber",
+@broker._add_subscriber("broker-subscriber",
                    topic_name="some_test_topic",
                    subscription_name="tst_sub",)
 async def broker_handle(message: Message):
     logger.info("We received a message!")
 
 
-@parent_router.subscriber("parent-subscriber",
+@parent_router._add_subscriber("parent-subscriber",
                    topic_name="some_test_topic2",
                    subscription_name="tst_sub",)
 async def parent_router_handle(message: Message):
     logger.info("We received a message!")
 
 
-@child_router.subscriber("child-subscriber",
+@child_router._add_subscriber("child-subscriber",
                    topic_name="some_test_topic3",
                    subscription_name="tst_sub",)
 async def subrouter_handle(message: Message):

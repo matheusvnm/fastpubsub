@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from collections import OrderedDict
 from typing import Any
 
 from pydantic import BaseModel
@@ -18,35 +19,15 @@ from fastpubsub.types import DecoratedCallable, SubscribedCallable
 
 
 class BaseRouter:
-    def __init__(
-        self,
-        prefix: str = "",
-        project_id: str = "",
-        routers: tuple["BaseRouter"] | None = None,
-        middlewares: tuple[type[BaseMiddleware]] | None = None,
-    ):
-        # These field are lazily loaded
+    def __init__(self, prefix: str = ""):
         self.prefix: str = prefix
-        self.project_id: str = project_id
-
         self.routers: list[BaseRouter] = []
         self.publishers: dict[str, Publisher] = {}
         self.subscribers: dict[str, Subscriber] = {}
         self.middlewares: list[type[BaseMiddleware]] = []
 
-        if routers:
-            if not isinstance(routers, tuple):
-                raise FastPubSubException("Your routers should be passed as a list")
-
-            for router in routers:
-                self.include_router(router)
-
-        if middlewares:
-            if not isinstance(middlewares, tuple):
-                raise FastPubSubException("Your routers should be passed as a list")
-
-            for middleware in middlewares:
-                self.include_middleware(middleware)
+    @abstractmethod
+    def include_router(self, router: "BaseRouter") -> None: ...
 
     def subscriber(
         self,
@@ -127,7 +108,6 @@ class BaseRouter:
 
             subscriber = Subscriber(
                 func=func,
-                project_id=self.project_id,
                 topic_name=topic_name,
                 subscription_name=prefixed_subscription_name,
                 retry_policy=retry_policy,
@@ -145,9 +125,7 @@ class BaseRouter:
 
     def publisher(self, topic_name: str) -> Publisher:
         if topic_name not in self.publishers:
-            publisher = Publisher(
-                project_id=self.project_id, topic_name=topic_name, middlewares=self.middlewares
-            )
+            publisher = Publisher(topic_name=topic_name, middlewares=self.middlewares)
             self.publishers[topic_name] = publisher
 
         return self.publishers[topic_name]
@@ -178,16 +156,35 @@ class BaseRouter:
         for router in self.routers:
             router.include_middleware(middleware)
 
-    def get_subscribers(self) -> dict[str, Subscriber]:
+    def _get_subscribers(self) -> dict[str, Subscriber]:
         subscribers: dict[str, Subscriber] = {}
         subscribers.update(self.subscribers)
 
         router: BaseRouter
         for router in self.routers:
-            router_subscribers = router.get_subscribers()
+            router_subscribers = router._get_subscribers()
             subscribers.update(router_subscribers)
 
         return subscribers
 
-    @abstractmethod
-    def include_router(self, router: "BaseRouter") -> None: ...
+    def add_prefix(self, prefix: str) -> None:
+        if not prefix:
+            return
+
+        prefixes = OrderedDict()
+        for new_prefix in prefix.split("."):
+            prefixes[new_prefix] = True
+
+        for old_prefix in self.prefix.split("."):
+            prefixes[old_prefix] = True
+
+        self.prefix = ".".join(list(prefixes.keys()))
+        subscribers_to_realias = dict(self.subscribers)
+
+        self.subscribers.clear()
+        for alias, subscriber in subscribers_to_realias.items():
+            subscriber.add_prefix(self.prefix)
+
+            old_alias = alias.split(".")[-1]
+            new_prefixed_alias = f"{self.prefix}.{old_alias}"
+            self.subscribers[new_prefixed_alias] = subscriber

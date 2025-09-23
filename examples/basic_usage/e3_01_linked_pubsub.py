@@ -10,7 +10,7 @@ from fastpubsub.pubsub.publisher import Publisher
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 app = FastPubSub(broker)
 
-@broker.subscriber("first-alias",
+@broker._add_subscriber("first-alias",
                    topic_name="first-topic",
                    subscription_name="test-publish",)
 async def handle(message: Message):
@@ -20,7 +20,7 @@ async def handle(message: Message):
 
 
 
-@broker.subscriber("second-alias",
+@broker._add_subscriber("second-alias",
                    topic_name="second-topic",
                    subscription_name="test-linked-subscription",)
 async def handle_from_another_topic(message: Message):
