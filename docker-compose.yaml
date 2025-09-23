@@ -1,0 +1,15 @@
+services:
+  pubsub:
+    image: google/cloud-sdk:emulators
+    command: gcloud beta emulators pubsub start --project fastpubsub-pubsub-local --host-port 0.0.0.0:8085
+    environment:
+      - CLOUDSDK_CORE_PROJECT=fastpubsub-pubsub-local
+    volumes:
+      - pubsub_data:/data
+    ports:
+      - "8085:8085"
+    extra_hosts:
+      - "localhost:host-gateway"
+
+volumes:
+  pubsub_data:
