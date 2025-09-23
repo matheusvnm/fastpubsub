@@ -2,7 +2,7 @@ import contextlib
 from dataclasses import asdict
 from multiprocessing import get_context
 from multiprocessing.connection import Connection
-from multiprocessing.context import BaseContext, DefaultContext
+from multiprocessing.context import DefaultContext
 from multiprocessing.process import BaseProcess
 from typing import Any, cast
 
@@ -72,7 +72,7 @@ class ProcessController:
                 response = cast(InterprocessRequest, response)
                 return response
         except (BrokenPipeError, EOFError):
-            logger.error("Pipe to manager process is broken.")        
+            logger.error("Pipe to manager process is broken.")
 
         return None
 

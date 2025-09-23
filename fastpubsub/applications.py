@@ -1,23 +1,21 @@
-from collections.abc import AsyncGenerator, AsyncIterator, Callable, Coroutine, Sequence
+from collections.abc import AsyncGenerator, AsyncIterator, Sequence
 from contextlib import asynccontextmanager
-from ctypes import cast
-from typing import Any, TypeVar
+from typing import Any
 
 from fastapi import FastAPI, Request, Response, routing
 from fastapi.middleware import Middleware
+from fastapi.params import Depends
 from fastapi.responses import JSONResponse
 from starlette.applications import Starlette
 from starlette.routing import BaseRoute
 from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
-from fastapi.params import Depends
+from starlette.types import Lifespan
 
 from fastpubsub.broker import PubSubBroker
-from fastpubsub.concurrency.utils import ensure_async_callable
+from fastpubsub.concurrency.utils import ensure_async_callable_function
 from fastpubsub.logger import logger
 from fastpubsub.observability import get_apm_provider
 from fastpubsub.types import AsyncRequestHandler, ExceptionMarker, NoArgAsyncCallable
-from starlette.types import Lifespan
-
 
 
 class Application:
@@ -52,22 +50,22 @@ class Application:
                 self.after_shutdown(func)
 
     def on_startup(self, func: NoArgAsyncCallable) -> NoArgAsyncCallable:
-        ensure_async_callable(func)
+        ensure_async_callable_function(func)
         self._on_startup.append(func)
         return func
 
     def on_shutdown(self, func: NoArgAsyncCallable) -> NoArgAsyncCallable:
-        ensure_async_callable(func)
+        ensure_async_callable_function(func)
         self._on_shutdown.append(func)
         return func
 
     def after_startup(self, func: NoArgAsyncCallable) -> NoArgAsyncCallable:
-        ensure_async_callable(func)
+        ensure_async_callable_function(func)
         self._after_startup.append(func)
         return func
 
     def after_shutdown(self, func: NoArgAsyncCallable) -> NoArgAsyncCallable:
-        ensure_async_callable(func)
+        ensure_async_callable_function(func)
         self._after_shutdown.append(func)
         return func
 
@@ -140,7 +138,7 @@ class FastPubSub(FastAPI, Application):
         description: str = "",
         version: str = "0.1.0",
         openapi_url: str = "/openapi.json",
-        openapi_tags: list[dict[str, Any]] | None  = None,
+        openapi_tags: list[dict[str, Any]] | None = None,
         servers: list[dict[str, str | Any]] | None = None,
         dependencies: Sequence[Depends] | None = None,  #
         default_response_class: type[Response] = JSONResponse,
@@ -241,7 +239,7 @@ class FastPubSub(FastAPI, Application):
 
     async def _get_readiness(self, _: Request) -> JSONResponse:
         ready = self.broker.ready()
-        
+
         status_code = HTTP_200_OK
         if not ready:
             status_code = HTTP_500_INTERNAL_SERVER_ERROR

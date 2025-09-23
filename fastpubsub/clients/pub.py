@@ -39,7 +39,11 @@ class PubSubPublisherClient:
                 )
 
     def publish(
-        self, *, data: bytes, ordering_key: str, attributes: dict[str, str] | None,
+        self,
+        *,
+        data: bytes,
+        ordering_key: str,
+        attributes: dict[str, str] | None,
     ) -> None:
         """
         Publishes some data on a configured Pub/Sub topic.

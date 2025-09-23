@@ -1,5 +1,4 @@
-from typing import cast
-from fastpubsub.concurrency.utils import ensure_async_callable
+from fastpubsub.concurrency.utils import ensure_async_middleware
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,
@@ -49,7 +48,7 @@ class Subscriber:
         if middleware in self.middlewares:
             return
 
-        ensure_async_callable(middleware)
+        ensure_async_middleware(middleware)
         self.middlewares.append(middleware)
 
     @property

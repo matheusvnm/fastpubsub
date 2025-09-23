@@ -1,5 +1,5 @@
-from collections.abc import Awaitable, Callable
-from typing import Any, Coroutine, ParamSpec, TypeVar
+from collections.abc import Awaitable, Callable, Coroutine
+from typing import Any
 
 from fastapi import Request, Response
 
@@ -13,5 +13,3 @@ SyncCallable = Callable[[Any], None]
 
 AsyncRequestHandler = Callable[[Request, Any], Coroutine[Any, Any, Response]]
 ExceptionMarker = int | type[Exception]
-
-

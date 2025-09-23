@@ -6,7 +6,7 @@ from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.commands import HandleMessageCommand, PublishMessageCommand
 
 
-class GzipMiddleware(BaseMiddleware):
+class GZipMiddleware(BaseMiddleware):
     # TODO: Ajustar middlewares para permitir args/kwargs
     def __init__(
         self,

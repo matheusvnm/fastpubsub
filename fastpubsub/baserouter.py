@@ -146,9 +146,7 @@ class BaseRouter:
     def publisher(self, topic_name: str) -> Publisher:
         if topic_name not in self.publishers:
             publisher = Publisher(
-                project_id=self.project_id, 
-                topic_name=topic_name, 
-                middlewares=self.middlewares
+                project_id=self.project_id, topic_name=topic_name, middlewares=self.middlewares
             )
             self.publishers[topic_name] = publisher
 

@@ -3,10 +3,10 @@ from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
 from fastpubsub.logger import logger
 
-from fastpubsub.middlewares.gzip import GzipMiddleware
+from fastpubsub.middlewares.gzip import GZipMiddleware
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
-broker.include_middleware(GzipMiddleware)
+broker.include_middleware(GZipMiddleware)
 
 app = FastPubSub(broker)
 

@@ -11,22 +11,23 @@ from fastpubsub.logger import logger
 from fastpubsub.middlewares.base import BaseMiddleware
 
 
-def ensure_async_callable(callable_object: Callable[[], Any] | type[BaseMiddleware]) -> None:
-    if isinstance(callable_object, FunctionType):
-        if not inspect.iscoroutinefunction(callable_object):
-            raise TypeError(f"The function {callable_object} must be async.")
-        return
+def ensure_async_callable_function(callable_object: Callable[[], Any]) -> None:
+    if not isinstance(callable_object, FunctionType):
+        raise TypeError(f"The object must be a function type but it is {callable_object}.")
 
-    # TODO: Refazer essa função!
-    if issubclass(callable_object, BaseMiddleware):
-        if not (
-            inspect.iscoroutinefunction(callable_object.on_message)
-            and inspect.iscoroutinefunction(callable_object.on_publish)
-        ):
-            raise TypeError(
-                f"The on_message and on_publish from class {callable_object} must be async."
-            )
-        return
+    if not inspect.iscoroutinefunction(callable_object):
+        raise TypeError(f"The function {callable_object} must be async.")
+
+
+def ensure_async_middleware(callable_object: type[BaseMiddleware]) -> None:
+    if not issubclass(callable_object, BaseMiddleware):
+        raise TypeError(f"The object {callable_object} must be a {BaseMiddleware.__name__}.")
+
+    if not inspect.iscoroutinefunction(callable_object.on_message):
+        raise TypeError(f"The on_message method must be async on {callable_object}.")
+
+    if not inspect.iscoroutinefunction(callable_object.on_publish):
+        raise TypeError(f"The on_publish method must be async on {callable_object}.")
 
 
 def get_process_info() -> ProcessInfo:

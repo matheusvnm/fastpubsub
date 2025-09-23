@@ -1,12 +1,11 @@
 """Publisher logic."""
 
-import functools
 import json
 from typing import Any
 
 from pydantic import BaseModel
 
-from fastpubsub.concurrency.utils import ensure_async_callable
+from fastpubsub.concurrency.utils import ensure_async_middleware
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.commands import PublishMessageCommand
@@ -35,15 +34,16 @@ class Publisher:
 
     def _build_callstack(self, autocreate: bool = True) -> PublishMessageCommand | BaseMiddleware:
         publish_command: PublishMessageCommand | BaseMiddleware = PublishMessageCommand(
-            project_id=self.project_id, topic_name=self.topic_name,
-            autocreate=autocreate
+            project_id=self.project_id, topic_name=self.topic_name, autocreate=autocreate
         )
 
         for middleware in reversed(self.middlewares):
             publish_command = middleware(next_call=publish_command)
         return publish_command
 
-    def _serialize_message(self, data: BaseModel | dict[str, Any] | str | bytes | bytearray) -> bytes:
+    def _serialize_message(
+        self, data: BaseModel | dict[str, Any] | str | bytes | bytearray
+    ) -> bytes:
         if isinstance(data, bytes):
             return data
 
@@ -73,7 +73,7 @@ class Publisher:
         if middleware in self.middlewares:
             return
 
-        ensure_async_callable(middleware)
+        ensure_async_middleware(middleware)
         self.middlewares.append(middleware)
 
     def set_project_id(self, project_id: str) -> None:

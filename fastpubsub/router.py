@@ -36,7 +36,7 @@ class PubSubRouter(BaseRouter):
             publisher.set_project_id(self.project_id)
 
         for subscriber in self.subscribers.values():
-            subscriber.set_project_id(self.project_id) 
+            subscriber.set_project_id(self.project_id)
 
     def include_router(self, router: BaseRouter) -> None:
         if not (router and isinstance(router, PubSubRouter)):
