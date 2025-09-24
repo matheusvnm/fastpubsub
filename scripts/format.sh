@@ -3,6 +3,7 @@
 set -e
 set -x
 
-ruff format fastpubsub
-ruff check fastpubsub --select I --fix
-ruff check fastpubsub --fix
+# TODO: Adicionar examples
+ruff format fastpubsub tests
+ruff check fastpubsub tests --select I --fix
+ruff check fastpubsub tests --fix

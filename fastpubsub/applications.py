@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request, Response, routing
 from fastapi.middleware import Middleware
 from fastapi.params import Depends
 from fastapi.responses import JSONResponse
+from pydantic import validate_call
 from starlette.applications import Starlette
 from starlette.routing import BaseRoute
 from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
@@ -49,27 +50,33 @@ class Application:
             for func in after_shutdown:
                 self.after_shutdown(func)
 
+    @validate_call
     def on_startup(self, func: NoArgAsyncCallable) -> NoArgAsyncCallable:
         ensure_async_callable_function(func)
         self._on_startup.append(func)
         return func
 
+    @validate_call
     def on_shutdown(self, func: NoArgAsyncCallable) -> NoArgAsyncCallable:
         ensure_async_callable_function(func)
         self._on_shutdown.append(func)
         return func
 
+    @validate_call
     def after_startup(self, func: NoArgAsyncCallable) -> NoArgAsyncCallable:
         ensure_async_callable_function(func)
         self._after_startup.append(func)
         return func
 
+    @validate_call
     def after_shutdown(self, func: NoArgAsyncCallable) -> NoArgAsyncCallable:
         ensure_async_callable_function(func)
         self._after_shutdown.append(func)
         return func
 
     async def _start(self) -> None:
+        # TODO: Create a module for context and a extensible
+        # class for context add (LoggerContextualizer.contextualize(name=name, message=None))
         apm = get_apm_provider()
         apm.initialize()
         with apm.background_transaction(name="start"):

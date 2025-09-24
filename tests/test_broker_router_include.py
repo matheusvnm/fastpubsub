@@ -1,7 +1,3 @@
-
-
-
-
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.router import PubSubRouter
 
@@ -12,7 +8,9 @@ def test_router_inclusion_on_constructor():
     parent_router = PubSubRouter("parent", routers=(child_router,))
     another_parent_router = PubSubRouter("another_parent")
 
-    broker = PubSubBroker(project_id="some_project_id", routers=(parent_router, another_parent_router))
+    broker = PubSubBroker(
+        project_id="some_project_id", routers=(parent_router, another_parent_router)
+    )
 
     assert len(another_parent_router.routers) == 0
     assert len(grandchild_router.routers) == 0

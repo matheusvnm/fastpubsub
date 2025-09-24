@@ -1,18 +1,17 @@
-from pydantic import ValidationError
 import pytest
+from pydantic import ValidationError
 
 from fastpubsub.broker import PubSubBroker
-from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.pubsub.subscriber import Subscriber
 from fastpubsub.router import PubSubRouter
 
-
 # Include subscriber/publisher middleware
 
+
 def test_include_broker_middleware_only_once(first_middleware: type[BaseMiddleware]):
-    broker = PubSubBroker(project_id="id", middlewares=(first_middleware, ))
+    broker = PubSubBroker(project_id="id", middlewares=(first_middleware,))
     broker.include_middleware(middleware=first_middleware)
     assert len(broker.router.middlewares) == 1
 
@@ -22,7 +21,7 @@ def test_include_broker_middleware_only_once(first_middleware: type[BaseMiddlewa
 
 
 def test_include_router_middleware_only_once(first_middleware: type[BaseMiddleware]):
-    router = PubSubRouter(prefix="core", middlewares=(first_middleware, ))
+    router = PubSubRouter(prefix="core", middlewares=(first_middleware,))
     router.include_middleware(first_middleware)
 
     broker = PubSubBroker(project_id="id")
@@ -41,9 +40,11 @@ def test_include_router_middleware_only_once(first_middleware: type[BaseMiddlewa
     assert len(other_broker.router.middlewares) == 0
 
 
-def test_include_middleware_hierarchy(first_middleware: type[BaseMiddleware],
-                                      second_middleware: type[BaseMiddleware],
-                                      third_middleware: type[BaseMiddleware],):
+def test_include_middleware_hierarchy(
+    first_middleware: type[BaseMiddleware],
+    second_middleware: type[BaseMiddleware],
+    third_middleware: type[BaseMiddleware],
+):
     child_router = PubSubRouter(prefix="child")
     child_router.include_middleware(third_middleware)
 
@@ -54,7 +55,6 @@ def test_include_middleware_hierarchy(first_middleware: type[BaseMiddleware],
     broker = PubSubBroker(project_id="id")
     broker.include_router(parent_router)
     broker.include_middleware(middleware=first_middleware)
-
 
     assert len(child_router.middlewares) == 3
     assert child_router.middlewares[0] == third_middleware
@@ -69,11 +69,12 @@ def test_include_middleware_hierarchy(first_middleware: type[BaseMiddleware],
     assert broker.router.middlewares[0] == first_middleware
 
 
-
-def test_include_subscriber_middleware_hierarchy(first_middleware: type[BaseMiddleware],
-                                                 second_middleware: type[BaseMiddleware],
-                                                 third_middleware: type[BaseMiddleware],
-                                                 final_middleware: type[BaseMiddleware]):
+def test_include_subscriber_middleware_hierarchy(
+    first_middleware: type[BaseMiddleware],
+    second_middleware: type[BaseMiddleware],
+    third_middleware: type[BaseMiddleware],
+    final_middleware: type[BaseMiddleware],
+):
     def handle_child(_):
         return _
 
@@ -85,28 +86,23 @@ def test_include_subscriber_middleware_hierarchy(first_middleware: type[BaseMidd
 
     child_router = PubSubRouter(prefix="child")
     child_router.include_middleware(third_middleware)
-    child_router.subscriber("some_alias",
-                topic_name="topic",
-                subscription_name="sub",
-                middlewares=(final_middleware,))(handle_child)
+    child_router.subscriber(
+        "some_alias", topic_name="topic", subscription_name="sub", middlewares=(final_middleware,)
+    )(handle_child)
 
     parent_router = PubSubRouter(prefix="parent")
     parent_router.include_middleware(middleware=second_middleware)
     parent_router.include_router(child_router)
-    parent_router.subscriber("some_alias2",
-            topic_name="topic",
-            subscription_name="sub2",
-            middlewares=(final_middleware,))(handle_parent)
-
+    parent_router.subscriber(
+        "some_alias2", topic_name="topic", subscription_name="sub2", middlewares=(final_middleware,)
+    )(handle_parent)
 
     broker = PubSubBroker(project_id="id")
     broker.include_router(parent_router)
     broker.include_middleware(middleware=first_middleware)
-    broker.subscriber("some_alias3",
-        topic_name="topic",
-        subscription_name="sub3",
-        middlewares=(final_middleware,))(handle_broker)
-
+    broker.subscriber(
+        "some_alias3", topic_name="topic", subscription_name="sub3", middlewares=(final_middleware,)
+    )(handle_broker)
 
     subscriber: Subscriber = child_router.subscribers.popitem()[1]
     assert len(subscriber.middlewares) == 4
@@ -127,12 +123,12 @@ def test_include_subscriber_middleware_hierarchy(first_middleware: type[BaseMidd
     assert subscriber.middlewares[1] == first_middleware
 
 
-
-def test_include_publisher_middleware_hierarchy(first_middleware: type[BaseMiddleware],
-                                                 second_middleware: type[BaseMiddleware],
-                                                 third_middleware: type[BaseMiddleware],
-                                                 final_middleware: type[BaseMiddleware]):
-
+def test_include_publisher_middleware_hierarchy(
+    first_middleware: type[BaseMiddleware],
+    second_middleware: type[BaseMiddleware],
+    third_middleware: type[BaseMiddleware],
+    final_middleware: type[BaseMiddleware],
+):
     child_router = PubSubRouter(prefix="child")
     child_router.include_middleware(third_middleware)
 
@@ -175,3 +171,6 @@ def test_fail_to_include_non_base_middleware():
     broker = PubSubBroker(project_id="abc")
     with pytest.raises(ValidationError):
         broker.include_middleware(middleware=NonBaseMiddleware)
+
+
+# TOTEST: Deveriamos bloquear inclusões de routers com chaves repetidas (testar)
