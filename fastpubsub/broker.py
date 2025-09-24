@@ -3,7 +3,7 @@
 import os
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validate_call
 
 from fastpubsub.clients.pub import PubSubPublisherClient
 from fastpubsub.clients.sub import PubSubSubscriberClient
@@ -69,6 +69,7 @@ class PubSubBroker:
         self.router = PubSubRouter(routers=routers, middlewares=middlewares)
         self.router._propagate_project_id(project_id)
 
+    @validate_call
     def subscriber(
         self,
         alias: str,
@@ -108,14 +109,16 @@ class PubSubBroker:
             middlewares=middlewares,
         )
 
+    @validate_call
     def publisher(self, topic_name: str) -> Publisher:
         return self.router.publisher(topic_name=topic_name)
 
+    @validate_call
     async def publish(
         self,
         topic_name: str,
-        data: BaseModel | dict[str, Any] | str | bytes | bytearray,
-        ordering_key: str = "",
+        data: BaseModel | dict[str, Any] | str | bytes,
+        ordering_key: str | None = None,
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:
@@ -130,6 +133,7 @@ class PubSubBroker:
     def include_router(self, router: PubSubRouter) -> None:
         return self.router.include_router(router)
 
+    @validate_call
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
         return self.router.include_middleware(middleware)
 

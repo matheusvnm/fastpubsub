@@ -53,7 +53,7 @@ class PubSubRouter(BaseRouter):
         for subscriber in self.subscribers.values():
             subscriber.set_project_id(self.project_id)
 
-    def include_router(self, router: BaseRouter) -> None:
+    def include_router(self, router: "PubSubRouter") -> None:
         if not (router and isinstance(router, PubSubRouter)):
             raise FastPubSubException(f"Your routers must be of type {PubSubRouter.__name__}")
 

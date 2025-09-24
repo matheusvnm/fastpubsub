@@ -1,6 +1,8 @@
+from pydantic import ValidationError
 import pytest
 
 from fastpubsub.broker import PubSubBroker
+from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.pubsub.subscriber import Subscriber
@@ -8,29 +10,6 @@ from fastpubsub.router import PubSubRouter
 
 
 # Include subscriber/publisher middleware
-
-@pytest.fixture
-def first_middleware() -> type[BaseMiddleware]:
-    class FirstMiddleware(BaseMiddleware): ...
-    return FirstMiddleware
-
-@pytest.fixture
-def second_middleware() -> type[BaseMiddleware]:
-    class SecondMiddleware(BaseMiddleware): ...
-    return SecondMiddleware
-
-
-@pytest.fixture
-def third_middleware() -> type[BaseMiddleware]:
-    class ThirdMiddleware(BaseMiddleware): ...
-    return ThirdMiddleware
-
-@pytest.fixture
-def final_middleware() -> type[BaseMiddleware]:
-    class FinalMiddleware(BaseMiddleware): ...
-    return FinalMiddleware
-
-
 
 def test_include_broker_middleware_only_once(first_middleware: type[BaseMiddleware]):
     broker = PubSubBroker(project_id="id", middlewares=(first_middleware, ))
@@ -188,3 +167,11 @@ def test_include_publisher_middleware_hierarchy(first_middleware: type[BaseMiddl
     assert len(publisher.middlewares) == 2
     assert publisher.middlewares[0] == first_middleware
     assert publisher.middlewares[1] == final_middleware
+
+
+def test_fail_to_include_non_base_middleware():
+    class NonBaseMiddleware: ...
+
+    broker = PubSubBroker(project_id="abc")
+    with pytest.raises(ValidationError):
+        broker.include_middleware(middleware=NonBaseMiddleware)

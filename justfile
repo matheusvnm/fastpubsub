@@ -21,6 +21,8 @@ lint:
 format:
     @bash $SCRIPTS_DIR/format.sh
 
+coverage:
+    @bash $SCRIPTS_DIR/test-cov.sh
 
 publish:
     uv publish

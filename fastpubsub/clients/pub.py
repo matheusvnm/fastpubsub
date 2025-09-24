@@ -42,7 +42,7 @@ class PubSubPublisherClient:
         self,
         *,
         data: bytes,
-        ordering_key: str,
+        ordering_key: str | None,
         attributes: dict[str, str] | None,
     ) -> None:
         """

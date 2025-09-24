@@ -1,8 +1,7 @@
-from abc import abstractmethod
 from collections import OrderedDict
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validate_call
 
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
@@ -26,9 +25,7 @@ class BaseRouter:
         self.subscribers: dict[str, Subscriber] = {}
         self.middlewares: list[type[BaseMiddleware]] = []
 
-    @abstractmethod
-    def include_router(self, router: "BaseRouter") -> None: ...
-
+    @validate_call
     def subscriber(
         self,
         alias: str,
@@ -123,6 +120,7 @@ class BaseRouter:
 
         return decorator
 
+    @validate_call
     def publisher(self, topic_name: str) -> Publisher:
         if topic_name not in self.publishers:
             publisher = Publisher(topic_name=topic_name, middlewares=self.middlewares)
@@ -130,11 +128,12 @@ class BaseRouter:
 
         return self.publishers[topic_name]
 
+    @validate_call
     async def publish(
         self,
         topic_name: str,
-        data: BaseModel | dict[str, Any] | str | bytes | bytearray,
-        ordering_key: str = "",
+        data: BaseModel | dict[str, Any] | str | bytes,
+        ordering_key: str | None = None,
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:
@@ -143,7 +142,11 @@ class BaseRouter:
             data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
         )
 
+    @validate_call
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
+        if not (middleware and issubclass(middleware, BaseMiddleware)):
+            raise FastPubSubException(f"The middleware should be a {BaseMiddleware.__name__} type.")
+
         for publisher in self.publishers.values():
             publisher.include_middleware(middleware)
 
@@ -167,6 +170,7 @@ class BaseRouter:
 
         return subscribers
 
+    @validate_call
     def add_prefix(self, prefix: str) -> None:
         if not prefix:
             return

@@ -1,3 +1,5 @@
+from pydantic import validate_call
+
 from fastpubsub.concurrency.utils import ensure_async_middleware
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
@@ -6,7 +8,6 @@ from fastpubsub.datastructures import (
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
-from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.commands import HandleMessageCommand
 from fastpubsub.types import AsyncCallable
@@ -40,10 +41,8 @@ class Subscriber:
             for middleware in middlewares:
                 self.include_middleware(middleware)
 
+    @validate_call
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
-        if not (middleware and issubclass(middleware, BaseMiddleware)):
-            raise FastPubSubException(f"The middleware should be a {BaseMiddleware.__name__} type.")
-
         if middleware in self.middlewares:
             return
 

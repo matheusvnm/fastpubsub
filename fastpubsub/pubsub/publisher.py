@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validate_call
 
 from fastpubsub.concurrency.utils import ensure_async_middleware
 from fastpubsub.exceptions import FastPubSubException
@@ -21,10 +21,11 @@ class Publisher:
             for middleware in middlewares:
                 self.include_middleware(middleware)
 
+    @validate_call
     async def publish(
         self,
-        data: BaseModel | dict[str, Any] | str | bytes | bytearray,
-        ordering_key: str = "",
+        data: BaseModel | dict[str, Any] | str | bytes,
+        ordering_key: str | None = None,
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:
@@ -41,14 +42,9 @@ class Publisher:
             publish_command = middleware(next_call=publish_command)
         return publish_command
 
-    def _serialize_message(
-        self, data: BaseModel | dict[str, Any] | str | bytes | bytearray
-    ) -> bytes:
+    def _serialize_message(self, data: BaseModel | dict[str, Any] | str | bytes) -> bytes:
         if isinstance(data, bytes):
             return data
-
-        if isinstance(data, bytearray):
-            return bytes(data)
 
         if isinstance(data, str):
             return data.encode(encoding="utf-8")
@@ -66,10 +62,8 @@ class Publisher:
             "Please send as one of the following formats: BaseModel, dict, str, bytes or bytearray)"
         )
 
+    @validate_call
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
-        if not (middleware and issubclass(middleware, BaseMiddleware)):
-            raise FastPubSubException(f"The middleware should be a {BaseMiddleware.__name__} type.")
-
         if middleware in self.middlewares:
             return
 

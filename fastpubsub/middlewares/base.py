@@ -22,7 +22,7 @@ class BaseMiddleware:
 
     @abstractmethod
     async def on_publish(
-        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
+        self, data: bytes, ordering_key: str | None, attributes: dict[str, str] | None
     ) -> Any:
         if isinstance(self.next_call, HandleMessageCommand):
             raise TypeError(f"Incorrect middleware stack build for {self.__class__.__name__}")

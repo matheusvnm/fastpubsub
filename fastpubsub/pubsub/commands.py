@@ -21,7 +21,7 @@ class PublishMessageCommand:
         self.autocreate = autocreate
 
     async def on_publish(
-        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
+        self, data: bytes, ordering_key: str | None, attributes: dict[str, str] | None
     ) -> Any:
         client = PubSubPublisherClient(project_id=self.project_id, topic_name=self.topic_name)
         if self.autocreate:
