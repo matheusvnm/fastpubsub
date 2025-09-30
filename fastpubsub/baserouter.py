@@ -14,7 +14,7 @@ from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.pubsub.subscriber import Subscriber
-from fastpubsub.types import DecoratedCallable, SubscribedCallable
+from fastpubsub.types import AsyncDecoratedCallable, SubscribedCallable
 
 
 class BaseRouter:
@@ -44,9 +44,9 @@ class BaseRouter:
         max_backoff_delay_secs: int = 600,
         max_messages: int = 1000,
         max_messages_bytes: int = 100 * 1024 * 1024,
-        middlewares: tuple[type[BaseMiddleware]] | Any = None,
+        middlewares: tuple[type[BaseMiddleware]] | None = None,
     ) -> SubscribedCallable:
-        def decorator(func: DecoratedCallable) -> DecoratedCallable:
+        def decorator(func: AsyncDecoratedCallable) -> AsyncDecoratedCallable:
             prefixed_alias = alias
             prefixed_subscription_name = subscription_name
 
@@ -137,16 +137,13 @@ class BaseRouter:
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:
-        publisher = self.publisher(topic_name)
+        publisher = self.publisher(topic_name=topic_name)
         await publisher.publish(
             data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
         )
 
     @validate_call
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
-        if not (middleware and issubclass(middleware, BaseMiddleware)):
-            raise FastPubSubException(f"The middleware should be a {BaseMiddleware.__name__} type.")
-
         for publisher in self.publishers.values():
             publisher.include_middleware(middleware)
 
@@ -162,7 +159,6 @@ class BaseRouter:
     def _get_subscribers(self) -> dict[str, Subscriber]:
         subscribers: dict[str, Subscriber] = {}
         subscribers.update(self.subscribers)
-
         router: BaseRouter
         for router in self.routers:
             router_subscribers = router._get_subscribers()

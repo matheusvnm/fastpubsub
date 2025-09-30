@@ -38,7 +38,6 @@ class ApplicationRunner:
 
         self.validate_application(app_config.app)
 
-        # TODO: Implement a ASGIMultiprocess
         uvicorn.run(
             app_config.app,
             lifespan="on",

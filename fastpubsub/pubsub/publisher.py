@@ -29,18 +29,18 @@ class Publisher:
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:
-        callstack = self._build_callstack(autocreate=autocreate)
+        callstack = self.build_callstack(autocreate=autocreate)
         serialized_message = self._serialize_message(data)
         await callstack.on_publish(serialized_message, ordering_key, attributes)
 
-    def _build_callstack(self, autocreate: bool = True) -> PublishMessageCommand | BaseMiddleware:
-        publish_command: PublishMessageCommand | BaseMiddleware = PublishMessageCommand(
+    def build_callstack(self, autocreate: bool = True) -> PublishMessageCommand | BaseMiddleware:
+        callstack: PublishMessageCommand | BaseMiddleware = PublishMessageCommand(
             project_id=self.project_id, topic_name=self.topic_name, autocreate=autocreate
         )
 
         for middleware in reversed(self.middlewares):
-            publish_command = middleware(next_call=publish_command)
-        return publish_command
+            callstack = middleware(next_call=callstack)
+        return callstack
 
     def _serialize_message(self, data: BaseModel | dict[str, Any] | str | bytes) -> bytes:
         if isinstance(data, bytes):
@@ -58,8 +58,8 @@ class Publisher:
             return json_data.encode(encoding="utf-8")
 
         raise FastPubSubException(
-            f"The message {data} is not serializable."
-            "Please send as one of the following formats: BaseModel, dict, str, bytes or bytearray)"
+            f"The message {data} is not serializable. "
+            "Please send as one of the following formats: BaseModel, dict, str or bytes."
         )
 
     @validate_call

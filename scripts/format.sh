@@ -3,7 +3,8 @@
 set -e
 set -x
 
-# TODO: Adicionar examples
-ruff format fastpubsub tests
-ruff check fastpubsub tests --select I --fix
-ruff check fastpubsub tests --fix
+TARGET_DIRECTORIES="fastpubsub tests examples"
+
+ruff format $TARGET_DIRECTORIES
+ruff check $TARGET_DIRECTORIES --select I --fix
+ruff check $TARGET_DIRECTORIES --fix

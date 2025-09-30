@@ -18,6 +18,9 @@ class BaseMiddleware:
         if isinstance(self.next_call, PublishMessageCommand):
             raise TypeError(f"Incorrect middleware stack build for {self.__class__.__name__}")
 
+        if not self.next_call:
+            return
+
         return await self.next_call.on_message(message)
 
     @abstractmethod
@@ -26,5 +29,8 @@ class BaseMiddleware:
     ) -> Any:
         if isinstance(self.next_call, HandleMessageCommand):
             raise TypeError(f"Incorrect middleware stack build for {self.__class__.__name__}")
+
+        if not self.next_call:
+            return
 
         return await self.next_call.on_publish(data, ordering_key, attributes)

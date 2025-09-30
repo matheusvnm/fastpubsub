@@ -10,7 +10,7 @@ class HandleMessageCommand:
         self.target = target
 
     async def on_message(self, message: Message) -> Any:
-        # TODO: Add the serialization logic for pydantic
+        # V2: Add message serialization via pydantic
         return await self.target(message)
 
 

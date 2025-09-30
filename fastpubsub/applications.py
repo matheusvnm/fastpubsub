@@ -23,30 +23,30 @@ class Application:
     def __init__(
         self,
         broker: PubSubBroker,
-        on_startup: tuple[NoArgAsyncCallable] | None = None,
-        on_shutdown: tuple[NoArgAsyncCallable] | None = None,
-        after_startup: tuple[NoArgAsyncCallable] | None = None,
-        after_shutdown: tuple[NoArgAsyncCallable] | None = None,
+        on_startup: Sequence[NoArgAsyncCallable] | None = None,
+        on_shutdown: Sequence[NoArgAsyncCallable] | None = None,
+        after_startup: Sequence[NoArgAsyncCallable] | None = None,
+        after_shutdown: Sequence[NoArgAsyncCallable] | None = None,
     ):
         self.broker = broker
 
         self._on_startup: list[NoArgAsyncCallable] = []
-        if on_startup and isinstance(on_startup, tuple):
+        if on_startup and isinstance(on_startup, Sequence):
             for func in on_startup:
                 self.on_startup(func)
 
         self._on_shutdown: list[NoArgAsyncCallable] = []
-        if on_shutdown and isinstance(on_shutdown, tuple):
+        if on_shutdown and isinstance(on_shutdown, Sequence):
             for func in on_shutdown:
                 self.on_shutdown(func)
 
         self._after_startup: list[NoArgAsyncCallable] = []
-        if after_startup and isinstance(after_startup, tuple):
+        if after_startup and isinstance(after_startup, Sequence):
             for func in after_startup:
                 self.after_startup(func)
 
         self._after_shutdown: list[NoArgAsyncCallable] = []
-        if after_shutdown and isinstance(after_shutdown, tuple):
+        if after_shutdown and isinstance(after_shutdown, Sequence):
             for func in after_shutdown:
                 self.after_shutdown(func)
 
@@ -74,6 +74,7 @@ class Application:
         self._after_shutdown.append(func)
         return func
 
+    # V1: Create a contextualizer
     async def _start(self) -> None:
         # TODO: Create a module for context and a extensible
         # class for context add (LoggerContextualizer.contextualize(name=name, message=None))
@@ -128,17 +129,16 @@ class Application:
 
 
 class FastPubSub(FastAPI, Application):
-    # : Adicionar na adição de subscribers (handlers) uma validação para
-    #  impedir adição de Depends() do fastapi e outros tipos do mesmo
+    # V2: Add message serialization via pydantic
 
     def __init__(
         self,
         broker: PubSubBroker,
         *,
-        on_startup: tuple[NoArgAsyncCallable] | None = None,
-        on_shutdown: tuple[NoArgAsyncCallable] | None = None,
-        after_startup: tuple[NoArgAsyncCallable] | None = None,
-        after_shutdown: tuple[NoArgAsyncCallable] | None = None,
+        on_startup: Sequence[NoArgAsyncCallable] | None = None,
+        on_shutdown: Sequence[NoArgAsyncCallable] | None = None,
+        after_startup: Sequence[NoArgAsyncCallable] | None = None,
+        after_shutdown: Sequence[NoArgAsyncCallable] | None = None,
         debug: bool = False,
         title: str = "FastPubSub",
         summary: str | None = None,

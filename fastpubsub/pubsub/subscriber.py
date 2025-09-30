@@ -49,12 +49,11 @@ class Subscriber:
         ensure_async_middleware(middleware)
         self.middlewares.append(middleware)
 
-    @property
-    def callback(self) -> HandleMessageCommand | BaseMiddleware:
-        callback: HandleMessageCommand | BaseMiddleware = self.handler
+    def build_callstack(self) -> HandleMessageCommand | BaseMiddleware:
+        callstack: HandleMessageCommand | BaseMiddleware = self.handler
         for middleware in reversed(self.middlewares):
-            callback = middleware(callback)
-        return callback
+            callstack = middleware(callstack)
+        return callstack
 
     @property
     def name(self) -> str:

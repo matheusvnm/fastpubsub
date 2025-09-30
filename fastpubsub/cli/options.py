@@ -43,7 +43,6 @@ AppHotReloadOption = Annotated[
     typer.Option(
         "-r",
         "--reload",
-        is_flag=True,
         help="Restart app at directory files changes.",
         envvar="FASTPUBSUB_ENABLE_HOT_RELOAD",
     ),
@@ -101,7 +100,6 @@ AppLogSerializeOption = Annotated[
     bool,
     typer.Option(
         "--log-serialize",
-        is_flag=True,
         help="Enables serialized logs in json format.",
         envvar="FASTPUBSUB_ENABLE_LOG_SERIALIZE",
     ),
@@ -111,7 +109,6 @@ AppLogColorizeOption = Annotated[
     bool,
     typer.Option(
         "--log-colors",
-        is_flag=True,
         help="Enables colorized logs.",
         envvar="FASTPUBSUB_ENABLE_LOG_COLORS",
     ),

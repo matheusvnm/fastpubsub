@@ -48,6 +48,8 @@ verbosity_test_cases = 3
 
 [tool.coverage.run]
 source = ["fastpubsub"]
+omit = ["**/__init__.py", "**/__about__.py", "**/__main__.py"]
+
 
 [tool.coverage.report]
 show_missing = true

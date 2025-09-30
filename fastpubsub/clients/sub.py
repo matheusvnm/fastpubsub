@@ -49,7 +49,7 @@ class CallbackHandler:
                 logger.exception("Unhandled exception on message", stacklevel=5)
                 return
 
-    @contextmanager
+    @contextmanager  # TODO: Create contextualizer
     def _contextualize(self, message: PubSubMessage) -> Generator[None]:
         with self._start_apm_transaction() as apm:
             apm.set_distributed_trace_context(message.attributes)
@@ -71,8 +71,8 @@ class CallbackHandler:
 
     def _consume(self, message: PubSubMessage) -> Any:
         new_message = self._translate_message(message)
-        callback = self.subscriber.callback
-        coroutine = callback.on_message(new_message)
+        callstack = self.subscriber.build_callstack()
+        coroutine = callstack.on_message(new_message)
         return asyncio.run(coroutine)
 
     def _translate_message(self, message: PubSubMessage) -> Message:

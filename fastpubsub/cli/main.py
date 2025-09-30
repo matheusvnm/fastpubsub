@@ -21,30 +21,35 @@ from fastpubsub.cli.runner import AppConfiguration, ApplicationRunner, ServerCon
 from fastpubsub.cli.utils import LogLevels, ensure_pubsub_credentials, get_log_level
 
 app = typer.Typer(
+    name="fastpubsub",
     help="A CLI to run FastPubSub applications and interact with Pub/Sub (locally and on cloud).",
     pretty_exceptions_short=True,
     invoke_without_command=True,
     rich_markup_mode="markdown",
 )
 
+# Note: this command will be release on V2
 pubsub = typer.Typer(
     name="pubsub",
     help="Commands for interacting with Google Cloud Pub/Sub.",
     rich_markup_mode="markdown",
 )
 
+# Note: this command will be release on V2
 pubsub_cloud = typer.Typer(
     name="cloud",
     help="Subcommand to interact with Cloud-based Pub/Sub.",
     rich_markup_mode="markdown",
 )
 
+# Note: this command will be release on V2
 pubsub_local = typer.Typer(
     name="local",
     help="Subcommand to interact with Pub/Sub locally (e.g., emulator).",
     rich_markup_mode="markdown",
 )
 
+# Note: this command will be release on V2
 pubsub.add_typer(pubsub_cloud)
 pubsub.add_typer(pubsub_local)
 app.add_typer(pubsub)
@@ -59,15 +64,20 @@ def main(
     Display helpful tips when the main command is run without any subcommands.
     """
     if ctx.invoked_subcommand is None:
-        # TODO: Add a better explanation
         rich.print("\n[bold]Welcome to the FastPubSub CLI! ✨[/bold]")
-        rich.print("\nUsage Tips:")
-        rich.print("  - To start your application, use the `run` command: `fastpubsub run`")
+        rich.print("\n[dim]A CLI to run FastPubSub applications and interact with Pub/Sub.[/dim]")
+        rich.print("\n[bold]Usage[/bold]: [cyan]fastpubsub [COMMAND] [ARGS]...[/cyan]")
+        rich.print("\n[bold]Common Commands:[/bold]")
+        rich.print("  [green]run[/green]    Run a FastPubSub application.")
+        rich.print("  [green]help[/green]   Get detailed help for a command.")
         rich.print(
-            "  - To interact with Pub/Sub, use the `pubsub` command: `fastpubsub pubsub --help`"
+            "\nRun '[cyan]fastpubsub --help[/cyan]' for "
+            "a list of all available commands and options."
         )
-        rich.print("  - To see all options for a command: `fastpubsub <command> --help`")
-        rich.print("  - For a detailed guide with examples: `fastpubsub help`")
+        rich.print(
+            "For more information, visit our documentation at "
+            "[link=https://github.com/matheusvnm/starconsumers]https://github.com/matheusvnm/starconsumers[/link]"
+        )
 
     if version:
         import platform
@@ -88,10 +98,10 @@ def run(
     reload: AppHotReloadOption = False,
     host: AppHostOption = "0.0.0.0",
     port: AppPortOption = 8000,
-    log_level: AppLogLevelOption = LogLevels.info,
+    log_level: AppLogLevelOption = LogLevels.INFO,
     log_serialize: AppLogSerializeOption = False,
     log_colorize: AppLogColorizeOption = False,
-    server_log_level: AppServerLogLevelOption = LogLevels.warning,
+    server_log_level: AppServerLogLevelOption = LogLevels.WARNING,
     apm_provider: AppApmProvider = AppApmProvider.NOOP,
 ) -> None:
     ensure_pubsub_credentials()
@@ -119,8 +129,12 @@ def run(
 
 
 @app.command(name="help")
-def show_help() -> None:
-    pass
+def show_help(ctx: typer.Context) -> None:
+    """
+    Show this message and exit.
+    """
+    if ctx.parent:
+        rich.print(ctx.parent.get_help())
 
 
 def execute_app() -> None:
