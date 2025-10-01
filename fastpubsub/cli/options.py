@@ -29,7 +29,7 @@ AppNumWorkersOption = Annotated[
 ]
 
 AppSelectedSubscribersOption = Annotated[
-    list[str] | None,
+    list[str],
     typer.Option(
         "-s",
         "--subscribers",
@@ -128,7 +128,7 @@ AppApmProvider = Annotated[
 ]
 
 AppVersionOption = Annotated[
-    bool | None,
+    bool,
     typer.Option(
         "-v",
         "--version",

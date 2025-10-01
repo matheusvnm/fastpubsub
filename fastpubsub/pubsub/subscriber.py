@@ -1,4 +1,6 @@
-from pydantic import validate_call
+from collections.abc import Sequence
+
+from pydantic import ConfigDict, validate_call
 
 from fastpubsub.concurrency.utils import ensure_async_middleware
 from fastpubsub.datastructures import (
@@ -24,7 +26,7 @@ class Subscriber:
         delivery_policy: MessageDeliveryPolicy,
         control_flow_policy: MessageControlFlowPolicy,
         dead_letter_policy: DeadLetterPolicy | None = None,
-        middlewares: list[type[BaseMiddleware]] | None = None,
+        middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ) -> None:
         self.project_id = ""
         self.topic_name = topic_name
@@ -41,7 +43,7 @@ class Subscriber:
             for middleware in middlewares:
                 self.include_middleware(middleware)
 
-    @validate_call
+    @validate_call(config=ConfigDict(strict=True))
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
         if middleware in self.middlewares:
             return

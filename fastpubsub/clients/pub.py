@@ -26,17 +26,15 @@ class PubSubPublisherClient:
             publisher_client.create_topic(name=self.topic)
             logger.debug(f"Created topic '{self.topic}' sucessfully.")
 
-            if not create_default_subscription:
-                return
-
-            with SubscriberClient() as subscriber_client:
-                logger.debug(f"Creating default subscription for '{self.topic}'.")
-                subscriber_client.create_subscription(
-                    name=self.default_subscription, topic=self.topic
-                )
-                logger.debug(
-                    f"Creating default subscription created successfully for '{self.topic}'."
-                )
+            if create_default_subscription:
+                with SubscriberClient() as subscriber_client:
+                    logger.debug(f"Creating default subscription for '{self.topic}'.")
+                    subscriber_client.create_subscription(
+                        name=self.default_subscription, topic=self.topic
+                    )
+                    logger.debug(
+                        f"Creating default subscription created successfully for '{self.topic}'."
+                    )
 
     def publish(
         self,

@@ -1,12 +1,9 @@
-
-
 from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubRouterMiddleware
-from fastpubsub.applications import  FastPubSub
+from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
 from fastpubsub.logger import logger
 from fastpubsub.router import PubSubRouter
-
 
 child_router = PubSubRouter(prefix="subrouter")
 child_router.include_middleware(SubRouterMiddleware)
@@ -15,31 +12,38 @@ parent_router = PubSubRouter(prefix="router")
 parent_router.include_middleware(RouterMiddleware)
 parent_router.include_router(child_router)
 
-broker = PubSubBroker(project_id="fastpubsub-pubsub-local", )
+broker = PubSubBroker(
+    project_id="fastpubsub-pubsub-local",
+)
 broker.include_middleware(BrokerMiddleware)
 broker.include_router(parent_router)
 
 app = FastPubSub(broker)
 
 
-
-@broker._add_subscriber("broker-subscriber",
-                   topic_name="some_test_topic",
-                   subscription_name="tst_sub",)
+@broker._add_subscriber(
+    "broker-subscriber",
+    topic_name="some_test_topic",
+    subscription_name="tst_sub",
+)
 async def broker_handle(message: Message):
     logger.info("We received a message on broker!")
 
 
-@parent_router._add_subscriber("parent-subscriber",
-                   topic_name="some_test_topic2",
-                   subscription_name="tst_sub",)
+@parent_router._add_subscriber(
+    "parent-subscriber",
+    topic_name="some_test_topic2",
+    subscription_name="tst_sub",
+)
 async def parent_router_handle(message: Message):
     logger.info("We received a message on parent router!")
 
 
-@child_router._add_subscriber("child-subscriber",
-                   topic_name="some_test_topic3",
-                   subscription_name="tst_sub",)
+@child_router._add_subscriber(
+    "child-subscriber",
+    topic_name="some_test_topic3",
+    subscription_name="tst_sub",
+)
 async def subrouter_handle(message: Message):
     logger.info("We received a message on subrouter!")
 

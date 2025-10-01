@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import Request, Response
 
-# NOTE: We wait a return because in further releases we will allow chaining handlers/publishers
+# V2: We wait a return because in further releases we will allow chaining handlers/publishers
 AsyncDecoratedCallable = Callable[[Any], Awaitable[Any]]
 SubscribedCallable = Callable[[AsyncDecoratedCallable], AsyncDecoratedCallable]
 

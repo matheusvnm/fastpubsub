@@ -1,9 +1,8 @@
-from fastpubsub.logger import logger
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
+from fastpubsub.logger import logger
 from fastpubsub.router import PubSubRouter
-
 
 # The aliases/subscription name can be the same.
 # That is because each PubSubRouter has prefix.
@@ -23,24 +22,29 @@ broker.include_router(router_core)
 app = FastPubSub(broker)
 
 
-@router_core._add_subscriber("some-alias",
-                   topic_name="some-router-topic",
-                   subscription_name="some-router-sub",)
+@router_core._add_subscriber(
+    "some-alias",
+    topic_name="some-router-topic",
+    subscription_name="some-router-sub",
+)
 async def handler_on_core_router(message: Message):
     logger.info(f"Processed message on core router: {message}")
 
 
-@router_sales._add_subscriber("some-alias",
-                   topic_name="some-router-topic",
-                   subscription_name="some-router-sub",)
+@router_sales._add_subscriber(
+    "some-alias",
+    topic_name="some-router-topic",
+    subscription_name="some-router-sub",
+)
 async def handler_on_sales_router(message: Message):
     logger.info(f"Processed message on sales router: {message}")
 
 
-
-@router_logistics._add_subscriber("some-alias",
-                   topic_name="some-router-topic",
-                   subscription_name="some-router-sub",)
+@router_logistics._add_subscriber(
+    "some-alias",
+    topic_name="some-router-topic",
+    subscription_name="some-router-sub",
+)
 async def handler_on_logistics_router(message: Message):
     logger.info(f"Processed message on logistics handler: {message}")
 

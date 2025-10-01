@@ -1,8 +1,10 @@
 from collections import OrderedDict
+from collections.abc import Sequence
 from typing import Any
 
-from pydantic import BaseModel, validate_call
+from pydantic import BaseModel, ConfigDict, validate_call
 
+from fastpubsub.concurrency.utils import ensure_async_callable_function
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,
@@ -25,7 +27,7 @@ class BaseRouter:
         self.subscribers: dict[str, Subscriber] = {}
         self.middlewares: list[type[BaseMiddleware]] = []
 
-    @validate_call
+    @validate_call(config=ConfigDict(strict=True))
     def subscriber(
         self,
         alias: str,
@@ -44,9 +46,11 @@ class BaseRouter:
         max_backoff_delay_secs: int = 600,
         max_messages: int = 1000,
         max_messages_bytes: int = 100 * 1024 * 1024,
-        middlewares: tuple[type[BaseMiddleware]] | None = None,
+        middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ) -> SubscribedCallable:
         def decorator(func: AsyncDecoratedCallable) -> AsyncDecoratedCallable:
+            ensure_async_callable_function(func)
+
             prefixed_alias = alias
             prefixed_subscription_name = subscription_name
 
@@ -120,7 +124,7 @@ class BaseRouter:
 
         return decorator
 
-    @validate_call
+    @validate_call(config=ConfigDict(strict=True))
     def publisher(self, topic_name: str) -> Publisher:
         if topic_name not in self.publishers:
             publisher = Publisher(topic_name=topic_name, middlewares=self.middlewares)
@@ -128,7 +132,7 @@ class BaseRouter:
 
         return self.publishers[topic_name]
 
-    @validate_call
+    @validate_call(config=ConfigDict(strict=True))
     async def publish(
         self,
         topic_name: str,
@@ -142,7 +146,7 @@ class BaseRouter:
             data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
         )
 
-    @validate_call
+    @validate_call(config=ConfigDict(strict=True))
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
         for publisher in self.publishers.values():
             publisher.include_middleware(middleware)

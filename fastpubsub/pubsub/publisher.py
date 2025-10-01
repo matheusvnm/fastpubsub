@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from pydantic import BaseModel, validate_call
+from pydantic import BaseModel, ConfigDict, validate_call
 
 from fastpubsub.concurrency.utils import ensure_async_middleware
 from fastpubsub.exceptions import FastPubSubException
@@ -21,7 +21,7 @@ class Publisher:
             for middleware in middlewares:
                 self.include_middleware(middleware)
 
-    @validate_call
+    @validate_call(config=ConfigDict(strict=True))
     async def publish(
         self,
         data: BaseModel | dict[str, Any] | str | bytes,
@@ -62,7 +62,7 @@ class Publisher:
             "Please send as one of the following formats: BaseModel, dict, str or bytes."
         )
 
-    @validate_call
+    @validate_call(config=ConfigDict(strict=True))
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
         if middleware in self.middlewares:
             return

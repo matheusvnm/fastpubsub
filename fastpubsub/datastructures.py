@@ -7,13 +7,13 @@ class Message:
     size: int
     data: bytes
     attributes: dict[str, str]
-    delivery_attempt: int | None = 0
+    delivery_attempt: int
 
 
 @dataclass(frozen=True)
 class MessageControlFlowPolicy:
-    max_messages: int = 10
-    max_bytes: int = 1024 * 1024 * 10  # 10MB
+    max_messages: int
+    max_bytes: int
 
 
 @dataclass(frozen=True)

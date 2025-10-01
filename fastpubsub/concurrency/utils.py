@@ -9,9 +9,12 @@ import psutil
 from fastpubsub.concurrency.ipc import ConnectionInfo, ProcessInfo
 from fastpubsub.logger import logger
 from fastpubsub.middlewares.base import BaseMiddleware
+from fastpubsub.types import AsyncCallable, AsyncDecoratedCallable
 
 
-def ensure_async_callable_function(callable_object: Callable[[], Any]) -> None:
+def ensure_async_callable_function(
+    callable_object: Callable[[], Any] | AsyncCallable | AsyncDecoratedCallable,
+) -> None:
     if not isinstance(callable_object, FunctionType):
         raise TypeError(f"The object must be a function type but it is {callable_object}.")
 

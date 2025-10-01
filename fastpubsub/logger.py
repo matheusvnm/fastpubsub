@@ -133,7 +133,7 @@ def setup_logger() -> FastPubSubLogger:
     """
     Enables and configures the FastPubSub logger.
     """
-    # TODO: Add colorized logger
+    # V2: Add colorized logs
     log_level = int(os.getenv("FASTPUBSUB_LOG_LEVEL", logging.INFO))
     log_serialize = bool(int(os.getenv("FASTPUBSUB_ENABLE_LOG_SERIALIZE", 0)))
 

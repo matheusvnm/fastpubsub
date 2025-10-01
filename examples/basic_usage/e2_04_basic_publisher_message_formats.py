@@ -1,30 +1,36 @@
-
-
 from pydantic import BaseModel
+
 from fastpubsub.applications import FastPubSub
-from fastpubsub.logger import logger
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
+from fastpubsub.logger import logger
 from fastpubsub.pubsub.publisher import Publisher
+
 
 class TestMessage(BaseModel):
     event: str
     source: str
     message: str
 
+
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 app = FastPubSub(broker)
 
-@broker._add_subscriber("test-alias",
-                   topic_name="test-topic-pydantic",
-                   subscription_name="test-publish-pydantic",)
+
+@broker._add_subscriber(
+    "test-alias",
+    topic_name="test-topic-pydantic",
+    subscription_name="test-publish-pydantic",
+)
 async def handle(message: Message):
     logger.info(f"Processed message: {message.data}")
 
 
 @app.after_startup
 async def test_publish():
-    message = TestMessage(event="checkout", source="checkout-cart", message="the user put a item to the cart")
+    message = TestMessage(
+        event="checkout", source="checkout-cart", message="the user put a item to the cart"
+    )
 
     publisher: Publisher = broker.publisher("test-topic-pydantic")
     await publisher.publish(message)

@@ -54,11 +54,11 @@ class CallbackHandler:
         with self._start_apm_transaction() as apm:
             apm.set_distributed_trace_context(message.attributes)
             context = {
+                "name": self.subscriber.name,
                 "span_id": apm.get_span_id(),
                 "trace_id": apm.get_trace_id(),
                 "message_id": message.message_id,
                 "topic_name": self.subscriber.topic_name,
-                "subscription_name": self.subscriber.subscription_name,
             }
             with logger.contextualize(**context):
                 yield
@@ -140,7 +140,18 @@ class PubSubSubscriberClient:
         retry_policy = RetryPolicy(
             minimum_backoff=min_backoff_delay, maximum_backoff=max_backoff_delay
         )
-
+        print(
+            dict(
+                name=name,
+                topic=topic,
+                retry_policy=retry_policy,
+                dead_letter_policy=dlt_policy,
+                filter=subscriber.delivery_policy.filter_expression,
+                ack_deadline_seconds=subscriber.delivery_policy.ack_deadline_seconds,
+                enable_message_ordering=subscriber.delivery_policy.enable_message_ordering,
+                enable_exactly_once_delivery=subscriber.delivery_policy.enable_exactly_once_delivery,
+            )
+        )
         return Subscription(
             name=name,
             topic=topic,

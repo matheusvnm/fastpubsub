@@ -1,11 +1,12 @@
 import re
+from collections.abc import Sequence
 from typing import cast
 
 from fastpubsub.baserouter import BaseRouter
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
 
-_PREFIX_REGEX = re.compile(r"^[a-zA-Z0-9]([a-zA-Z0-9_./]*[a-zA-Z0-9])?$")
+_PREFIX_REGEX = re.compile(r"^[a-zA-Z0-9]+([_./][a-zA-Z0-9]+)*$")
 
 
 class PubSubRouter(BaseRouter):
@@ -13,28 +14,28 @@ class PubSubRouter(BaseRouter):
         self,
         prefix: str = "",
         *,
-        routers: tuple["PubSubRouter"] | None = None,
-        middlewares: tuple[type[BaseMiddleware]] | None = None,
+        routers: Sequence["PubSubRouter"] | None = None,
+        middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ):
-        # if not isinstance(prefix, str) or not _PREFIX_REGEX.match(prefix):
-        #    raise FastPubSubException(
-        #        "Prefix must be a string that starts and ends with a letter or number, "
-        #        "and can only contain periods, slashes, or underscores in the middle."
-        #    )
+        if prefix and not _PREFIX_REGEX.match(prefix):
+            raise FastPubSubException(
+                "Prefix must be a string that starts and ends with a letter or number, "
+                "and can only contain periods, slashes, or underscores in the middle."
+            )
         super().__init__(prefix=prefix)
 
         self.project_id = ""
 
         if routers:
-            if not isinstance(routers, tuple):
-                raise FastPubSubException("Your routers should be passed as a tuple")
+            if not isinstance(routers, Sequence):
+                raise FastPubSubException("Your routers should be passed as a sequence")
 
             for router in routers:
                 self.include_router(router)
 
         if middlewares:
-            if not isinstance(middlewares, tuple):
-                raise FastPubSubException("Your routers should be passed as a tuple")
+            if not isinstance(middlewares, Sequence):
+                raise FastPubSubException("Your routers should be passed as a sequence")
 
             for middleware in middlewares:
                 self.include_middleware(middleware)

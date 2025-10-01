@@ -1,9 +1,10 @@
 """Broker implementation."""
 
 import os
+from collections.abc import Sequence
 from typing import Any
 
-from pydantic import BaseModel, validate_call
+from pydantic import BaseModel, ConfigDict, validate_call
 
 from fastpubsub.clients.pub import PubSubPublisherClient
 from fastpubsub.clients.sub import PubSubSubscriberClient
@@ -59,8 +60,8 @@ class PubSubBroker:
     def __init__(
         self,
         project_id: str,
-        routers: tuple[PubSubRouter] | None = None,
-        middlewares: tuple[type[BaseMiddleware]] | None = None,
+        routers: Sequence[PubSubRouter] | None = None,
+        middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ):
         if not (project_id and isinstance(project_id, str) and len(project_id.strip()) > 0):
             raise FastPubSubException(f"The project id value ({project_id}) is invalid.")
@@ -69,7 +70,7 @@ class PubSubBroker:
         self.router = PubSubRouter(routers=routers, middlewares=middlewares)
         self.router._propagate_project_id(project_id)
 
-    @validate_call
+    @validate_call(config=ConfigDict(strict=True))
     def subscriber(
         self,
         alias: str,
@@ -109,11 +110,11 @@ class PubSubBroker:
             middlewares=middlewares,
         )
 
-    @validate_call
+    @validate_call(config=ConfigDict(strict=True))
     def publisher(self, topic_name: str) -> Publisher:
         return self.router.publisher(topic_name=topic_name)
 
-    @validate_call
+    @validate_call(config=ConfigDict(strict=True))
     async def publish(
         self,
         topic_name: str,
@@ -133,14 +134,14 @@ class PubSubBroker:
     def include_router(self, router: PubSubRouter) -> None:
         return self.router.include_router(router)
 
-    @validate_call
+    @validate_call(config=ConfigDict(strict=True))
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
         return self.router.include_middleware(middleware)
 
     async def start(self) -> None:
         subscribers = await self._filter_subscribers()
         if not subscribers:
-            logger.error("No subscriber detected!")
+            logger.error("No subscriber found for running.")
             raise FastPubSubException(
                 "You must select subscribers (using --subscribers flag) or run them all."
             )

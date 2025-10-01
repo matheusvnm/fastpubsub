@@ -1,35 +1,41 @@
-from fastpubsub.applications import  FastPubSub
+from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubcriberMiddleware
+from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
 from fastpubsub.logger import logger
 from fastpubsub.router import PubSubRouter
 
-from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubcriberMiddleware
-
-
 router = PubSubRouter(prefix="myawesomerouter", middlewares=[RouterMiddleware])
-broker = PubSubBroker(project_id="fastpubsub-pubsub-local", middlewares=[BrokerMiddleware], routers=[router])
+broker = PubSubBroker(
+    project_id="fastpubsub-pubsub-local", middlewares=[BrokerMiddleware], routers=[router]
+)
 app = FastPubSub(broker)
 
 
-@broker._add_subscriber("broker-subscriber",
-                   topic_name="topic_one_mid",
-                   subscription_name="subscription_one_mid",)
+@broker._add_subscriber(
+    "broker-subscriber",
+    topic_name="topic_one_mid",
+    subscription_name="subscription_one_mid",
+)
 async def broker_handle(message: Message):
     logger.info("This handler has only the broker middleware")
 
 
-@router._add_subscriber("router-subscriber",
-                   topic_name="topic_two_mid",
-                   subscription_name="subscription_two_mid",)
+@router._add_subscriber(
+    "router-subscriber",
+    topic_name="topic_two_mid",
+    subscription_name="subscription_two_mid",
+)
 async def router_handle(message: Message):
     logger.info("This handler has a router and broker middlewares")
 
 
-@router._add_subscriber("router-subscriber-with-mid",
-                   topic_name="topic_three_mid",
-                   subscription_name="subscription_three_mid",
-                   middlewares=[SubcriberMiddleware])
+@router._add_subscriber(
+    "router-subscriber-with-mid",
+    topic_name="topic_three_mid",
+    subscription_name="subscription_three_mid",
+    middlewares=[SubcriberMiddleware],
+)
 async def router_handle_with_middleware(message: Message):
     logger.info("This handler has all middlewares")
 

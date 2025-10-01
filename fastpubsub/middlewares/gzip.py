@@ -1,13 +1,12 @@
 import gzip
-from typing import Any, Union
+from typing import Any
 
 from fastpubsub.datastructures import Message
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.commands import HandleMessageCommand, PublishMessageCommand
+
 
 # V2: Middlewares must can have args/kwargs
 class GZipMiddleware(BaseMiddleware):
-
     async def on_message(self, message: Message) -> Any:
         if message.attributes and message.attributes.get("Content-Encoding") == "gzip":
             decompressed_data = gzip.decompress(data=message.data)

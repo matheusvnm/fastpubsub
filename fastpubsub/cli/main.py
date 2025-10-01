@@ -28,31 +28,30 @@ app = typer.Typer(
     rich_markup_mode="markdown",
 )
 
-# Note: this command will be release on V2
+# V2: this command and its subcommands will be released on the future"
+"""
 pubsub = typer.Typer(
     name="pubsub",
     help="Commands for interacting with Google Cloud Pub/Sub.",
     rich_markup_mode="markdown",
 )
 
-# Note: this command will be release on V2
 pubsub_cloud = typer.Typer(
     name="cloud",
     help="Subcommand to interact with Cloud-based Pub/Sub.",
     rich_markup_mode="markdown",
 )
 
-# Note: this command will be release on V2
 pubsub_local = typer.Typer(
     name="local",
     help="Subcommand to interact with Pub/Sub locally (e.g., emulator).",
     rich_markup_mode="markdown",
 )
 
-# Note: this command will be release on V2
 pubsub.add_typer(pubsub_cloud)
 pubsub.add_typer(pubsub_local)
 app.add_typer(pubsub)
+"""
 
 
 @app.callback()
@@ -63,7 +62,7 @@ def main(
     """
     Display helpful tips when the main command is run without any subcommands.
     """
-    if ctx.invoked_subcommand is None:
+    if ctx.invoked_subcommand is None and not version:
         rich.print("\n[bold]Welcome to the FastPubSub CLI! ✨[/bold]")
         rich.print("\n[dim]A CLI to run FastPubSub applications and interact with Pub/Sub.[/dim]")
         rich.print("\n[bold]Usage[/bold]: [cyan]fastpubsub [COMMAND] [ARGS]...[/cyan]")
@@ -76,7 +75,7 @@ def main(
         )
         rich.print(
             "For more information, visit our documentation at "
-            "[link=https://github.com/matheusvnm/starconsumers]https://github.com/matheusvnm/starconsumers[/link]"
+            "[link=https://github.com/matheusvnm/fastpubsub]https://github.com/matheusvnm/fastpubsub[/link]"
         )
 
     if version:
