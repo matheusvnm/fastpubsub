@@ -140,18 +140,6 @@ class PubSubSubscriberClient:
         retry_policy = RetryPolicy(
             minimum_backoff=min_backoff_delay, maximum_backoff=max_backoff_delay
         )
-        print(
-            dict(
-                name=name,
-                topic=topic,
-                retry_policy=retry_policy,
-                dead_letter_policy=dlt_policy,
-                filter=subscriber.delivery_policy.filter_expression,
-                ack_deadline_seconds=subscriber.delivery_policy.ack_deadline_seconds,
-                enable_message_ordering=subscriber.delivery_policy.enable_message_ordering,
-                enable_exactly_once_delivery=subscriber.delivery_policy.enable_exactly_once_delivery,
-            )
-        )
         return Subscription(
             name=name,
             topic=topic,

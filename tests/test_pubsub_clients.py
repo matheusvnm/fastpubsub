@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from concurrent.futures import Future
 from unittest.mock import MagicMock, patch
 
@@ -43,116 +44,112 @@ def subscriber():
 
 
 class TestPubSubPublisherClient:
-    @patch("fastpubsub.clients.pub.PublisherClient")
-    @patch("fastpubsub.clients.pub.SubscriberClient")
-    def test_create_topic(self, mock_subscriber_client, mock_publisher_client):
+    @pytest.fixture
+    def pub_client(self) -> Generator[MagicMock]:
+        with patch("fastpubsub.clients.pub.PublisherClient") as pub_client:
+            yield pub_client.return_value
+
+    @pytest.fixture
+    def sub_client(self) -> Generator[MagicMock]:
+        with patch("fastpubsub.clients.pub.SubscriberClient") as sub_client:
+            yield sub_client.return_value.__enter__.return_value
+
+    def test_create_topic(self, sub_client: MagicMock, pub_client: MagicMock):
         client = PubSubPublisherClient(project_id="test-project", topic_name="test-topic")
         client.create_topic()
 
-        mock_publisher_client.return_value.create_topic.assert_called_once()
-        mock_subscriber_client.return_value.__enter__.return_value.create_subscription.assert_called_once()
+        pub_client.create_topic.assert_called_once()
+        sub_client.create_subscription.assert_called_once()
 
-    @patch("fastpubsub.clients.pub.PublisherClient")
-    def test_publish(self, mock_publisher_client):
+    def test_publish(self, pub_client: MagicMock):
         client = PubSubPublisherClient(project_id="test-project", topic_name="test-topic")
         client.publish(data=b"test-data", ordering_key=None, attributes=None)
 
-        mock_publisher_client.return_value.publish.assert_called_once()
+        pub_client.publish.assert_called_once()
 
-    @patch("fastpubsub.clients.pub.PublisherClient")
-    def test_publish_failure(self, mock_publisher_client):
+    def test_publish_failure(self, pub_client: MagicMock):
         result = Future()
         result.set_exception(ValueError)
-        mock_publisher_client.return_value.publish.return_value = result
+        pub_client.publish.return_value = result
 
         client = PubSubPublisherClient(project_id="test-project", topic_name="test-topic")
-
         with pytest.raises(ValueError):
             client.publish(data=b"test-data", ordering_key=None, attributes=None)
 
 
 class TestPubSubSubscriberClient:
     @pytest.fixture(autouse=True)
-    def mock_subscriber_client(self):
+    def sub_client(self):
         with patch("fastpubsub.clients.sub.SubscriberClient") as mock:
             mock.subscription_path.return_value = "some_sub_path"
             mock.topic_path.return_value = "some_topic_path"
-            yield mock
+            yield mock.return_value.__enter__.return_value
 
-    def test_create_subscription(self, subscriber: Subscriber, mock_subscriber_client: MagicMock):
+    def test_create_subscription(self, subscriber: Subscriber, sub_client: MagicMock):
         client = PubSubSubscriberClient()
         client.create_subscription(subscriber)
+        sub_client.create_subscription.assert_called_once()
 
-        mock_subscriber_client.return_value.__enter__.return_value.create_subscription.assert_called_once()
-
-    def test_update_subscription(self, subscriber: Subscriber, mock_subscriber_client: MagicMock):
+    def test_update_subscription(self, subscriber: Subscriber, sub_client: MagicMock):
         client = PubSubSubscriberClient()
         client.update_subscription(subscriber)
-        mock_subscriber_client.return_value.__enter__.return_value.update_subscription.assert_called_once()
+        sub_client.update_subscription.assert_called_once()
 
-    def test_subscribe(self, subscriber: Subscriber, mock_subscriber_client: MagicMock):
+    def test_subscribe(self, subscriber: Subscriber, sub_client: MagicMock):
         client = PubSubSubscriberClient()
         streaming_pull_future = MagicMock()
-        mock_subscriber_client.return_value.__enter__.return_value.subscribe.return_value = (
-            streaming_pull_future
-        )
+        sub_client.subscribe.return_value = streaming_pull_future
 
         with client.subscribe(subscriber) as future:
             assert future == streaming_pull_future
 
-        mock_subscriber_client.return_value.__enter__.return_value.subscribe.assert_called_once()
+        sub_client.subscribe.assert_called_once()
 
-    def test_subscribe_exception(self, subscriber: Subscriber, mock_subscriber_client: MagicMock):
+    def test_subscribe_exception(self, subscriber: Subscriber, sub_client: MagicMock):
         client = PubSubSubscriberClient()
         streaming_pull_future = MagicMock()
         streaming_pull_future.result.side_effect = Exception
-        mock_subscriber_client.return_value.__enter__.return_value.subscribe.return_value = (
-            streaming_pull_future
-        )
+        sub_client.subscribe.return_value = streaming_pull_future
 
-        with client.subscribe(subscriber):
-            pass
+        with client.subscribe(subscriber) as future:
+            assert future == streaming_pull_future
 
         streaming_pull_future.cancel.assert_called_once()
 
-    def test_subscribe_keyboard_interrupt(
-        self, subscriber: Subscriber, mock_subscriber_client: MagicMock
-    ):
+    def test_subscribe_keyboard_interrupt(self, subscriber: Subscriber, sub_client: MagicMock):
         client = PubSubSubscriberClient()
         streaming_pull_future = MagicMock()
         streaming_pull_future.result.side_effect = KeyboardInterrupt
-        mock_subscriber_client.return_value.__enter__.return_value.subscribe.return_value = (
-            streaming_pull_future
-        )
+        sub_client.subscribe.return_value = streaming_pull_future
 
-        with client.subscribe(subscriber):
-            pass
+        with client.subscribe(subscriber) as future:
+            assert future == streaming_pull_future
 
         streaming_pull_future.cancel.assert_called_once()
 
-    def test_update_subscription_not_found(
-        self, subscriber: Subscriber, mock_subscriber_client: MagicMock
-    ):
+    def test_update_subscription_not_found(self, subscriber: Subscriber, sub_client: MagicMock):
         from google.api_core.exceptions import NotFound
 
-        mock_subscriber_client.return_value.__enter__.return_value.update_subscription.side_effect = NotFound(
-            "test"
-        )
+        sub_client.update_subscription.side_effect = NotFound("test")
         client = PubSubSubscriberClient()
         with pytest.raises(FastPubSubException):
             client.update_subscription(subscriber)
 
     @patch("os.getenv", return_value="1")
     def test_update_subscription_emulator(
-        self, mock_getenv, subscriber: Subscriber, mock_subscriber_client: MagicMock
+        self, _: MagicMock, subscriber: Subscriber, sub_client: MagicMock
     ):
         client = PubSubSubscriberClient()
         client.update_subscription(subscriber)
-        mock_subscriber_client.return_value.__enter__.return_value.update_subscription.assert_called_once()
+        sub_client.update_subscription.assert_called_once()
 
 
 class TestCallbackHandler:
-    @patch("fastpubsub.clients.sub.asyncio")
+    @pytest.fixture
+    def mock_asyncio(self) -> Generator[MagicMock]:
+        with patch("fastpubsub.clients.sub.asyncio") as mock:
+            yield mock
+
     def test_handle_success(self, mock_asyncio: MagicMock, subscriber: Subscriber):
         handler = CallbackHandler(subscriber)
         message = MagicMock()
@@ -163,7 +160,6 @@ class TestCallbackHandler:
         mock_asyncio.run.assert_called_once()
         message.ack_with_response.assert_called_once()
 
-    @patch("fastpubsub.clients.sub.asyncio")
     def test_handle_drop(self, mock_asyncio: MagicMock, subscriber: Subscriber):
         mock_asyncio.run.side_effect = Drop
         handler = CallbackHandler(subscriber)
@@ -175,7 +171,6 @@ class TestCallbackHandler:
         mock_asyncio.run.assert_called_once()
         message.ack_with_response.assert_called_once()
 
-    @patch("fastpubsub.clients.sub.asyncio")
     def test_handle_retry(self, mock_asyncio: MagicMock, subscriber: Subscriber):
         mock_asyncio.run.side_effect = Retry
         handler = CallbackHandler(subscriber)
@@ -187,7 +182,6 @@ class TestCallbackHandler:
         mock_asyncio.run.assert_called_once()
         message.nack_with_response.assert_called_once()
 
-    @patch("fastpubsub.clients.sub.asyncio")
     def test_handle_exception(self, mock_asyncio: MagicMock, subscriber: Subscriber):
         mock_asyncio.run.side_effect = Exception
         handler = CallbackHandler(subscriber)

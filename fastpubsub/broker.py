@@ -19,11 +19,11 @@ from fastpubsub.types import SubscribedCallable
 
 
 class SubscriptionBuilder:
-    def __init__(self, subscriber: Subscriber):
-        self.subscriber = subscriber
+    def __init__(self):
         self.created_topics: set[str] = set()
 
-    def build(self) -> None:
+    def build(self, subscriber: Subscriber) -> None:
+        self.subscriber = subscriber
         if self.subscriber.lifecycle_policy.autocreate:
             self._create_topics()
             self._create_subscription()
@@ -146,9 +146,9 @@ class PubSubBroker:
                 "You must select subscribers (using --subscribers flag) or run them all."
             )
 
+        subscription_builder = SubscriptionBuilder()
         for subscriber in subscribers:
-            subscription_builder = SubscriptionBuilder(subscriber=subscriber)
-            subscription_builder.build()
+            subscription_builder.build(subscriber=subscriber)
             self.process_controller.add_subscriber(subscriber)
 
         self.process_controller.start()
