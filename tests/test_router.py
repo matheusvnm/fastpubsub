@@ -93,6 +93,11 @@ class TestPubSubRouter:
         assert "level1.level2.alias" in subscribers
         assert subscribers["level1.level2.alias"].subscription_name == "level1.level2.sub"
 
+    def test_error_on_basic_cyclical_router(self):
+        router = PubSubRouter(prefix="")
+        with pytest.raises(FastPubSubException):
+            router.include_router(router)
+
 
 class TestPrefixValidation:
     @pytest.mark.parametrize(

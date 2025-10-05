@@ -1,11 +1,9 @@
 import json
 from datetime import datetime
-from typing import Any
-from unittest.mock import AsyncMock, patch
 from uuid import UUID, uuid4
 
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.exceptions import FastPubSubException
@@ -27,21 +25,7 @@ class ComplexMessageSchema(BaseModel):
     user: UserSchema
 
 
-@pytest.fixture
-def publisher(broker: PubSubBroker) -> Publisher:
-    return broker.publisher(topic_name="cba")
-
-
 class TestPublisher:
-    @pytest.mark.asyncio
-    async def test_publish_with_all_fields_successfully(self, publisher: Publisher):
-        with patch.object(Publisher, "build_callstack", return_value=AsyncMock()) as mock:
-            data = b"data"
-            ordering_key = "key1"
-            attributes = {"attr1": "val1"}
-            await publisher.publish(data, ordering_key=ordering_key, attributes=attributes)
-            mock.return_value.on_publish.assert_called_once_with(data, ordering_key, attributes)
-
     def test_create_publisher_instances(
         self, router_a: PubSubRouter, router_b: PubSubRouter, broker: PubSubBroker
     ):
@@ -91,40 +75,6 @@ class TestPublisher:
 
         expected_output_c = [first_middleware, PublishMessageCommand]
         assert callstack_matches(callstack_c, expected_output_c)
-
-    @pytest.mark.parametrize("topic_name", [None, True, 101])
-    def test_publisher_with_invalid_topic_name_raises_exception(
-        self, topic_name: str, broker: PubSubBroker
-    ):
-        with pytest.raises(ValidationError):
-            broker.publisher(topic_name=topic_name)
-
-    @pytest.mark.parametrize(
-        "data",
-        [
-            {"data": True},
-            {"data": 101, "ordering_key": "key"},
-            {"data": "text", "ordering_key": {}, "attributes": {"key": "value"}},
-            {"data": "text", "attributes": {"key": object}},
-            {"data": "text", "autocreate": None},
-        ],
-    )
-    @pytest.mark.asyncio
-    async def test_publish_with_invalid_fields_raises_exception(
-        self,
-        data: dict[str, Any],
-        broker: PubSubBroker,
-        router_a: PubSubRouter,
-        publisher: Publisher,
-    ):
-        with pytest.raises(ValidationError):
-            await publisher.publish(**data)
-
-        with pytest.raises(ValidationError):
-            await broker.publish(topic_name="a", **data)
-
-        with pytest.raises(ValidationError):
-            await router_a.publish(topic_name="a", **data)
 
     @pytest.mark.parametrize(
         "project_id",

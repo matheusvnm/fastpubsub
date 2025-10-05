@@ -6,8 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
-from fastpubsub.clients.pub import PubSubPublisherClient
-from fastpubsub.clients.sub import PubSubSubscriberClient
+from fastpubsub.clients.builder import PubSubSubscriptionBuilder
 from fastpubsub.concurrency.controller import ProcessController
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.logger import logger
@@ -16,44 +15,6 @@ from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.pubsub.subscriber import Subscriber
 from fastpubsub.router import PubSubRouter
 from fastpubsub.types import SubscribedCallable
-
-
-class SubscriptionBuilder:
-    def __init__(self):
-        self.created_topics: set[str] = set()
-
-    def build(self, subscriber: Subscriber) -> None:
-        self.subscriber = subscriber
-        if self.subscriber.lifecycle_policy.autocreate:
-            self._create_topics()
-            self._create_subscription()
-
-        if self.subscriber.lifecycle_policy.autoupdate:
-            self._update_subscription()
-
-    def _create_topics(self) -> None:
-        target_topic = self.subscriber.topic_name
-        self._new_topic(target_topic, create_default_subscription=False)
-
-        if self.subscriber.dead_letter_policy:
-            target_topic = self.subscriber.dead_letter_policy.topic_name
-            self._new_topic(target_topic)
-
-    def _new_topic(self, topic_name: str, create_default_subscription: bool = True) -> None:
-        if topic_name in self.created_topics:
-            return
-
-        client = PubSubPublisherClient(project_id=self.subscriber.project_id, topic_name=topic_name)
-        client.create_topic(create_default_subscription)
-        self.created_topics.add(topic_name)
-
-    def _create_subscription(self) -> None:
-        client = PubSubSubscriberClient()
-        client.create_subscription(subscriber=self.subscriber)
-
-    def _update_subscription(self) -> None:
-        client = PubSubSubscriberClient()
-        client.update_subscription(subscriber=self.subscriber)
 
 
 class PubSubBroker:
@@ -139,14 +100,14 @@ class PubSubBroker:
         return self.router.include_middleware(middleware)
 
     async def start(self) -> None:
-        subscribers = await self._filter_subscribers()
+        subscribers = self._filter_subscribers()
         if not subscribers:
             logger.error("No subscriber found for running.")
             raise FastPubSubException(
                 "You must select subscribers (using --subscribers flag) or run them all."
             )
 
-        subscription_builder = SubscriptionBuilder()
+        subscription_builder = PubSubSubscriptionBuilder()
         for subscriber in subscribers:
             subscription_builder.build(subscriber=subscriber)
             self.process_controller.add_subscriber(subscriber)
@@ -162,13 +123,12 @@ class PubSubBroker:
             logger.info("The subscribers are not active. May be they are deactivated?")
             return False
 
-        alive = True
         for name, liveness in subscribers.items():
             if not liveness:
                 logger.error(f"The {name} subscriber handler is not alive")
-                alive = False
+                return False
 
-        return alive
+        return True
 
     def ready(self) -> bool:
         subscribers = self.process_controller.get_readiness()
@@ -176,16 +136,14 @@ class PubSubBroker:
             logger.info("The subscribers are not active. May be they are deactivated?")
             return False
 
-        ready = True
         for name, readiness in subscribers.items():
             if not readiness:
                 logger.error(f"The {name} subscriber handler is not ready")
-                ready = False
-                return ready
+                return False
 
-        return ready
+        return True
 
-    async def _filter_subscribers(self) -> list[Subscriber]:
+    def _filter_subscribers(self) -> list[Subscriber]:
         subscribers = self.router._get_subscribers()
         selected_subscribers = self._get_selected_subscribers()
 

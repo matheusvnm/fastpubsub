@@ -3,6 +3,7 @@ import pytest
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.commands import HandleMessageCommand, PublishMessageCommand
+from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.router import PubSubRouter
 
 
@@ -47,6 +48,11 @@ def final_middleware() -> type[BaseMiddleware]:
     class FinalMiddleware(BaseMiddleware): ...
 
     return FinalMiddleware
+
+
+@pytest.fixture
+def publisher(broker: PubSubBroker) -> Publisher:
+    return broker.publisher(topic_name="cba")
 
 
 def callstack_matches(

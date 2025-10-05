@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from fastpubsub import Subscriber
-from fastpubsub.broker import SubscriptionBuilder
+from fastpubsub.clients.builder import PubSubSubscriptionBuilder
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,
@@ -14,6 +14,7 @@ from fastpubsub.datastructures import (
     MessageRetryPolicy,
 )
 
+BUILDER_MODULE_PATH = "fastpubsub.clients.builder"
 
 class TestSubscriptionBuilder:
     @pytest.fixture
@@ -56,18 +57,18 @@ class TestSubscriptionBuilder:
 
     @pytest.fixture
     def sub_client(self) -> Generator[MagicMock]:
-        with patch("fastpubsub.broker.PubSubSubscriberClient") as sub_client:
+        with patch(f"{BUILDER_MODULE_PATH}.PubSubSubscriberClient") as sub_client:
             yield sub_client
 
     @pytest.fixture
     def pub_client(self) -> Generator[MagicMock]:
-        with patch("fastpubsub.broker.PubSubPublisherClient") as pub_client:
+        with patch(f"{BUILDER_MODULE_PATH}.PubSubPublisherClient") as pub_client:
             yield pub_client
 
     def test_build_full_subscription_successfully(
         self, sub_client: MagicMock, pub_client: MagicMock, subscriber: Subscriber
     ):
-        subscription_builder = SubscriptionBuilder()
+        subscription_builder = PubSubSubscriptionBuilder()
         subscription_builder.build(subscriber=subscriber)
 
         expected_calls = [
@@ -86,7 +87,7 @@ class TestSubscriptionBuilder:
         self, sub_client: MagicMock, pub_client: MagicMock, subscriber: Subscriber
     ):
         subscriber.lifecycle_policy = LifecyclePolicy(autocreate=True, autoupdate=False)
-        subscription_builder = SubscriptionBuilder()
+        subscription_builder = PubSubSubscriptionBuilder()
         subscription_builder.build(subscriber=subscriber)
 
         expected_calls = [
@@ -105,7 +106,7 @@ class TestSubscriptionBuilder:
         self, sub_client: MagicMock, pub_client: MagicMock, subscriber: Subscriber
     ):
         subscriber.lifecycle_policy = LifecyclePolicy(autocreate=False, autoupdate=True)
-        subscription_builder = SubscriptionBuilder()
+        subscription_builder = PubSubSubscriptionBuilder()
         subscription_builder.build(subscriber=subscriber)
 
         pub_client.assert_not_called()
@@ -117,7 +118,7 @@ class TestSubscriptionBuilder:
         self, sub_client: MagicMock, pub_client: MagicMock, subscriber: Subscriber
     ):
         subscriber.dead_letter_policy = None
-        subscription_builder = SubscriptionBuilder()
+        subscription_builder = PubSubSubscriptionBuilder()
         subscription_builder.build(subscriber=subscriber)
 
         expected_calls = [
@@ -135,7 +136,7 @@ class TestSubscriptionBuilder:
     ):
         subscriber_one = deepcopy(subscriber)
         subscriber_two = deepcopy(subscriber)
-        subscription_builder = SubscriptionBuilder()
+        subscription_builder = PubSubSubscriptionBuilder()
         subscription_builder.build(subscriber=subscriber_one)
         subscription_builder.build(subscriber=subscriber_two)
 
@@ -157,4 +158,4 @@ class TestSubscriptionBuilder:
             call(),
             call().update_subscription(subscriber=subscriber_two),
         ]
-        sub_client.mock_calls == expected_calls
+        assert sub_client.mock_calls == expected_calls

@@ -31,7 +31,9 @@ class Publisher:
     ) -> None:
         callstack = self.build_callstack(autocreate=autocreate)
         serialized_message = self._serialize_message(data)
-        await callstack.on_publish(serialized_message, ordering_key, attributes)
+        await callstack.on_publish(
+            data=serialized_message, ordering_key=ordering_key, attributes=attributes
+        )
 
     def build_callstack(self, autocreate: bool = True) -> PublishMessageCommand | BaseMiddleware:
         callstack: PublishMessageCommand | BaseMiddleware = PublishMessageCommand(

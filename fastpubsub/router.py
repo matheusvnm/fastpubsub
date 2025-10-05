@@ -57,10 +57,12 @@ class PubSubRouter(BaseRouter):
     def include_router(self, router: "PubSubRouter") -> None:
         if not (router and isinstance(router, PubSubRouter)):
             raise FastPubSubException(f"Your routers must be of type {PubSubRouter.__name__}")
-        
-        # V2: Create a algorithm to detect cycles on this routers
-        #if not self == router:
-        #    raise FastPubSubException(f"There is a cyclical reference on router {self.prefix}.")
+
+        if self == router:
+            # V2: Create a algorithm to detect cycles on these routers.
+            # For now, let us assume that the router is well configured
+            # and this is the only error case.
+            raise FastPubSubException(f"There is a cyclical reference on router {self.prefix}.")
 
         router.add_prefix(self.prefix)
         for existing_router in self.routers:
