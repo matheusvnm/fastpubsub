@@ -104,12 +104,12 @@ class PubSubBroker:
         if not subscribers:
             logger.error("No subscriber found for running.")
             raise FastPubSubException(
-                "You must select subscribers (using --subscribers flag) or run them all."
+                "You must select the subscribers using --subscribers flag or run them all."
             )
 
         subscription_builder = PubSubSubscriptionBuilder()
         for subscriber in subscribers:
-            subscription_builder.build(subscriber=subscriber)
+            subscription_builder.build(subscriber)
             self.process_controller.add_subscriber(subscriber)
 
         self.process_controller.start()

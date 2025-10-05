@@ -8,18 +8,18 @@ broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 app = FastPubSub(broker)
 
 
-@broker._add_subscriber(
+@broker.subscriber(
     "first-alias",
     topic_name="first-topic",
     subscription_name="test-publish",
 )
 async def handle(message: Message):
-    logger.info(f"Processed message: {message.data}")
+    logger.info(f"Processed message: {message.data.decode()}")
     publisher: Publisher = broker.publisher("second-topic")
     await publisher.publish({"foo": "bar"})
 
 
-@broker._add_subscriber(
+@broker.subscriber(
     "second-alias",
     topic_name="second-topic",
     subscription_name="test-linked-subscription",

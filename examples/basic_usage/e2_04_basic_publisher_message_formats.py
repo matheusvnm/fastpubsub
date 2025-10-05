@@ -17,17 +17,17 @@ broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 app = FastPubSub(broker)
 
 
-@broker._add_subscriber(
+@broker.subscriber(
     "test-alias",
     topic_name="test-topic-pydantic",
     subscription_name="test-publish-pydantic",
 )
-async def handle(message: Message):
-    logger.info(f"Processed message: {message.data}")
+async def handle(message: Message) -> None:
+    logger.info(f"Processed message: {message.data.decode()}")
 
 
 @app.after_startup
-async def test_publish():
+async def test_publish() -> None:
     message = TestMessage(
         event="checkout", source="checkout-cart", message="the user put a item to the cart"
     )

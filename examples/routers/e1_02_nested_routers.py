@@ -22,33 +22,33 @@ broker.include_router(router_core)
 app = FastPubSub(broker)
 
 
-@router_core._add_subscriber(
+@router_core.subscriber(
     "some-alias",
     topic_name="some-router-topic",
     subscription_name="some-router-sub",
 )
-async def handler_on_core_router(message: Message):
+async def handler_on_core_router(message: Message) -> None:
     logger.info(f"Processed message on core router: {message}")
 
 
-@router_sales._add_subscriber(
+@router_sales.subscriber(
     "some-alias",
     topic_name="some-router-topic",
     subscription_name="some-router-sub",
 )
-async def handler_on_sales_router(message: Message):
+async def handler_on_sales_router(message: Message) -> None:
     logger.info(f"Processed message on sales router: {message}")
 
 
-@router_logistics._add_subscriber(
+@router_logistics.subscriber(
     "some-alias",
     topic_name="some-router-topic",
     subscription_name="some-router-sub",
 )
-async def handler_on_logistics_router(message: Message):
+async def handler_on_logistics_router(message: Message) -> None:
     logger.info(f"Processed message on logistics handler: {message}")
 
 
 @app.after_startup
-async def test_publish():
+async def test_publish() -> None:
     await broker.publish("some-router-topic", {"hello": "world"})

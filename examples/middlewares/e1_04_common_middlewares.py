@@ -10,16 +10,16 @@ broker.include_middleware(GZipMiddleware)
 app = FastPubSub(broker)
 
 
-@broker._add_subscriber(
+@broker.subscriber(
     "broker-subscriber-2",
     topic_name="topic_a_2",
     subscription_name="subscription_a",
 )
-async def broker_gzip_message(message: Message):
+async def broker_gzip_message(message: Message) -> None:
     logger.info(f"We received message with encoding {message.attributes['Content-Encoding']}")
 
 
 @app.after_startup
-async def test_publish():
+async def test_publish() -> None:
     publisher = broker.publisher("topic_a_2")
     await publisher.publish("Hi!")

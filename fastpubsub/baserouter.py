@@ -64,20 +64,6 @@ class BaseRouter:
                     " The alias must be unique among all subscribers"
                 )
 
-            existing_subscriber = next(
-                filter(
-                    lambda sub: sub.subscription_name == prefixed_subscription_name,
-                    self.subscribers.values(),
-                ),
-                None,
-            )
-
-            if existing_subscriber:
-                raise FastPubSubException(
-                    f"The subscription '{prefixed_subscription_name}' "
-                    "must be unique among handlers."
-                )
-
             dead_letter_policy = None
             if dead_letter_topic:
                 dead_letter_policy = DeadLetterPolicy(

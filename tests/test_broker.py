@@ -7,6 +7,7 @@ import pytest
 from fastpubsub.baserouter import BaseRouter
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.exceptions import FastPubSubException
+from fastpubsub.pubsub.subscriber import Subscriber
 
 BROKER_MODULE_PATH = "fastpubsub.broker"
 
@@ -48,10 +49,6 @@ class TestPubSubBroker:
         with pytest.raises(FastPubSubException):
             broker.include_router(SomeOtherRouter())
 
-    # Parametrize
-    # No subscriber
-    # No envvar
-    # with subscriber
 
     @pytest.mark.parametrize(
         ["selected_subscribers",
@@ -102,12 +99,87 @@ class TestPubSubBroker:
         await broker.shutdown()
         process_controller.terminate.assert_called_once()
 
-
-    def test_start_broker(self): ...
     
-    def test_readiness_probe(self): ...
+    @pytest.mark.asyncio
+    async def test_start_broker_no_sub_error(self, broker: PubSubBroker):
+        broker._filter_subscribers = lambda : []
+        with pytest.raises(FastPubSubException):
+            await broker.start()
 
-    def test_liveness_probe(self): ...
+    @pytest.mark.asyncio
+    async def test_start_broker(self, 
+                          subscription_builder: MagicMock,
+                          process_controller: MagicMock,
+                          broker: PubSubBroker):
+        
+        expected_subscriber = MagicMock(spec=Subscriber)
+        broker._filter_subscribers = lambda : [expected_subscriber]
+        await broker.start()
+
+        subscription_builder.build.assert_called_once_with(expected_subscriber)
+        process_controller.add_subscriber.assert_called_once_with(expected_subscriber)
+        process_controller.start.assert_called_once()
+
+
+    
+    @pytest.mark.parametrize(
+        ["response", "expected_readiness"],
+        [
+            (
+                {"sub_a": True},
+                True,
+            ),
+            (
+                {},
+                False,
+            ),
+            (
+                {"sub_a": True, "sub_b": False},
+                False,
+            ),
+        ],
+    )
+    def test_readiness_probe(self, 
+                            response: dict[str, bool], 
+                            expected_readiness: bool, 
+                            process_controller: MagicMock, 
+                            broker: PubSubBroker
+                            ): 
+        readiness_call = process_controller.get_readiness
+        readiness_call.return_value = response
+
+        response = broker.ready()
+        assert response == expected_readiness
+
+
+    @pytest.mark.parametrize(
+        ["response", "expected_liveness"],
+        [
+            (
+                {"sub_a": True},
+                True,
+            ),
+            (
+                {},
+                False,
+            ),
+            (
+                {"sub_a": True, "sub_b": False},
+                False,
+            ),
+        ],
+    )
+    def test_liveness_probe(self, 
+                            response: dict[str, bool], 
+                            expected_liveness: bool, 
+                            process_controller: MagicMock, 
+                            broker: PubSubBroker
+                            ): 
+        liveness_call = process_controller.get_liveness
+        liveness_call.return_value = response
+
+        response = broker.alive()
+        assert response == expected_liveness
 
     def test_info_probe(self, process_controller: MagicMock, broker: PubSubBroker): 
         expected_info = {"some": "data"}

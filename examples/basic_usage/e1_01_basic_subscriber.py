@@ -7,7 +7,7 @@ broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 app = FastPubSub(broker)
 
 
-@broker._add_subscriber(
+@broker.subscriber(
     "test-alias",
     topic_name="test-topic",
     subscription_name="test-basic-subscription",

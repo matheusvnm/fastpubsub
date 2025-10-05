@@ -4,7 +4,7 @@ from fastpubsub.pubsub.subscriber import Subscriber
 
 
 class PubSubSubscriptionBuilder:
-    def __init__(self):
+    def __init__(self) -> None:
         self.created_topics: set[str] = set()
 
     def build(self, subscriber: Subscriber) -> None:

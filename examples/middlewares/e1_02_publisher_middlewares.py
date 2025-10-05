@@ -12,25 +12,25 @@ broker = PubSubBroker(
 app = FastPubSub(broker)
 
 
-@router._add_subscriber(
+@router.subscriber(
     "router-subscriber",
     topic_name="topic_b",
     subscription_name="subscription_b",
 )
-async def router_handle(message: Message):
+async def router_handle(message: Message) -> None:
     logger.info(f"We received message {message} on router_handle")
 
 
-@broker._add_subscriber(
+@broker.subscriber(
     "broker-subscriber",
     topic_name="topic_a",
     subscription_name="subscription_a",
 )
-async def broker_handle(message: Message):
+async def broker_handle(message: Message) -> None:
     logger.info(f"We received message {message} on broker_handle")
 
 
 @app.after_startup
-async def after_started():
+async def after_started() -> None:
     await router.publish(topic_name="topic_b", data={"some_message": "messageA"})
     await broker.publish(topic_name="topic_a", data={"some_message": "messageA"})

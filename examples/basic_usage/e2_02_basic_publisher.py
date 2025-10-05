@@ -10,15 +10,15 @@ app = FastPubSub(broker)
 publisher: Publisher = broker.publisher("test-topic")
 
 
-@broker._add_subscriber(
+@broker.subscriber(
     "test-alias",
     topic_name="test-topic",
     subscription_name="test-publish",
 )
-async def handle(message: Message):
+async def handle(message: Message) -> None:
     logger.info(f"Processed message: {message}")
 
 
 @app.after_startup
-async def test_publish():
+async def test_publish() -> None:
     await publisher.publish({"hello": "world"})

@@ -11,7 +11,7 @@ broker.include_router(router=router)
 app = FastPubSub(broker)
 
 
-@router._add_subscriber(
+@router.subscriber(
     "test-alias",
     topic_name="test-router-topic",
     subscription_name="test-basic-router-subscription",
@@ -22,7 +22,7 @@ async def handler_on_router(message: Message):
 
 # The aliases/subscription name can be the same.
 # That is because the PubSubRouter has prefix.
-@broker._add_subscriber(
+@broker.subscriber(
     "test-alias",
     topic_name="test-router-topic",
     subscription_name="test-basic-router-subscription",
