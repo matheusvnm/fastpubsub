@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from fastpubsub.baserouter import BaseRouter
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.pubsub.subscriber import Subscriber
@@ -41,7 +40,7 @@ class TestPubSubBroker:
         assert broker.router.project_id == "my-valid-project-id"
 
     def test_include_router_with_invalid_type_raises_exception(self):
-        class SomeOtherRouter(BaseRouter):
+        class SomeOtherRouter:
             pass
 
         broker = PubSubBroker(project_id="cloud-project")

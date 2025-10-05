@@ -54,6 +54,7 @@ class ManagerWorker:
         self._startup()
         with contextlib.suppress(KeyboardInterrupt):
             while True:
+                logger.debug("Checking the subscribers state")
                 self._poll_for_requests()
                 if self._should_restart():
                     self._restart()

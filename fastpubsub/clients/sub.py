@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import os
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
@@ -218,11 +219,9 @@ class PubSubSubscriberClient:
             )
 
             yield streaming_pull_future
-
             try:
-                streaming_pull_future.result()
-            except KeyboardInterrupt:
-                logger.debug(f"Subscriber '{subscriber.subscription_name}' stopped by user")
+                with contextlib.suppress(KeyboardInterrupt):
+                    streaming_pull_future.result()
             except Exception:
                 logger.exception(
                     "Subscription stream terminated "

@@ -2,6 +2,7 @@
 
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
+from fastpubsub.datastructures import Message
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.pubsub.subscriber import Subscriber
@@ -14,4 +15,5 @@ __all__ = [
     "Publisher",
     "Subscriber",
     "BaseMiddleware",
+    "Message",
 ]

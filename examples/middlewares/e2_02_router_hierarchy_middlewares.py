@@ -1,9 +1,6 @@
 from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubRouterMiddleware
-from fastpubsub.applications import FastPubSub
-from fastpubsub.broker import PubSubBroker
-from fastpubsub.datastructures import Message
+from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
-from fastpubsub.router import PubSubRouter
 
 child_router = PubSubRouter(prefix="subrouter")
 child_router.include_middleware(SubRouterMiddleware)
@@ -26,7 +23,7 @@ app = FastPubSub(broker)
     topic_name="some_test_topic",
     subscription_name="tst_sub",
 )
-async def broker_handle(message: Message) -> None:
+async def broker_handle(_: Message) -> None:
     logger.info("We received a message on broker!")
 
 
@@ -35,7 +32,7 @@ async def broker_handle(message: Message) -> None:
     topic_name="some_test_topic2",
     subscription_name="tst_sub",
 )
-async def parent_router_handle(message: Message) -> None:
+async def parent_router_handle(_: Message) -> None:
     logger.info("We received a message on parent router!")
 
 
@@ -44,7 +41,7 @@ async def parent_router_handle(message: Message) -> None:
     topic_name="some_test_topic3",
     subscription_name="tst_sub",
 )
-async def subrouter_handle(message: Message) -> None:
+async def subrouter_handle(_: Message) -> None:
     logger.info("We received a message on subrouter!")
 
 

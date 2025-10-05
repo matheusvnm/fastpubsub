@@ -12,7 +12,7 @@ app = FastPubSub(broker)
 
 @broker.subscriber(
     "broker-subscriber-2",
-    topic_name="topic_a_2",
+    topic_name="topic_a_3",
     subscription_name="subscription_a",
 )
 async def broker_gzip_message(message: Message) -> None:
@@ -21,5 +21,5 @@ async def broker_gzip_message(message: Message) -> None:
 
 @app.after_startup
 async def test_publish() -> None:
-    publisher = broker.publisher("topic_a_2")
+    publisher = broker.publisher("topic_a_3")
     await publisher.publish("Hi!")

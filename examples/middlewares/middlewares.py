@@ -1,8 +1,7 @@
 from typing import Any
 
-from fastpubsub.datastructures import Message
+from fastpubsub import BaseMiddleware, Message
 from fastpubsub.logger import logger
-from fastpubsub.middlewares.base import BaseMiddleware
 
 
 class BrokerMiddleware(BaseMiddleware):
@@ -14,7 +13,7 @@ class BrokerMiddleware(BaseMiddleware):
         return await super().on_message(message)
 
     async def on_publish(
-        self, data: bytes, ordering_key: str | None, attributes: dict[str, str] | None
+        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
         logger.info(
             "I'm the broker publish middleware! "
@@ -32,7 +31,7 @@ class RouterMiddleware(BaseMiddleware):
         return await super().on_message(message)
 
     async def on_publish(
-        self, data: bytes, ordering_key: str | None, attributes: dict[str, str] | None
+        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
         logger.info(
             "I'm the router publish middleware! "
@@ -50,7 +49,7 @@ class SubRouterMiddleware(BaseMiddleware):
         return await super().on_message(message)
 
     async def on_publish(
-        self, data: bytes, ordering_key: str | None, attributes: dict[str, str] | None
+        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
         logger.info(
             "I'm the sub-router publish middleware! "
@@ -65,14 +64,14 @@ class SubcriberMiddleware(BaseMiddleware):
         return await super().on_message(message)
 
     async def on_publish(
-        self, data: bytes, ordering_key: str | None, attributes: dict[str, str] | None
+        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
         pass
 
 
 class PublisherMiddleware(BaseMiddleware):
     async def on_publish(
-        self, data: bytes, ordering_key: str | None, attributes: dict[str, str] | None
+        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
         logger.info("I'm the publisher middleware! I will only be executed at publisher level")
         return await super().on_publish(data, ordering_key, attributes)

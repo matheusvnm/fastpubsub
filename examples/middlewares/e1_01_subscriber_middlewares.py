@@ -1,9 +1,6 @@
 from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubcriberMiddleware
-from fastpubsub.applications import FastPubSub
-from fastpubsub.broker import PubSubBroker
-from fastpubsub.datastructures import Message
+from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
-from fastpubsub.router import PubSubRouter
 
 router = PubSubRouter(prefix="myawesomerouter", middlewares=[RouterMiddleware])
 broker = PubSubBroker(

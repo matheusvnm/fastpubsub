@@ -24,8 +24,8 @@ class Publisher:
     @validate_call(config=ConfigDict(strict=True))
     async def publish(
         self,
-        data: BaseModel | dict[str, Any] | str | bytes,
-        ordering_key: str | None = None,
+        data: dict[str, Any] | str | bytes | BaseModel,
+        ordering_key: str = "",
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:

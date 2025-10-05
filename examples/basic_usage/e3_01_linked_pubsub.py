@@ -1,8 +1,5 @@
-from fastpubsub.applications import FastPubSub
-from fastpubsub.broker import PubSubBroker
-from fastpubsub.datastructures import Message
+from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
-from fastpubsub.pubsub.publisher import Publisher
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 app = FastPubSub(broker)
@@ -15,7 +12,7 @@ app = FastPubSub(broker)
 )
 async def handle(message: Message) -> None:
     logger.info(f"Processed message: {message.data.decode()}")
-    publisher: Publisher = broker.publisher("second-topic")
+    publisher = broker.publisher("second-topic")
     await publisher.publish({"foo": "bar"})
 
 
@@ -30,5 +27,5 @@ async def handle_from_another_topic(message: Message) -> None:
 
 @app.after_startup
 async def test_publish() -> None:
-    publisher: Publisher = broker.publisher("first-topic")
+    publisher = broker.publisher("first-topic")
     await publisher.publish({"hello": "world"})

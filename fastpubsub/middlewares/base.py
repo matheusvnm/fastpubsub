@@ -2,6 +2,8 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Union
 
+from pydantic import ConfigDict, validate_call
+
 from fastpubsub.datastructures import Message
 from fastpubsub.pubsub.commands import HandleMessageCommand, PublishMessageCommand
 
@@ -24,8 +26,9 @@ class BaseMiddleware:
         return await self.next_call.on_message(message)
 
     @abstractmethod
+    @validate_call(config=ConfigDict(strict=True))
     async def on_publish(
-        self, data: bytes, ordering_key: str | None, attributes: dict[str, str] | None
+        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
         if isinstance(self.next_call, HandleMessageCommand):
             raise TypeError(f"Incorrect middleware stack build for {self.__class__.__name__}")

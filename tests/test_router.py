@@ -7,11 +7,6 @@ from fastpubsub.router import PubSubRouter
 
 
 class TestPubSubRouter:
-    def test_propagate_project_id(self):
-        router = PubSubRouter()
-        router._propagate_project_id("test-project")
-        assert router.project_id == "test-project"
-
     def test_add_prefix(self):
         router = PubSubRouter(prefix="base")
         sub_router = PubSubRouter(prefix="sub")
@@ -78,8 +73,11 @@ class TestPubSubRouter:
         level3_router = PubSubRouter()
         level2_router = PubSubRouter(routers=(level3_router,))
         level1_router = PubSubRouter(routers=(level2_router,))
-        level1_router._propagate_project_id("test-project")
+        level1_router.set_project_id("test-project")
+
+        assert level1_router.project_id == "test-project"
         assert level2_router.project_id == "test-project"
+        assert level3_router.project_id == "test-project"
 
     def test_nested_router_subscriber_retrieval(self):
         level2_router = PubSubRouter(prefix="level2")

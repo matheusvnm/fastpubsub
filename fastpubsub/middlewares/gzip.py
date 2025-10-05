@@ -21,7 +21,7 @@ class GZipMiddleware(BaseMiddleware):
         return await super().on_message(message)
 
     async def on_publish(
-        self, data: bytes, ordering_key: str | None, attributes: dict[str, str] | None
+        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
         if not attributes:
             attributes = {}

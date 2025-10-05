@@ -27,9 +27,10 @@ class PubSubBroker:
         if not (project_id and isinstance(project_id, str) and len(project_id.strip()) > 0):
             raise FastPubSubException(f"The project id value ({project_id}) is invalid.")
 
-        self.process_controller = ProcessController()
+        self.project_id = project_id
         self.router = PubSubRouter(routers=routers, middlewares=middlewares)
-        self.router._propagate_project_id(project_id)
+        self.router.set_project_id(self.project_id)
+        self.process_controller = ProcessController()
 
     @validate_call(config=ConfigDict(strict=True))
     def subscriber(
@@ -79,8 +80,8 @@ class PubSubBroker:
     async def publish(
         self,
         topic_name: str,
-        data: BaseModel | dict[str, Any] | str | bytes,
-        ordering_key: str | None = None,
+        data: dict[str, Any] | str | bytes | BaseModel,
+        ordering_key: str = "",
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:

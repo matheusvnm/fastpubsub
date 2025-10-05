@@ -57,7 +57,7 @@ class ProcessController:
             target=start_manager_worker, args=(self._subscribers, child_conn, self._mp_context)
         )
         self._manager_process.start()
-        logger.info(f"Started ManagerWorker process with PID: {self._manager_process.pid}")
+        logger.debug(f"Started ManagerWorker process with PID: {self._manager_process.pid}")
 
     def _send_request(
         self, request: InterprocessRequest, timeout: float
