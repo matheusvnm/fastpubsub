@@ -37,4 +37,3 @@ async def test_publish() -> None:
     await publisher.publish({"some_dict": "dict_data"})
     await publisher.publish("some_string_text")
     await publisher.publish(b"some_byte_text")
-    await publisher.publish(bytearray("some_string_as_bytearray", "utf-8"))

@@ -16,7 +16,7 @@ app = FastPubSub(broker)
     topic_name="test-router-topic",
     subscription_name="test-basic-router-subscription",
 )
-async def handler_on_router(message: Message):
+async def handler_on_router(message: Message) -> None:
     logger.info(f"Processed message on router handler: {message}")
 
 
@@ -27,10 +27,10 @@ async def handler_on_router(message: Message):
     topic_name="test-router-topic",
     subscription_name="test-basic-router-subscription",
 )
-async def handler_on_broker(message: Message):
+async def handler_on_broker(message: Message) -> None:
     logger.info(f"Processed message on broker handler: {message}")
 
 
 @app.after_startup
-async def test_publish():
+async def test_publish() -> None:
     await broker.publish("test-router-topic", {"hello": "world"})

@@ -9,7 +9,6 @@ from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.router import PubSubRouter
 
 
-
 class TestPublishMessage:
     @pytest.mark.asyncio
     async def test_publish_with_all_fields_successfully(

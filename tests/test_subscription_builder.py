@@ -16,6 +16,7 @@ from fastpubsub.datastructures import (
 
 BUILDER_MODULE_PATH = "fastpubsub.clients.builder"
 
+
 class TestSubscriptionBuilder:
     @pytest.fixture
     def subscriber(self):
