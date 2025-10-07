@@ -115,8 +115,7 @@ class PubSubRouter:
         enable_exactly_once_delivery: bool = False,
         min_backoff_delay_secs: int = 10,
         max_backoff_delay_secs: int = 600,
-        max_messages: int = 1000,
-        max_messages_bytes: int = 100 * 1024 * 1024,
+        max_messages: int = 50,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ) -> SubscribedCallable:
         def decorator(func: AsyncDecoratedCallable) -> AsyncDecoratedCallable:
@@ -157,7 +156,6 @@ class PubSubRouter:
 
             control_flow_policy = MessageControlFlowPolicy(
                 max_messages=max_messages,
-                max_bytes=max_messages_bytes,
             )
 
             subscriber_middlewares = list(middlewares) if middlewares else []

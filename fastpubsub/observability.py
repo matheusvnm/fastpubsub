@@ -13,9 +13,17 @@ class ApmProvider(ABC):
     """Abstract base class defining the contract for any APM provider."""
 
     @abstractmethod
-    def initialize(self) -> None:
+    def start(self) -> None:
         """
         Initializes the APM agent if it's not already running.
+        This is for environments without an auto-starting wrapper.
+        """
+        pass
+
+    @abstractmethod
+    def shutdown(self) -> None:
+        """
+        Shutdowm the APM agent if it's running.
         This is for environments without an auto-starting wrapper.
         """
         pass
@@ -66,7 +74,10 @@ class ApmProvider(ABC):
 class NoOpProvider(ApmProvider):
     """A provider that performs no operations."""
 
-    def initialize(self) -> None:
+    def start(self) -> None:
+        return None
+
+    def shutdown(self) -> None:
         return None
 
     @contextmanager
@@ -111,7 +122,7 @@ class NewRelicProvider(ApmProvider):
                 "Please install it using 'pip install fastpubsub[newrelic]'."
             ) from e
 
-    def initialize(self) -> None:
+    def start(self) -> None:
         """Initializes and registers the agent if not already active."""
         logger.info(f"Performing New Relic agent initialization for process [{os.getpid()}].")
         try:
@@ -123,6 +134,16 @@ class NewRelicProvider(ApmProvider):
         except Exception:
             logger.exception(
                 f"Failed to initialize New Relic for process [{os.getpid()}].", stacklevel=5
+            )
+
+    def shutdown(self) -> None:
+        logger.info(f"Performing New Relic agent shutdown for process [{os.getpid()}].")
+        try:
+            self._agent.shutdown_agent()
+        except Exception:
+            logger.exception(
+                f"Failed to initialize shutdown New Relic for process [{os.getpid()}].",
+                stacklevel=5,
             )
 
     @contextmanager

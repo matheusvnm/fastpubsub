@@ -50,7 +50,6 @@ class PubSubBroker:
         min_backoff_delay_secs: int = 10,
         max_backoff_delay_secs: int = 600,
         max_messages: int = 1000,
-        max_messages_bytes: int = 100 * 1024 * 1024,
         middlewares: tuple[type[BaseMiddleware]] | None = None,
     ) -> SubscribedCallable:
         return self.router.subscriber(
@@ -68,7 +67,6 @@ class PubSubBroker:
             min_backoff_delay_secs=min_backoff_delay_secs,
             max_backoff_delay_secs=max_backoff_delay_secs,
             max_messages=max_messages,
-            max_messages_bytes=max_messages_bytes,
             middlewares=middlewares,
         )
 

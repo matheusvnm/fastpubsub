@@ -3,10 +3,10 @@ from concurrent.futures import Future
 from unittest.mock import MagicMock, patch
 
 import pytest
-from google.cloud.pubsub_v1.subscriber.exceptions import AcknowledgeError, AcknowledgeStatus
-
 from fastpubsub.clients.pub import PubSubPublisherClient
 from fastpubsub.clients.sub import CallbackHandler, PubSubSubscriberClient
+from google.cloud.pubsub_v1.subscriber.exceptions import AcknowledgeError, AcknowledgeStatus
+
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,

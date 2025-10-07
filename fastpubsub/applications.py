@@ -29,6 +29,7 @@ class Application:
         after_shutdown: Sequence[NoArgAsyncCallable] | None = None,
     ):
         self.broker = broker
+        self.apm = get_apm_provider()
 
         self._on_startup: list[NoArgAsyncCallable] = []
         if on_startup and isinstance(on_startup, Sequence):
@@ -76,14 +77,11 @@ class Application:
 
     # V1: Create a contextualizer
     async def _start(self) -> None:
-        # TODO: Create a module for context and a extensible
-        # class for context add (LoggerContextualizer.contextualize(name=name, message=None))
-        apm = get_apm_provider()
-        apm.initialize()
-        with apm.background_transaction(name="start"):
+        self.apm.start()
+        with self.apm.background_transaction(name="start"):
             context = {
-                "span_id": apm.get_span_id(),
-                "trace_id": apm.get_trace_id(),
+                "span_id": self.apm.get_span_id(),
+                "trace_id": self.apm.get_trace_id(),
             }
 
             with logger.contextualize(**context):
@@ -104,15 +102,16 @@ class Application:
         logger.info("The FastPubSub processes started")
 
     async def _shutdown(self) -> None:
-        apm = get_apm_provider()
-        with apm.background_transaction(name="shutdown"):
+        with self.apm.background_transaction(name="shutdown"):
             context = {
-                "span_id": apm.get_span_id(),
-                "trace_id": apm.get_trace_id(),
+                "span_id": self.apm.get_span_id(),
+                "trace_id": self.apm.get_trace_id(),
             }
             with logger.contextualize(**context):
                 async with self.shutdown_hooks():
                     await self.broker.shutdown()
+
+        self.apm.shutdown()
 
     @asynccontextmanager
     async def shutdown_hooks(self) -> AsyncIterator[None]:
@@ -152,7 +151,6 @@ class FastPubSub(FastAPI, Application):
         redirect_slashes: bool = True,
         docs_url: str = "/docs",
         redoc_url: str = "/redoc",
-        info_url: str = "/consumers/info",
         liveness_url: str = "/consumers/alive",
         readiness_url: str = "/consumers/ready",
         swagger_ui_oauth2_redirect_url: str | None = None,

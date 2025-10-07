@@ -35,7 +35,19 @@ class PubSubSubscriptionBuilder:
         self.created_topics.add(topic_name)
 
     async def _create_subscription(self) -> None:
-        await self.client.create_subscription(subscriber=self.subscriber)
+        await self.client.create_subscription(
+            topic_name=self.subscriber.topic_name,
+            subscription_name=self.subscriber.subscription_name,
+            retry_policy=self.subscriber.retry_policy,
+            delivery_policy=self.subscriber.delivery_policy,
+            dead_letter_policy=self.subscriber.dead_letter_policy,
+        )
 
     async def _update_subscription(self) -> None:
-        await self.client.update_subscription(subscriber=self.subscriber)
+        await self.client.update_subscription(
+            topic_name=self.subscriber.topic_name,
+            subscription_name=self.subscriber.subscription_name,
+            retry_policy=self.subscriber.retry_policy,
+            delivery_policy=self.subscriber.delivery_policy,
+            dead_letter_policy=self.subscriber.dead_letter_policy,
+        )

@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from typing import Any
 
 import anyio
-from anyio import create_task_group
+from anyio import create_task_group, get_cancelled_exc_class
 from google.api_core.exceptions import (
     Aborted,
     Cancelled,
@@ -63,35 +63,43 @@ class MessageConsumeTask:
 
     async def poll(self) -> None:
         logger.debug(f"The message poll loop started for {self.subscriber.name}")
-
         async with create_task_group() as tg:
-            while not self.should_exit:
-                try:
-                    messages = await self.client.pull(self.subscriber.subscription_name)
+            try:
+                while not self.should_exit:
+                    try:
+                        messages = await self.client.pull(
+                            self.subscriber.subscription_name,
+                            self.subscriber.control_flow_policy.max_messages,
+                        )
 
-                    self.ready = True
-                    for received_message in messages:
-                        message = await self._deserialize_message(received_message)
-                        tg.start_soon(self._handle, message)
+                        self.ready = True
+                        for received_message in messages:
+                            message = await self._deserialize_message(received_message)
+                            tg.start_soon(self._handle, message)
 
-                    await anyio.sleep(0.05)
-                except Exception as e:
-                    self.ready = False
-                    if self._should_terminate(e):
-                        self.should_exit = True
-                        logger.exception(
-                            "A non-recoverable exception happened "
-                            f"message handler {self.subscriber.name}."
-                        )
-                    elif not self._should_recover(e):
-                        logger.warning(
-                            f"An recoverable error happened. We will try to recover from it: {e}."
-                        )
-                    else:
-                        logger.warning(
-                            "A unknown error happened, We will try to recover but not guaranteed.",
-                            exc_info=True,
-                        )
+                        await anyio.sleep(0.05)
+                    except Exception as e:
+                        self.ready = False
+                        if self._should_terminate(e):
+                            self.should_exit = True
+                            logger.exception(
+                                "A non-recoverable exception happened "
+                                f"message handler {self.subscriber.name}."
+                            )
+                        elif not self._should_recover(e):
+                            logger.warning(
+                                "An recoverable error ocurred, we will try to recover from it.",
+                                exc_info=True,
+                            )
+                        else:
+                            logger.warning(
+                                "A unhandled error ocurred, trying to recover with no guarantees.",
+                                exc_info=True,
+                            )
+            except get_cancelled_exc_class():
+                logger.debug("We got a cancellation from parent, we will cancel the subtask")
+                tg.cancel_scope.cancel()
+                raise
 
     async def _handle(self, message: Message) -> Any:
         with self._contextualize(message=message):

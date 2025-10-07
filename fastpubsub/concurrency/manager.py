@@ -1,4 +1,3 @@
-import anyio
 from anyio import create_task_group
 from anyio.abc import TaskGroup
 
@@ -46,6 +45,5 @@ class AsyncTaskManager:
         for task in self._tasks:
             task.shutdown()
 
-        await anyio.sleep(2)
         self._task_group.cancel_scope.cancel()
         await self._task_group.__aexit__(None, None, None)

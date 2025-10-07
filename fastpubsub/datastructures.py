@@ -14,7 +14,6 @@ class Message:
 @dataclass(frozen=True)
 class MessageControlFlowPolicy:
     max_messages: int
-    max_bytes: int
 
 
 @dataclass(frozen=True)
