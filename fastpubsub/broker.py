@@ -6,8 +6,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
-from fastpubsub.clients.builder import PubSubSubscriptionBuilder
-from fastpubsub.concurrency.controller import ProcessController
+from fastpubsub.builder import PubSubSubscriptionBuilder
+from fastpubsub.concurrency.manager import AsyncTaskManager
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.logger import logger
 from fastpubsub.middlewares.base import BaseMiddleware
@@ -30,7 +30,7 @@ class PubSubBroker:
         self.project_id = project_id
         self.router = PubSubRouter(routers=routers, middlewares=middlewares)
         self.router.set_project_id(self.project_id)
-        self.process_controller = ProcessController()
+        self.task_manager = AsyncTaskManager()
 
     @validate_call(config=ConfigDict(strict=True))
     def subscriber(
@@ -108,18 +108,15 @@ class PubSubBroker:
                 "You must select the subscribers using --subscribers flag or run them all."
             )
 
-        subscription_builder = PubSubSubscriptionBuilder()
+        subscription_builder = PubSubSubscriptionBuilder(project_id=self.project_id)
         for subscriber in subscribers:
-            subscription_builder.build(subscriber)
-            self.process_controller.add_subscriber(subscriber)
+            await subscription_builder.build(subscriber)
+            await self.task_manager.create_task(subscriber)
 
-        self.process_controller.start()
+        await self.task_manager.start()
 
-    def info(self) -> dict[str, Any]:
-        return self.process_controller.get_info()
-
-    def alive(self) -> bool:
-        subscribers = self.process_controller.get_liveness()
+    async def alive(self) -> bool:
+        subscribers = await self.task_manager.alive()
         if not subscribers:
             logger.info("The subscribers are not active. May be they are deactivated?")
             return False
@@ -131,8 +128,8 @@ class PubSubBroker:
 
         return True
 
-    def ready(self) -> bool:
-        subscribers = self.process_controller.get_readiness()
+    async def ready(self) -> bool:
+        subscribers = await self.task_manager.ready()
         if not subscribers:
             logger.info("The subscribers are not active. May be they are deactivated?")
             return False
@@ -178,4 +175,4 @@ class PubSubBroker:
         return selected_subscribers
 
     async def shutdown(self) -> None:
-        self.process_controller.terminate()
+        await self.task_manager.shutdown()

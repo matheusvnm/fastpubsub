@@ -166,5 +166,4 @@ def setup_logger() -> FastPubSubLogger:
     return cast(FastPubSubLogger, logger)
 
 
-# Bydefault get the root log. We initialize it correctly elsewhere
 logger: FastPubSubLogger = setup_logger()

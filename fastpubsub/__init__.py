@@ -17,3 +17,9 @@ __all__ = [
     "BaseMiddleware",
     "Message",
 ]
+
+# TODO: Adicionar controle de fluxo no poll.
+# TODO: Adicionar configuração segregada no subscriber e passar ela para o client de conexão.
+# TODO: Checar todo o sistema de exemplos.
+# TODO: Reaplicar o lint no projeto.
+# TODO: Reestruturar os testes unitários.

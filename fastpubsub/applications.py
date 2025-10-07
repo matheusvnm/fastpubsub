@@ -215,7 +215,6 @@ class FastPubSub(FastAPI, Application):
         )
 
         self.lifespan_context = lifespan
-        self.add_api_route(path=info_url, endpoint=self._get_info, methods=["GET"])
         self.add_api_route(path=liveness_url, endpoint=self._get_liveness, methods=["GET"])
         self.add_api_route(path=readiness_url, endpoint=self._get_readiness, methods=["GET"])
 
@@ -231,12 +230,8 @@ class FastPubSub(FastAPI, Application):
                 yield
                 await self._shutdown()
 
-    async def _get_info(self, _: Request) -> JSONResponse:
-        content = self.broker.info()
-        return JSONResponse(content=content)
-
     async def _get_liveness(self, _: Request) -> JSONResponse:
-        alive = self.broker.alive()
+        alive = await self.broker.alive()
 
         status_code = HTTP_200_OK
         if not alive:
@@ -245,7 +240,7 @@ class FastPubSub(FastAPI, Application):
         return JSONResponse(content={"alive": alive}, status_code=status_code)
 
     async def _get_readiness(self, _: Request) -> JSONResponse:
-        ready = self.broker.ready()
+        ready = await self.broker.ready()
 
         status_code = HTTP_200_OK
         if not ready:

@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastpubsub.clients.pub import PubSubPublisherClient
+from fastpubsub.clients.pubsub import PubSubClient
 from fastpubsub.datastructures import Message
 from fastpubsub.types import AsyncCallable
 
@@ -23,8 +23,10 @@ class PublishMessageCommand:
     async def on_publish(
         self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
-        client = PubSubPublisherClient(project_id=self.project_id, topic_name=self.topic_name)
+        client = PubSubClient(project_id=self.project_id)
         if self.autocreate:
-            client.create_topic()
+            await client.create_topic(self.topic_name)
 
-        client.publish(data=data, ordering_key=ordering_key, attributes=attributes)
+        client.publish(
+            topic_name=self.topic_name, data=data, ordering_key=ordering_key, attributes=attributes
+        )

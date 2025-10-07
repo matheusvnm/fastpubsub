@@ -61,8 +61,9 @@ strict = true
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "newrelic.*"
+module = ["newrelic.*", "google.api_core.*"]
 ignore_missing_imports = true
+disallow_untyped_calls = false
 
 [tool.ruff]
 line-length = 100

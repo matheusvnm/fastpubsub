@@ -1,0 +1,41 @@
+from anyio import create_task_group
+
+from fastpubsub.clients.pubsub import PubSubClient
+from fastpubsub.pubsub.subscriber import Subscriber
+
+
+class PubSubSubscriptionBuilder:
+    def __init__(self, project_id: str) -> None:
+        self.client = PubSubClient(project_id=project_id)
+        self.created_topics: set[str] = set()
+
+    async def build(self, subscriber: Subscriber) -> None:
+        self.subscriber = subscriber
+        if self.subscriber.lifecycle_policy.autocreate:
+            await self._create_topics()
+            await self._create_subscription()
+
+        if self.subscriber.lifecycle_policy.autoupdate:
+            await self._update_subscription()
+
+    async def _create_topics(self) -> None:
+        async with create_task_group() as tg:
+            target_topic = self.subscriber.topic_name
+            tg.start_soon(self._new_topic, target_topic, False)
+
+            if self.subscriber.dead_letter_policy:
+                target_topic = self.subscriber.dead_letter_policy.topic_name
+                tg.start_soon(self._new_topic, target_topic)
+
+    async def _new_topic(self, topic_name: str, create_default_subscription: bool = True) -> None:
+        if topic_name in self.created_topics:
+            return
+
+        await self.client.create_topic(topic_name, create_default_subscription)
+        self.created_topics.add(topic_name)
+
+    async def _create_subscription(self) -> None:
+        await self.client.create_subscription(subscriber=self.subscriber)
+
+    async def _update_subscription(self) -> None:
+        await self.client.update_subscription(subscriber=self.subscriber)
