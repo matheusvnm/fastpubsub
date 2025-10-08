@@ -32,12 +32,13 @@ class TestGZipMiddleware:
         middleware = GZipMiddleware(next_call=mock_middleware)
 
         data = b"some_reality_big_message_string_with_data"
-        await middleware.on_publish(data, None, None)
+        await middleware.on_publish(data, "", None)
         assert gzip.decompress(mock_middleware.published_message) == data
 
         message = Message(
             id="2123",
             size=3,
+            ack_id="acksome",
             data=mock_middleware.published_message,
             attributes=mock_middleware.published_attributes,
             delivery_attempt=0,

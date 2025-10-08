@@ -1,10 +1,8 @@
 import pytest
 
-from fastpubsub.concurrency.ipc import ProcessInfo
 from fastpubsub.concurrency.utils import (
     ensure_async_callable_function,
     ensure_async_middleware,
-    get_process_info,
 )
 from fastpubsub.middlewares.base import BaseMiddleware
 
@@ -56,9 +54,3 @@ class TestEnsureAsyncMiddleware:
 
     def test_with_valid_middleware_succeeds(self, first_middleware: type[BaseMiddleware]):
         ensure_async_middleware(first_middleware)
-
-
-class TestGetProcessInfo:
-    def test_returns_process_info_instance(self):
-        process_info = get_process_info()
-        assert isinstance(process_info, ProcessInfo)

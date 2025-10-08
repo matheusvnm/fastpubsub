@@ -141,14 +141,3 @@ class TestApplicationProbes:
         assert isinstance(response, JSONResponse)
         assert response.status_code == status_code
         assert json.loads(response.body) == {"alive": alive}
-
-    @pytest.mark.asyncio
-    async def test_info(self, mock_broker: MagicMock):
-        expected_response = {"broker": "some_name", "num_thread": 22}
-        mock_broker.info.return_value = expected_response
-        app = FastPubSub(broker=mock_broker)
-
-        response = await app._get_info(None)
-        assert isinstance(response, JSONResponse)
-        assert response.status_code == 200
-        assert json.loads(response.body) == expected_response

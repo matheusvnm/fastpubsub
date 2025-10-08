@@ -51,7 +51,8 @@ def subscriber(broker: PubSubBroker) -> Subscriber:
 
 
 class TestSubscriber:
-    def test_build_callstack(
+    @pytest.mark.asyncio
+    async def test_build_callstack(
         self,
         router_a: PubSubRouter,
         router_b: PubSubRouter,
@@ -74,17 +75,17 @@ class TestSubscriber:
         subscribers = broker.router._get_subscribers()
 
         subscriber_a = subscribers["a.sub_a"]
-        callstack_a = subscriber_a.build_callstack()
+        callstack_a = await subscriber_a.build_callstack()
         expected_output = [first_middleware, HandleMessageCommand]
         assert callstack_matches(callstack_a, expected_output)
 
         subscriber_b = subscribers["a.b.sub_b"]
-        callstack_b = subscriber_b.build_callstack()
+        callstack_b = await subscriber_b.build_callstack()
         expected_output = [second_middleware, first_middleware, HandleMessageCommand]
         assert callstack_matches(callstack_b, expected_output)
 
         subscriber_c = subscribers["sub_c"]
-        callstack_c = subscriber_c.build_callstack()
+        callstack_c = await subscriber_c.build_callstack()
         expected_output = [HandleMessageCommand]
         assert callstack_matches(callstack_c, expected_output)
 

@@ -45,7 +45,8 @@ class TestPublisher:
         assert first_publisher == another_first_publisher
         assert second_publisher == another_second_publisher
 
-    def test_build_callstack(
+    @pytest.mark.asyncio
+    async def test_build_callstack(
         self,
         router_a: PubSubRouter,
         router_b: PubSubRouter,
@@ -63,9 +64,9 @@ class TestPublisher:
         message_publisher_b = router_b.publisher(topic_name="somerandomtopic")
         message_publisher_c = broker.publisher(topic_name="somerandomtopic")
 
-        callstack_a = message_publisher_a.build_callstack()
-        callstack_b = message_publisher_b.build_callstack()
-        callstack_c = message_publisher_c.build_callstack()
+        callstack_a = await message_publisher_a.build_callstack()
+        callstack_b = await message_publisher_b.build_callstack()
+        callstack_c = await message_publisher_c.build_callstack()
 
         expected_output_a = [first_middleware, PublishMessageCommand]
         assert callstack_matches(callstack_a, expected_output_a)
@@ -103,47 +104,54 @@ class TestPublisher:
 
 
 class TestPublisherSerialization:
-    def test_serialize_pydantic_model(self, publisher: Publisher):
+    @pytest.mark.asyncio
+    async def test_serialize_pydantic_model(self, publisher: Publisher):
         message = UserSchema(username="Sandro", age=26)
-        serialized_message = publisher._serialize_message(message)
+        serialized_message = await publisher._serialize_message(message)
         deserialized_message = json.loads(serialized_message.decode())
         assert message.model_dump() == deserialized_message
 
-    def test_serialize_complex_pydantic_model(self, publisher: Publisher):
+    @pytest.mark.asyncio
+    async def test_serialize_complex_pydantic_model(self, publisher: Publisher):
         message = ComplexMessageSchema(
             event_id=uuid4(),
             timestamp=datetime.now(),
             user=UserSchema(username="Test", age=100),
         )
-        serialized_message = publisher._serialize_message(message)
+        serialized_message = await publisher._serialize_message(message)
         deserialized_message = json.loads(serialized_message.decode())
         assert deserialized_message["user"]["username"] == "Test"
         assert UUID(deserialized_message["event_id"]) == message.event_id
 
-    def test_serialize_text(self, publisher: Publisher):
+    @pytest.mark.asyncio
+    async def test_serialize_text(self, publisher: Publisher):
         message = "some_text_string"
-        serialized_message = publisher._serialize_message("some_text_string")
+        serialized_message = await publisher._serialize_message("some_text_string")
         deserialized_message = serialized_message.decode()
         assert message == deserialized_message
 
-    def test_serialize_dictionary(self, publisher: Publisher):
+    @pytest.mark.asyncio
+    async def test_serialize_dictionary(self, publisher: Publisher):
         message = {"message": "how are you?"}
-        serialized_message = publisher._serialize_message(message)
+        serialized_message = await publisher._serialize_message(message)
         deserialized_message = json.loads(serialized_message.decode())
         assert message == deserialized_message
 
-    def test_serialize_dictionary_with_unserializable_data_raises_exception(
+    @pytest.mark.asyncio
+    async def test_serialize_dictionary_with_unserializable_data_raises_exception(
         self, publisher: Publisher
     ):
         message = {"time": datetime.now()}
         with pytest.raises(TypeError):
-            publisher._serialize_message(message)
+            await publisher._serialize_message(message)
 
-    def test_serialize_bytes(self, publisher: Publisher):
+    @pytest.mark.asyncio
+    async def test_serialize_bytes(self, publisher: Publisher):
         message = b"some_byte_message"
-        serialized_message = publisher._serialize_message(message)
+        serialized_message = await publisher._serialize_message(message)
         assert message == serialized_message
 
-    def test_serialize_invalid_type_raises_exception(self, publisher: Publisher):
+    @pytest.mark.asyncio
+    async def test_serialize_invalid_type_raises_exception(self, publisher: Publisher):
         with pytest.raises(FastPubSubException):
-            publisher._serialize_message(2112)
+            await publisher._serialize_message(2112)

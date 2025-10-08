@@ -1,6 +1,6 @@
 import os
 from collections.abc import Generator
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -13,14 +13,22 @@ BROKER_MODULE_PATH = "fastpubsub.broker"
 
 class TestPubSubBroker:
     @pytest.fixture
-    def process_controller(self) -> Generator[MagicMock]:
-        with patch(f"{BROKER_MODULE_PATH}.ProcessController") as mock:
-            yield mock.return_value
+    def async_task_manager(self) -> Generator[MagicMock]:
+        with patch(f"{BROKER_MODULE_PATH}.AsyncTaskManager") as mock:
+            instance = mock.return_value
+            instance.start = AsyncMock()
+            instance.shutdown = AsyncMock()
+            instance.alive = AsyncMock()
+            instance.ready = AsyncMock()
+            instance.create_task = AsyncMock()
+            yield instance
 
     @pytest.fixture
     def subscription_builder(self) -> Generator[MagicMock]:
         with patch(f"{BROKER_MODULE_PATH}.PubSubSubscriptionBuilder") as mock:
-            yield mock.return_value
+            instance = mock.return_value
+            instance.build = AsyncMock()
+            yield instance
 
     @pytest.mark.parametrize(
         "invalid_project_id",
@@ -94,9 +102,9 @@ class TestPubSubBroker:
                 )
 
     @pytest.mark.asyncio
-    async def test_shutdown_successfully(self, process_controller: MagicMock, broker: PubSubBroker):
+    async def test_shutdown_successfully(self, async_task_manager: MagicMock, broker: PubSubBroker):
         await broker.shutdown()
-        process_controller.terminate.assert_called_once()
+        async_task_manager.shutdown.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_start_broker_no_sub_error(self, broker: PubSubBroker):
@@ -106,15 +114,15 @@ class TestPubSubBroker:
 
     @pytest.mark.asyncio
     async def test_start_broker(
-        self, subscription_builder: MagicMock, process_controller: MagicMock, broker: PubSubBroker
+        self, subscription_builder: MagicMock, async_task_manager: MagicMock, broker: PubSubBroker
     ):
         expected_subscriber = MagicMock(spec=Subscriber)
         broker._filter_subscribers = lambda: [expected_subscriber]
         await broker.start()
 
         subscription_builder.build.assert_called_once_with(expected_subscriber)
-        process_controller.add_subscriber.assert_called_once_with(expected_subscriber)
-        process_controller.start.assert_called_once()
+        async_task_manager.create_task.assert_called_once_with(expected_subscriber)
+        async_task_manager.start.assert_called_once()
 
     @pytest.mark.parametrize(
         ["response", "expected_readiness"],
@@ -133,17 +141,18 @@ class TestPubSubBroker:
             ),
         ],
     )
-    def test_readiness_probe(
+    @pytest.mark.asyncio
+    async def test_readiness_probe(
         self,
         response: dict[str, bool],
         expected_readiness: bool,
-        process_controller: MagicMock,
+        async_task_manager: MagicMock,
         broker: PubSubBroker,
     ):
-        readiness_call = process_controller.get_readiness
+        readiness_call = async_task_manager.ready
         readiness_call.return_value = response
 
-        response = broker.ready()
+        response = await broker.ready()
         assert response == expected_readiness
 
     @pytest.mark.parametrize(
@@ -163,21 +172,16 @@ class TestPubSubBroker:
             ),
         ],
     )
-    def test_liveness_probe(
+    @pytest.mark.asyncio
+    async def test_liveness_probe(
         self,
         response: dict[str, bool],
         expected_liveness: bool,
-        process_controller: MagicMock,
+        async_task_manager: MagicMock,
         broker: PubSubBroker,
     ):
-        liveness_call = process_controller.get_liveness
+        liveness_call = async_task_manager.alive
         liveness_call.return_value = response
 
-        response = broker.alive()
+        response = await broker.alive()
         assert response == expected_liveness
-
-    def test_info_probe(self, process_controller: MagicMock, broker: PubSubBroker):
-        expected_info = {"some": "data"}
-        process_controller.get_info.return_value = expected_info
-        info = broker.info()
-        assert info == expected_info

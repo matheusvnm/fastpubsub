@@ -31,7 +31,9 @@ class PubSubSubscriptionBuilder:
         if topic_name in self.created_topics:
             return
 
-        await self.client.create_topic(topic_name, create_default_subscription)
+        await self.client.create_topic(
+            topic_name=topic_name, create_default_subscription=create_default_subscription
+        )
         self.created_topics.add(topic_name)
 
     async def _create_subscription(self) -> None:

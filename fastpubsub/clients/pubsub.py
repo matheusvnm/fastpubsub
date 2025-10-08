@@ -122,6 +122,7 @@ class PubSubClient:
 
             if not self.is_emulator:
                 update_fields.append("filter")
+
             update_mask = FieldMask(paths=update_fields)
 
             try:

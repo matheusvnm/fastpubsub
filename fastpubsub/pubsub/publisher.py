@@ -29,13 +29,16 @@ class Publisher:
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:
-        callstack = self.build_callstack(autocreate=autocreate)
-        serialized_message = self._serialize_message(data)
+        callstack = await self.build_callstack(autocreate=autocreate)
+        serialized_message = await self._serialize_message(data)
+
         await callstack.on_publish(
             data=serialized_message, ordering_key=ordering_key, attributes=attributes
         )
 
-    def build_callstack(self, autocreate: bool = True) -> PublishMessageCommand | BaseMiddleware:
+    async def build_callstack(
+        self, autocreate: bool = True
+    ) -> PublishMessageCommand | BaseMiddleware:
         callstack: PublishMessageCommand | BaseMiddleware = PublishMessageCommand(
             project_id=self.project_id, topic_name=self.topic_name, autocreate=autocreate
         )
@@ -44,7 +47,7 @@ class Publisher:
             callstack = middleware(next_call=callstack)
         return callstack
 
-    def _serialize_message(self, data: BaseModel | dict[str, Any] | str | bytes) -> bytes:
+    async def _serialize_message(self, data: BaseModel | dict[str, Any] | str | bytes) -> bytes:
         if isinstance(data, bytes):
             return data
 

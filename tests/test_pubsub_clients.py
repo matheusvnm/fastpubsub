@@ -1,12 +1,10 @@
 from collections.abc import Generator
 from concurrent.futures import Future
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from google.cloud.pubsub_v1.subscriber.exceptions import AcknowledgeError, AcknowledgeStatus
 
-from fastpubsub.clients.pub import PubSubPublisherClient
-from fastpubsub.clients.sub import CallbackHandler, PubSubSubscriberClient
+from fastpubsub.clients.pubsub import PubSubClient
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,
@@ -14,8 +12,10 @@ from fastpubsub.datastructures import (
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
-from fastpubsub.exceptions import Drop, FastPubSubException, Retry
+from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.pubsub.subscriber import Subscriber
+
+PUBSUB_CLIENT_MODULE_PATH = "fastpubsub.clients.pubsub"
 
 
 @pytest.fixture
@@ -35,115 +35,104 @@ def subscriber():
             enable_message_ordering=False,
             enable_exactly_once_delivery=False,
         ),
-        control_flow_policy=MessageControlFlowPolicy(max_bytes=10, max_messages=1),
+        control_flow_policy=MessageControlFlowPolicy(max_messages=1),
         dead_letter_policy=DeadLetterPolicy(topic_name="dlt", max_delivery_attempts=5),
     )
     subscriber.set_project_id("test-project")
-    subscriber.build_callstack = MagicMock()
+    subscriber.build_callstack = AsyncMock()
     return subscriber
 
 
-class TestPubSubPublisherClient:
+class TestPubSubClient:
     @pytest.fixture
     def pub_client(self) -> Generator[MagicMock]:
-        with patch("fastpubsub.clients.pub.PublisherClient") as pub_client:
-            yield pub_client.return_value
+        with patch(f"{PUBSUB_CLIENT_MODULE_PATH}.PublisherClient") as pub_client:
+            instance = pub_client.return_value.__enter__.return_value
+            yield instance
 
     @pytest.fixture
     def sub_client(self) -> Generator[MagicMock]:
-        with patch("fastpubsub.clients.pub.SubscriberClient") as sub_client:
-            yield sub_client.return_value.__enter__.return_value
+        with patch(f"{PUBSUB_CLIENT_MODULE_PATH}.SubscriberClient") as sub_client:
+            sub_client.subscription_path.return_value = "some_sub_path"
+            sub_client.topic_path.return_value = "some_topic_path"
 
-    def test_create_topic(self, sub_client: MagicMock, pub_client: MagicMock):
-        client = PubSubPublisherClient(project_id="test-project", topic_name="test-topic")
-        client.create_topic()
+            instance = sub_client.return_value.__enter__.return_value
+            yield instance
+
+    @pytest.mark.asyncio
+    async def test_create_topic(self, pub_client: MagicMock, sub_client: MagicMock):
+        client = PubSubClient(project_id="test-project")
+        await client.create_topic("test-topic")
 
         pub_client.create_topic.assert_called_once()
         sub_client.create_subscription.assert_called_once()
 
-    def test_publish(self, pub_client: MagicMock):
-        client = PubSubPublisherClient(project_id="test-project", topic_name="test-topic")
-        client.publish(data=b"test-data", ordering_key=None, attributes=None)
+    @pytest.mark.asyncio
+    async def test_publish(self, pub_client: MagicMock):
+        client = PubSubClient(project_id="test-project")
+        await client.publish("test-topic", data=b"test-data", ordering_key=None, attributes=None)
 
         pub_client.publish.assert_called_once()
 
-    def test_publish_failure(self, pub_client: MagicMock):
+    @pytest.mark.asyncio
+    async def test_publish_failure(self, pub_client: MagicMock):
         result = Future()
         result.set_exception(ValueError)
         pub_client.publish.return_value = result
 
-        client = PubSubPublisherClient(project_id="test-project", topic_name="test-topic")
+        client = PubSubClient(project_id="test-project")
         with pytest.raises(ValueError):
-            client.publish(data=b"test-data", ordering_key=None, attributes=None)
+            await client.publish(
+                "test-topic", data=b"test-data", ordering_key=None, attributes=None
+            )
 
-
-class TestPubSubSubscriberClient:
-    @pytest.fixture(autouse=True)
-    def sub_client(self):
-        with patch("fastpubsub.clients.sub.SubscriberClient") as mock:
-            mock.subscription_path.return_value = "some_sub_path"
-            mock.topic_path.return_value = "some_topic_path"
-            yield mock.return_value.__enter__.return_value
-
-    def test_create_subscription(self, subscriber: Subscriber, sub_client: MagicMock):
-        client = PubSubSubscriberClient()
-        client.create_subscription(subscriber)
+    @pytest.mark.asyncio
+    async def test_create_subscription(self, subscriber: Subscriber, sub_client: MagicMock):
+        client = PubSubClient(project_id="test-project")
+        await client.create_subscription(
+            topic_name=subscriber.topic_name,
+            subscription_name=subscriber.subscription_name,
+            retry_policy=subscriber.retry_policy,
+            delivery_policy=subscriber.delivery_policy,
+        )
         sub_client.create_subscription.assert_called_once()
 
-    def test_update_subscription(self, subscriber: Subscriber, sub_client: MagicMock):
-        client = PubSubSubscriberClient()
-        client.update_subscription(subscriber)
+    @pytest.mark.asyncio
+    async def test_update_subscription(self, subscriber: Subscriber, sub_client: MagicMock):
+        client = PubSubClient(project_id="test-project")
+        client.is_emulator = False
+        await client.update_subscription(
+            topic_name=subscriber.topic_name,
+            subscription_name=subscriber.subscription_name,
+            retry_policy=subscriber.retry_policy,
+            delivery_policy=subscriber.delivery_policy,
+        )
         sub_client.update_subscription.assert_called_once()
 
-    def test_subscribe(self, subscriber: Subscriber, sub_client: MagicMock):
-        client = PubSubSubscriberClient()
-        streaming_pull_future = MagicMock()
-        sub_client.subscribe.return_value = streaming_pull_future
-
-        with client.subscribe(subscriber) as future:
-            assert future == streaming_pull_future
-
-        sub_client.subscribe.assert_called_once()
-
-    def test_subscribe_exception(self, subscriber: Subscriber, sub_client: MagicMock):
-        client = PubSubSubscriberClient()
-        streaming_pull_future = MagicMock()
-        streaming_pull_future.result.side_effect = Exception
-        sub_client.subscribe.return_value = streaming_pull_future
-
-        with client.subscribe(subscriber) as future:
-            assert future == streaming_pull_future
-
-        streaming_pull_future.cancel.assert_called_once()
-
-    def test_subscribe_keyboard_interrupt(self, subscriber: Subscriber, sub_client: MagicMock):
-        client = PubSubSubscriberClient()
-        streaming_pull_future = MagicMock()
-        streaming_pull_future.result.side_effect = KeyboardInterrupt
-        sub_client.subscribe.return_value = streaming_pull_future
-
-        with client.subscribe(subscriber) as future:
-            assert future == streaming_pull_future
-
-        streaming_pull_future.cancel.assert_called_once()
-
-    def test_update_subscription_not_found(self, subscriber: Subscriber, sub_client: MagicMock):
+    @pytest.mark.asyncio
+    async def test_update_subscription_not_found(
+        self, subscriber: Subscriber, sub_client: MagicMock
+    ):
         from google.api_core.exceptions import NotFound
 
         sub_client.update_subscription.side_effect = NotFound("test")
-        client = PubSubSubscriberClient()
+        client = PubSubClient(project_id="test-project")
         with pytest.raises(FastPubSubException):
-            client.update_subscription(subscriber)
-
-    @patch("os.getenv", return_value="1")
-    def test_update_subscription_emulator(
-        self, _: MagicMock, subscriber: Subscriber, sub_client: MagicMock
-    ):
-        client = PubSubSubscriberClient()
-        client.update_subscription(subscriber)
-        sub_client.update_subscription.assert_called_once()
+            await client.update_subscription(
+                topic_name=subscriber.topic_name,
+                subscription_name=subscriber.subscription_name,
+                retry_policy=subscriber.retry_policy,
+                delivery_policy=subscriber.delivery_policy,
+            )
 
 
+# TODO:
+# Test pulling
+# Test ack/nack
+# Test task manager and consumer task
+
+
+"""
 class TestCallbackHandler:
     @pytest.fixture
     def mock_asyncio(self) -> Generator[MagicMock]:
@@ -233,3 +222,4 @@ class TestCallbackHandler:
         handler = CallbackHandler(subscriber)
         exception = AcknowledgeError(info="Test error", error_code=error_code)
         handler._on_acknowledge_failed(exception)
+"""

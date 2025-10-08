@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from copy import deepcopy
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
@@ -14,7 +14,7 @@ from fastpubsub.datastructures import (
     MessageRetryPolicy,
 )
 
-BUILDER_MODULE_PATH = "fastpubsub.clients.builder"
+BUILDER_MODULE_PATH = "fastpubsub.builder"
 
 
 class TestSubscriptionBuilder:
@@ -38,7 +38,6 @@ class TestSubscriptionBuilder:
 
         control_flow_policy = MessageControlFlowPolicy(
             max_messages=100,
-            max_bytes=1024,
         )
 
         subscriber = Subscriber(
@@ -57,106 +56,147 @@ class TestSubscriptionBuilder:
         return subscriber
 
     @pytest.fixture
-    def sub_client(self) -> Generator[MagicMock]:
-        with patch(f"{BUILDER_MODULE_PATH}.PubSubSubscriberClient") as sub_client:
-            yield sub_client
+    def pubsub_client(self) -> Generator[MagicMock]:
+        with patch(f"{BUILDER_MODULE_PATH}.PubSubClient") as pubsub_client:
+            instance = pubsub_client.return_value
+            instance.create_topic = AsyncMock()
+            instance.create_subscription = AsyncMock()
+            instance.update_subscription = AsyncMock()
+            yield instance
 
-    @pytest.fixture
-    def pub_client(self) -> Generator[MagicMock]:
-        with patch(f"{BUILDER_MODULE_PATH}.PubSubPublisherClient") as pub_client:
-            yield pub_client
-
-    def test_build_full_subscription_successfully(
-        self, sub_client: MagicMock, pub_client: MagicMock, subscriber: Subscriber
+    @pytest.mark.asyncio
+    async def test_build_full_subscription_successfully(
+        self, pubsub_client: MagicMock, subscriber: Subscriber
     ):
-        subscription_builder = PubSubSubscriptionBuilder()
-        subscription_builder.build(subscriber=subscriber)
+        subscription_builder = PubSubSubscriptionBuilder(project_id=subscriber.project_id)
+        await subscription_builder.build(subscriber=subscriber)
 
         expected_calls = [
-            call(project_id="proj_id", topic_name="topic"),
-            call().create_topic(False),
-            call(project_id="proj_id", topic_name="dlt_topic"),
-            call().create_topic(True),
+            call.create_topic(topic_name=subscriber.topic_name, create_default_subscription=False),
+            call.create_topic(
+                topic_name=subscriber.dead_letter_policy.topic_name,
+                create_default_subscription=True,
+            ),
+            call.create_subscription(
+                topic_name=subscriber.topic_name,
+                subscription_name=subscriber.subscription_name,
+                retry_policy=subscriber.retry_policy,
+                delivery_policy=subscriber.delivery_policy,
+                dead_letter_policy=subscriber.dead_letter_policy,
+            ),
+            call.update_subscription(
+                topic_name=subscriber.topic_name,
+                subscription_name=subscriber.subscription_name,
+                retry_policy=subscriber.retry_policy,
+                delivery_policy=subscriber.delivery_policy,
+                dead_letter_policy=subscriber.dead_letter_policy,
+            ),
         ]
-        assert pub_client.mock_calls == expected_calls
 
-        sub_client_instance = sub_client.return_value
-        sub_client_instance.create_subscription.assert_called_once_with(subscriber=subscriber)
-        sub_client_instance.update_subscription.assert_called_once_with(subscriber=subscriber)
+        pubsub_client.assert_has_calls(expected_calls, any_order=True)
 
-    def test_build_subscription_no_autoupdate(
-        self, sub_client: MagicMock, pub_client: MagicMock, subscriber: Subscriber
+    @pytest.mark.asyncio
+    async def test_build_subscription_no_autoupdate(
+        self, pubsub_client: MagicMock, subscriber: Subscriber
     ):
         subscriber.lifecycle_policy = LifecyclePolicy(autocreate=True, autoupdate=False)
-        subscription_builder = PubSubSubscriptionBuilder()
-        subscription_builder.build(subscriber=subscriber)
+        subscription_builder = PubSubSubscriptionBuilder(project_id=subscriber.project_id)
+        await subscription_builder.build(subscriber=subscriber)
 
-        expected_calls = [
-            call(project_id="proj_id", topic_name="topic"),
-            call().create_topic(False),
-            call(project_id="proj_id", topic_name="dlt_topic"),
-            call().create_topic(True),
-        ]
-        assert pub_client.mock_calls == expected_calls
+        assert pubsub_client.create_topic.call_count == 2
+        pubsub_client.create_topic.assert_called_with(
+            topic_name=subscriber.dead_letter_policy.topic_name, create_default_subscription=True
+        )
 
-        sub_client_instance = sub_client.return_value
-        sub_client_instance.create_subscription.assert_called_once_with(subscriber=subscriber)
-        sub_client_instance.update_subscription.assert_not_called()
+        pubsub_client.create_subscription.assert_called_once_with(
+            topic_name=subscriber.topic_name,
+            subscription_name=subscriber.subscription_name,
+            retry_policy=subscriber.retry_policy,
+            delivery_policy=subscriber.delivery_policy,
+            dead_letter_policy=subscriber.dead_letter_policy,
+        )
 
-    def test_build_subscription_no_autocreate(
-        self, sub_client: MagicMock, pub_client: MagicMock, subscriber: Subscriber
+        pubsub_client.update_subscription.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_build_subscription_no_autocreate(
+        self, pubsub_client: MagicMock, subscriber: Subscriber
     ):
         subscriber.lifecycle_policy = LifecyclePolicy(autocreate=False, autoupdate=True)
-        subscription_builder = PubSubSubscriptionBuilder()
-        subscription_builder.build(subscriber=subscriber)
+        subscription_builder = PubSubSubscriptionBuilder(project_id=subscriber.project_id)
+        await subscription_builder.build(subscriber=subscriber)
 
-        pub_client.assert_not_called()
-        sub_client_instance = sub_client.return_value
-        sub_client_instance.create_subscription.assert_not_called()
-        sub_client_instance.update_subscription.assert_called_once_with(subscriber=subscriber)
+        pubsub_client.create_topic.assert_not_called()
+        pubsub_client.create_subscription.assert_not_called()
+        pubsub_client.update_subscription.assert_called_once_with(
+            topic_name=subscriber.topic_name,
+            subscription_name=subscriber.subscription_name,
+            retry_policy=subscriber.retry_policy,
+            delivery_policy=subscriber.delivery_policy,
+            dead_letter_policy=subscriber.dead_letter_policy,
+        )
 
-    def test_build_subscription_topic_no_dlt(
-        self, sub_client: MagicMock, pub_client: MagicMock, subscriber: Subscriber
+    @pytest.mark.asyncio
+    async def test_build_subscription_topic_no_dlt(
+        self, pubsub_client: MagicMock, subscriber: Subscriber
     ):
         subscriber.dead_letter_policy = None
-        subscription_builder = PubSubSubscriptionBuilder()
-        subscription_builder.build(subscriber=subscriber)
+        subscription_builder = PubSubSubscriptionBuilder(project_id=subscriber.project_id)
+        await subscription_builder.build(subscriber=subscriber)
 
-        expected_calls = [
-            call(project_id="proj_id", topic_name="topic"),
-            call().create_topic(False),
-        ]
-        assert pub_client.mock_calls == expected_calls
+        pubsub_client.create_topic.assert_called_once_with(
+            topic_name=subscriber.topic_name, create_default_subscription=False
+        )
 
-        sub_client_instance = sub_client.return_value
-        sub_client_instance.create_subscription.assert_called_once_with(subscriber=subscriber)
-        sub_client_instance.update_subscription.assert_called_once_with(subscriber=subscriber)
+        pubsub_client.create_subscription.assert_called_once_with(
+            topic_name=subscriber.topic_name,
+            subscription_name=subscriber.subscription_name,
+            retry_policy=subscriber.retry_policy,
+            delivery_policy=subscriber.delivery_policy,
+            dead_letter_policy=subscriber.dead_letter_policy,
+        )
 
-    def test_topic_only_created_once(
-        self, sub_client: MagicMock, pub_client: MagicMock, subscriber: Subscriber
-    ):
+        pubsub_client.update_subscription.assert_called_once_with(
+            topic_name=subscriber.topic_name,
+            subscription_name=subscriber.subscription_name,
+            retry_policy=subscriber.retry_policy,
+            delivery_policy=subscriber.delivery_policy,
+            dead_letter_policy=subscriber.dead_letter_policy,
+        )
+
+    @pytest.mark.asyncio
+    async def test_topic_only_created_once(self, pubsub_client: MagicMock, subscriber: Subscriber):
+        subscription_builder = PubSubSubscriptionBuilder(project_id=subscriber.project_id)
         subscriber_one = deepcopy(subscriber)
+        await subscription_builder.build(subscriber=subscriber_one)
+
+        expected_calls = [
+            call.create_topic(
+                topic_name=subscriber_one.topic_name, create_default_subscription=False
+            ),
+            call.create_topic(
+                topic_name=subscriber_one.dead_letter_policy.topic_name,
+                create_default_subscription=True,
+            ),
+            call.create_subscription(
+                topic_name=subscriber_one.topic_name,
+                subscription_name=subscriber_one.subscription_name,
+                retry_policy=subscriber_one.retry_policy,
+                delivery_policy=subscriber_one.delivery_policy,
+                dead_letter_policy=subscriber_one.dead_letter_policy,
+            ),
+            call.update_subscription(
+                topic_name=subscriber_one.topic_name,
+                subscription_name=subscriber_one.subscription_name,
+                retry_policy=subscriber_one.retry_policy,
+                delivery_policy=subscriber_one.delivery_policy,
+                dead_letter_policy=subscriber_one.dead_letter_policy,
+            ),
+        ]
+
+        assert pubsub_client.create_topic.call_count == 2
+        pubsub_client.assert_has_calls(expected_calls, any_order=True)
+
         subscriber_two = deepcopy(subscriber)
-        subscription_builder = PubSubSubscriptionBuilder()
-        subscription_builder.build(subscriber=subscriber_one)
-        subscription_builder.build(subscriber=subscriber_two)
-
-        expected_calls = [
-            call(project_id="proj_id", topic_name="topic"),
-            call().create_topic(False),
-            call(project_id="proj_id", topic_name="dlt_topic"),
-            call().create_topic(True),
-        ]
-        assert pub_client.mock_calls == expected_calls
-
-        expected_calls = [
-            call(),
-            call().create_subscription(subscriber=subscriber_one),
-            call(),
-            call().update_subscription(subscriber=subscriber_one),
-            call(),
-            call().create_subscription(subscriber=subscriber_two),
-            call(),
-            call().update_subscription(subscriber=subscriber_two),
-        ]
-        assert sub_client.mock_calls == expected_calls
+        await subscription_builder.build(subscriber=subscriber_two)
+        assert pubsub_client.create_topic.call_count == 2
