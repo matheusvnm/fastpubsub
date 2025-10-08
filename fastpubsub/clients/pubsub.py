@@ -4,19 +4,13 @@ from contextlib import suppress
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
+from fastapi.concurrency import run_in_threadpool
 from google.api_core.exceptions import AlreadyExists, NotFound
-from google.cloud.pubsub_v1 import PublisherClient
+from google.cloud.pubsub import PublisherClient, SubscriberClient
+from google.cloud.pubsub_v1.types import PublisherOptions
 from google.protobuf.field_mask_pb2 import FieldMask
-from google.pubsub_v1 import (
-    DeadLetterPolicy as DLTPolicy,
-)
-from google.pubsub_v1 import (
-    PublisherAsyncClient,
-    ReceivedMessage,
-    RetryPolicy,
-    SubscriberAsyncClient,
-    Subscription,
-)
+from google.pubsub import DeadLetterPolicy as DLTPolicy
+from google.pubsub import ReceivedMessage, RetryPolicy, Subscription
 
 from fastpubsub import observability
 from fastpubsub.datastructures import DeadLetterPolicy, MessageDeliveryPolicy, MessageRetryPolicy
@@ -35,7 +29,7 @@ class PubSubClient:
         self.project_id = project_id
         self.is_emulator = True if os.getenv("PUBSUB_EMULATOR_HOST") else False
 
-    async def _create_subscription_request(
+    def _create_subscription_request(
         self,
         topic_name: str,
         subscription_name: str,
@@ -43,12 +37,12 @@ class PubSubClient:
         delivery_policy: MessageDeliveryPolicy,
         dead_letter_policy: DeadLetterPolicy | None = None,
     ) -> Subscription:
-        name = SubscriberAsyncClient.subscription_path(self.project_id, subscription_name)
-        topic = SubscriberAsyncClient.topic_path(self.project_id, topic_name)
+        name = SubscriberClient.subscription_path(self.project_id, subscription_name)
+        topic = SubscriberClient.topic_path(self.project_id, topic_name)
 
         dlt_policy = None
         if dead_letter_policy:
-            dlt_topic = SubscriberAsyncClient.topic_path(
+            dlt_topic = SubscriberClient.topic_path(
                 self.project_id,
                 dead_letter_policy.topic_name,
             )
@@ -83,8 +77,8 @@ class PubSubClient:
         delivery_policy: MessageDeliveryPolicy,
         dead_letter_policy: DeadLetterPolicy | None = None,
     ) -> None:
-        async with SubscriberAsyncClient() as client:
-            subscription_request = await self._create_subscription_request(
+        with SubscriberClient() as client:
+            subscription_request = self._create_subscription_request(
                 topic_name=topic_name,
                 subscription_name=subscription_name,
                 retry_policy=retry_policy,
@@ -94,9 +88,12 @@ class PubSubClient:
 
             with suppress(AlreadyExists):
                 logger.debug(f"Attempting to create subscription: {subscription_request.name}")
-                await client.create_subscription(
-                    request=subscription_request, timeout=DEFAULT_PUBSUB_TIMEOUT
+                await run_in_threadpool(
+                    client.create_subscription,
+                    request=subscription_request,
+                    timeout=DEFAULT_PUBSUB_TIMEOUT,
                 )
+
                 logger.debug(f"Successfully created subscription: {subscription_request.name}")
 
     async def update_subscription(
@@ -107,8 +104,8 @@ class PubSubClient:
         delivery_policy: MessageDeliveryPolicy,
         dead_letter_policy: DeadLetterPolicy | None = None,
     ) -> None:
-        async with SubscriberAsyncClient() as client:
-            subscription_request = await self._create_subscription_request(
+        with SubscriberClient() as client:
+            subscription_request = self._create_subscription_request(
                 topic_name=topic_name,
                 subscription_name=subscription_name,
                 retry_policy=retry_policy,
@@ -129,11 +126,13 @@ class PubSubClient:
 
             try:
                 logger.debug(f"Attempting to update the subscription: {subscription_request.name}")
-                response = await client.update_subscription(
+                response = await run_in_threadpool(
+                    client.update_subscription,
                     subscription=subscription_request,
                     update_mask=update_mask,
                     timeout=DEFAULT_PUBSUB_TIMEOUT,
                 )
+
                 logger.debug(f"Successfully updated the subscription: {subscription_request.name}")
                 logger.debug(f"The subscription is now following the configuration: {response}")
             except NotFound as e:
@@ -147,10 +146,10 @@ class PubSubClient:
                 ) from e
 
     async def pull(self, subscription_name: str, max_messages: int) -> list[ReceivedMessage]:
-        async with SubscriberAsyncClient() as client:
+        with SubscriberClient() as client:
             subscription_path = client.subscription_path(self.project_id, subscription_name)
-
-            response = await client.pull(
+            response = await run_in_threadpool(
+                client.pull,
                 subscription=subscription_path,
                 timeout=DEFAULT_PUBSUB_TIMEOUT,
                 max_messages=max_messages,
@@ -159,18 +158,22 @@ class PubSubClient:
         return list(response.received_messages)
 
     async def ack(self, ack_ids: list[str], subscription_name: str) -> None:
-        async with SubscriberAsyncClient() as client:
+        with SubscriberClient() as client:
             subscription_path = client.subscription_path(self.project_id, subscription_name)
 
-            await client.acknowledge(
-                subscription=subscription_path, ack_ids=ack_ids, timeout=DEFAULT_PUBSUB_TIMEOUT
+            await run_in_threadpool(
+                client.acknowledge,
+                subscription=subscription_path,
+                ack_ids=ack_ids,
+                timeout=DEFAULT_PUBSUB_TIMEOUT,
             )
 
     async def nack(self, ack_ids: list[str], subscription_name: str) -> None:
-        async with SubscriberAsyncClient() as client:
+        with SubscriberClient() as client:
             subscription_path = client.subscription_path(self.project_id, subscription_name)
 
-            await client.modify_ack_deadline(
+            await run_in_threadpool(
+                client.modify_ack_deadline,
                 subscription=subscription_path,
                 ack_ids=ack_ids,
                 ack_deadline_seconds=0,
@@ -178,32 +181,35 @@ class PubSubClient:
             )
 
     async def create_topic(self, topic_name: str, create_default_subscription: bool = True) -> None:
-        async with PublisherAsyncClient() as publisher_client:
-            with suppress(AlreadyExists):
+        with suppress(AlreadyExists):
+            with PublisherClient() as publisher_client:
                 logger.debug(f"Creating topic '{topic_name}'.")
                 topic_path = publisher_client.topic_path(self.project_id, topic_name)
-                topic = await publisher_client.create_topic(name=topic_path)
+
+                topic = await run_in_threadpool(publisher_client.create_topic, name=topic_path)
                 logger.debug(f"Created topic '{topic.name}' sucessfully.")
 
-                if not create_default_subscription:
-                    return
+            if not create_default_subscription:
+                return
 
-                async with SubscriberAsyncClient() as subscriber_client:
-                    logger.debug(f"Creating default subscription for '{topic_path}'.")
-                    default_subscription_path = subscriber_client.subscription_path(
-                        self.project_id, topic_name
-                    )
-                    subscription = await subscriber_client.create_subscription(
-                        name=default_subscription_path,
-                        topic=topic_path,
-                        timeout=DEFAULT_PUBSUB_TIMEOUT,
-                    )
-                    logger.debug(
-                        "Creating default subscription created successfully for "
-                        f"'{topic_path}' as {subscription.name}."
-                    )
+            with SubscriberClient() as subscriber_client:
+                logger.debug(f"Creating default subscription for '{topic_path}'.")
+                default_subscription_path = subscriber_client.subscription_path(
+                    self.project_id, topic_name
+                )
+                subscription = await run_in_threadpool(
+                    subscriber_client.create_subscription,
+                    name=default_subscription_path,
+                    topic=topic_path,
+                    timeout=DEFAULT_PUBSUB_TIMEOUT,
+                )
 
-    def publish(
+                logger.debug(
+                    "Creating default subscription created successfully for "
+                    f"'{topic_path}' as {subscription.name}."
+                )
+
+    async def publish(
         self,
         topic_name: str,
         *,
@@ -211,7 +217,9 @@ class PubSubClient:
         ordering_key: str,
         attributes: dict[str, str] | None,
     ) -> None:
-        with PublisherClient(transport="") as client:
+        ordered = True if ordering_key else False
+        publisher_options = PublisherOptions(enable_message_ordering=ordered)
+        with PublisherClient(publisher_options=publisher_options) as client:
             topic_path = client.topic_path(self.project_id, topic_name)
 
             apm = observability.get_apm_provider()
@@ -219,7 +227,8 @@ class PubSubClient:
             headers = apm.get_distributed_trace_context()
             headers.update(attributes)
             try:
-                response: Future[str] = client.publish(
+                response: Future[str] = await run_in_threadpool(
+                    client.publish,
                     topic=topic_path,
                     data=data,
                     ordering_key=ordering_key,

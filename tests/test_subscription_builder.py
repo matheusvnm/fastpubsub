@@ -3,9 +3,9 @@ from copy import deepcopy
 from unittest.mock import MagicMock, call, patch
 
 import pytest
-from fastpubsub.builder import PubSubSubscriptionBuilder
 
 from fastpubsub import Subscriber
+from fastpubsub.builder import PubSubSubscriptionBuilder
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,

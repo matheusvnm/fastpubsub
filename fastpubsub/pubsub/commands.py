@@ -27,6 +27,6 @@ class PublishMessageCommand:
         if self.autocreate:
             await client.create_topic(self.topic_name)
 
-        client.publish(
+        await client.publish(
             topic_name=self.topic_name, data=data, ordering_key=ordering_key, attributes=attributes
         )

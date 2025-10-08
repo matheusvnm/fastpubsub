@@ -164,7 +164,7 @@ class MessageConsumeTask:
     def _should_recover(self, exception: Exception) -> bool:
         wrapped_exception = exception
         if isinstance(exception, RpcError):
-            wrapped_exception = from_grpc_error(exception)
+            wrapped_exception = from_grpc_error(exception)  # type: ignore[no-untyped-call]
 
         if isinstance(wrapped_exception, RETRYABLE_EXCEPTIONS):
             return True
@@ -174,7 +174,7 @@ class MessageConsumeTask:
     def _should_terminate(self, exception: Exception) -> bool:
         wrapped_exception = exception
         if isinstance(exception, RpcError):
-            wrapped_exception = from_grpc_error(exception)
+            wrapped_exception = from_grpc_error(exception)  # type: ignore[no-untyped-call]
 
         if isinstance(wrapped_exception, FATAL_EXCEPTIONS):
             return True

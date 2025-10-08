@@ -49,7 +49,7 @@ class PubSubBroker:
         enable_exactly_once_delivery: bool = False,
         min_backoff_delay_secs: int = 10,
         max_backoff_delay_secs: int = 600,
-        max_messages: int = 1000,
+        max_messages: int = 50,
         middlewares: tuple[type[BaseMiddleware]] | None = None,
     ) -> SubscribedCallable:
         return self.router.subscriber(

@@ -60,11 +60,6 @@ fail_under = 80
 strict = true
 ignore_missing_imports = true
 
-[[tool.mypy.overrides]]
-module = ["newrelic.*", "google.api_core.*"]
-ignore_missing_imports = true
-disallow_untyped_calls = false
-
 [tool.ruff]
 line-length = 100
 target-version = "py313"

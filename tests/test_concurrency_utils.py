@@ -1,6 +1,6 @@
 import pytest
-from fastpubsub.concurrency.ipc import ProcessInfo
 
+from fastpubsub.concurrency.ipc import ProcessInfo
 from fastpubsub.concurrency.utils import (
     ensure_async_callable_function,
     ensure_async_middleware,
