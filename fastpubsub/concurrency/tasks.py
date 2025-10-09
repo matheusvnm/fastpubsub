@@ -30,7 +30,7 @@ from fastpubsub.logger import logger
 from fastpubsub.observability import get_apm_provider
 from fastpubsub.pubsub.subscriber import Subscriber
 
-RETRYABLE_EXCEPTIONS = (
+RETRYABLE_GCP_EXCEPTIONS = (
     Aborted,
     DeadlineExceeded,
     GatewayTimeout,
@@ -40,7 +40,7 @@ RETRYABLE_EXCEPTIONS = (
     Unknown,
 )
 
-FATAL_EXCEPTIONS = (
+FATAL_GCP_EXCEPTIONS = (
     Cancelled,
     InvalidArgument,
     NotFound,
@@ -60,31 +60,30 @@ class PubSubPollTask:
         self.client = PubSubClient(self.subscriber.project_id)
 
     async def start(self) -> None:
-        self.running = True
-
         logger.debug(f"The message poll loop started for {self.subscriber.name}")
+
         async with create_task_group() as tg:
-            try:
-                while self.running:
-                    try:
-                        messages = await self.client.pull(
-                            self.subscriber.subscription_name,
-                            self.subscriber.control_flow_policy.max_messages,
-                        )
+            self.running = True
+            while self.running:
+                try:
+                    messages = await self.client.pull(
+                        self.subscriber.subscription_name,
+                        self.subscriber.control_flow_policy.max_messages,
+                    )
 
-                        self.ready = True
-                        for received_message in messages:
-                            message = await self._deserialize_message(received_message)
-                            tg.start_soon(self._handle, message)
+                    self.ready = True
+                    for received_message in messages:
+                        message = await self._deserialize_message(received_message)
+                        tg.start_soon(self._handle, message)
 
-                        await anyio.sleep(0.05)
-                    except Exception as e:
-                        self._on_exception(e)
-
-            except get_cancelled_exc_class():
-                logger.debug("We got a cancellation from parent, we will cancel the subtask")
-                tg.cancel_scope.cancel()
-                raise
+                    await anyio.sleep(0.5)
+                except get_cancelled_exc_class():
+                    logger.debug("We got a cancellation from parent, we will cancel the subtasks")
+                    self.shutdown()
+                    tg.cancel_scope.cancel()
+                    raise
+                except Exception as e:
+                    self._on_exception(e)
 
     async def _deserialize_message(self, received_message: ReceivedMessage) -> Message:
         wrapped_message = received_message.message
@@ -167,7 +166,7 @@ class PubSubPollTask:
         if isinstance(exception, RpcError):
             wrapped_exception = from_grpc_error(exception)  # type: ignore[no-untyped-call]
 
-        if isinstance(wrapped_exception, RETRYABLE_EXCEPTIONS):
+        if isinstance(wrapped_exception, RETRYABLE_GCP_EXCEPTIONS):
             return True
 
         return False
@@ -177,7 +176,7 @@ class PubSubPollTask:
         if isinstance(exception, RpcError):
             wrapped_exception = from_grpc_error(exception)  # type: ignore[no-untyped-call]
 
-        if isinstance(wrapped_exception, FATAL_EXCEPTIONS):
+        if isinstance(wrapped_exception, FATAL_GCP_EXCEPTIONS):
             return True
 
         return False

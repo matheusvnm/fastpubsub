@@ -1,4 +1,6 @@
-from unittest.mock import MagicMock
+from asyncio import CancelledError
+from collections.abc import Generator
+from unittest.mock import MagicMock, patch
 
 import pytest
 from google.api_core.exceptions import (
@@ -20,6 +22,8 @@ from google.api_core.exceptions import (
 from fastpubsub.concurrency.tasks import PubSubPollTask
 from fastpubsub.datastructures import Message
 
+PUBSUB_POLL_TASK_MODULE_PATH = "fastpubsub.concurrency.tasks"
+
 
 class TestAsyncTaskManager:
     # TODO:
@@ -33,6 +37,18 @@ class TestAsyncTaskManager:
 
 
 class TestPubSubPollTask:
+    @pytest.fixture
+    def pubsub_client(self) -> Generator[MagicMock]:
+        with patch(f"{PUBSUB_POLL_TASK_MODULE_PATH}.PubSubClient") as pubsub_client:
+            yield pubsub_client.return_value
+
+    @pytest.fixture(autouse=True)
+    def create_task_group(self) -> Generator[MagicMock]:
+        with patch(f"{PUBSUB_POLL_TASK_MODULE_PATH}.create_task_group") as create_task_group:
+            instance = create_task_group.return_value.__aenter__.return_value
+            instance.cancel_scope.cancel = MagicMock()
+            yield create_task_group
+
     @pytest.mark.asyncio
     async def test_task_ready(self):
         task = PubSubPollTask(MagicMock())
@@ -131,4 +147,38 @@ class TestPubSubPollTask:
     # TODO:
     ## Testar start tasks
 
-    ...
+    @pytest.mark.asyncio
+    async def test_start_task_cancelled_exception(self, pubsub_client: MagicMock):
+        pubsub_client.pull.side_effect = CancelledError(None)
+
+        task = PubSubPollTask(MagicMock())
+        with pytest.raises(CancelledError):
+            await task.start()
+
+        assert not task.task_alive()
+
+    @pytest.mark.asyncio
+    async def test_start_task_on_exception(self, pubsub_client: MagicMock):
+        pubsub_client.pull.side_effect = Cancelled(None)
+
+        task = PubSubPollTask(MagicMock())
+        await task.start()
+        assert not task.task_alive()
+
+    @pytest.mark.asyncio
+    async def test_start_task_on_empty_messages(self): ...
+
+    @pytest.mark.asyncio
+    async def test_start_task_on_messages(self): ...
+
+    @pytest.mark.asyncio
+    async def test_handle_process_message_successfully(self): ...
+
+    @pytest.mark.asyncio
+    async def test_handle_drop_message(self): ...
+
+    @pytest.mark.asyncio
+    async def test_handle_retry_message(self): ...
+
+    @pytest.mark.asyncio
+    async def test_handle_unhandled_exception_on_message(self): ...

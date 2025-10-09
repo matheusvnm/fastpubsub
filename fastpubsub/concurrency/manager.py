@@ -42,8 +42,5 @@ class AsyncTaskManager:
 
     async def shutdown(self) -> None:
         """Terminates the manager process and all its children gracefully."""
-        for task in self._tasks:
-            task.shutdown()
-
         self._task_group.cancel_scope.cancel()
         await self._task_group.__aexit__(None, None, None)
