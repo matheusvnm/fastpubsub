@@ -222,11 +222,12 @@ class PubSubClient:
         publisher_options = PublisherOptions(enable_message_ordering=ordered)
         with PublisherClient(publisher_options=publisher_options) as client:
             topic_path = client.topic_path(self.project_id, topic_name)
+            new_attributes = {} if attributes is None else attributes
 
             apm = observability.get_apm_provider()
-            attributes = {} if attributes is None else attributes
-            headers = apm.get_distributed_trace_context()
-            headers.update(attributes)
+            contextualized_attributes = apm.get_distributed_trace_context()
+            contextualized_attributes.update(new_attributes)
+
             try:
                 response: Future[str] = await run_in_threadpool(
                     client.publish,
@@ -234,7 +235,7 @@ class PubSubClient:
                     data=data,
                     ordering_key=ordering_key,
                     timeout=DEFAULT_PUBSUB_TIMEOUT,
-                    **headers,
+                    **contextualized_attributes,
                 )
 
                 message_id = response.result()

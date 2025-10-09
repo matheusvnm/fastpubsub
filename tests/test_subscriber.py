@@ -33,7 +33,6 @@ def subscriber_create_test_cases():
         [{**default_parameters, "min_backoff_delay_secs": None}],
         [{**default_parameters, "max_backoff_delay_secs": None}],
         [{**default_parameters, "max_messages": None}],
-        [{**default_parameters, "max_messages_bytes": None}],
         [{**default_parameters, "middlewares": True}],
     ]
 

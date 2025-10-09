@@ -9,7 +9,6 @@ from google.api_core.exceptions import (
     Cancelled,
     DeadlineExceeded,
     GatewayTimeout,
-    GoogleAPICallError,
     InternalServerError,
     InvalidArgument,
     NotFound,
@@ -42,7 +41,6 @@ RETRYABLE_EXCEPTIONS = (
 )
 
 FATAL_EXCEPTIONS = (
-    GoogleAPICallError,
     Cancelled,
     InvalidArgument,
     NotFound,
@@ -52,20 +50,22 @@ FATAL_EXCEPTIONS = (
 )
 
 
-class MessageConsumeTask:
+class PubSubPollTask:
     def __init__(self, subscriber: Subscriber) -> None:
         self.ready = False
-        self.should_exit = False
-
+        self.running = False
         self.subscriber = subscriber
+
         self.apm = get_apm_provider()
         self.client = PubSubClient(self.subscriber.project_id)
 
-    async def poll(self) -> None:
+    async def start(self) -> None:
+        self.running = True
+
         logger.debug(f"The message poll loop started for {self.subscriber.name}")
         async with create_task_group() as tg:
             try:
-                while not self.should_exit:
+                while self.running:
                     try:
                         messages = await self.client.pull(
                             self.subscriber.subscription_name,
@@ -79,27 +79,32 @@ class MessageConsumeTask:
 
                         await anyio.sleep(0.05)
                     except Exception as e:
-                        self.ready = False
-                        if self._should_terminate(e):
-                            self.should_exit = True
-                            logger.exception(
-                                "A non-recoverable exception happened "
-                                f"message handler {self.subscriber.name}."
-                            )
-                        elif not self._should_recover(e):
-                            logger.warning(
-                                "An recoverable error ocurred, we will try to recover from it.",
-                                exc_info=True,
-                            )
-                        else:
-                            logger.warning(
-                                "A unhandled error ocurred, trying to recover with no guarantees.",
-                                exc_info=True,
-                            )
+                        self._on_exception(e)
+
             except get_cancelled_exc_class():
                 logger.debug("We got a cancellation from parent, we will cancel the subtask")
                 tg.cancel_scope.cancel()
                 raise
+
+    async def _deserialize_message(self, received_message: ReceivedMessage) -> Message:
+        wrapped_message = received_message.message
+
+        delivery_attempt = 0
+        if received_message.delivery_attempt is not None:
+            delivery_attempt = received_message.delivery_attempt
+
+        ack_id = received_message.ack_id
+        size = len(wrapped_message.data)
+        attributes = dict(wrapped_message.attributes)
+
+        return Message(
+            id=wrapped_message.message_id,
+            data=wrapped_message.data,
+            size=size,
+            ack_id=ack_id,
+            attributes=attributes,
+            delivery_attempt=delivery_attempt,
+        )
 
     async def _handle(self, message: Message) -> Any:
         with self._contextualize(message=message):
@@ -122,22 +127,6 @@ class MessageConsumeTask:
                 logger.exception("Unhandled exception on message", stacklevel=5)
                 return
 
-    async def _deserialize_message(self, message: ReceivedMessage) -> Message:
-        delivery_attempt = 0
-        if message.delivery_attempt is not None:
-            delivery_attempt = message.delivery_attempt
-
-        wrapped_message = message.message
-
-        return Message(
-            id=wrapped_message.message_id,
-            data=wrapped_message.data,
-            size=len(wrapped_message.data),
-            ack_id=message.ack_id,
-            attributes=dict(wrapped_message.attributes),
-            delivery_attempt=delivery_attempt,
-        )
-
     @contextmanager
     def _contextualize(self, message: Message) -> Generator[None]:
         with self.apm.background_transaction(name=self.subscriber.name):
@@ -152,14 +141,26 @@ class MessageConsumeTask:
             with logger.contextualize(**context):
                 yield
 
-    def task_ready(self) -> bool:
-        return self.ready
+    def _on_exception(self, e: Exception) -> None:
+        self.ready = False
+        if self._should_terminate(e):
+            self.running = False
+            logger.exception(
+                f"A non-recoverable exception happened on message handler {self.subscriber.name}."
+            )
+            return
 
-    def task_alive(self) -> bool:
-        return not self.should_exit and self.ready
+        if not self._should_recover(e):
+            logger.warning(
+                "An recoverable error ocurred, we will try to recover from it.",
+                exc_info=True,
+            )
+            return
 
-    def shutdown(self) -> None:
-        self.should_exit = True
+        logger.warning(
+            "A unhandled error ocurred, trying to recover with no guarantees.",
+            exc_info=True,
+        )
 
     def _should_recover(self, exception: Exception) -> bool:
         wrapped_exception = exception
@@ -180,3 +181,12 @@ class MessageConsumeTask:
             return True
 
         return False
+
+    def task_ready(self) -> bool:
+        return self.ready
+
+    def task_alive(self) -> bool:
+        return self.running
+
+    def shutdown(self) -> None:
+        self.running = False
