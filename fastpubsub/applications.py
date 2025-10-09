@@ -78,7 +78,7 @@ class Application:
     # V1: Create a contextualizer
     async def _start(self) -> None:
         self.apm.start()
-        with self.apm.background_transaction(name="start"):
+        with self.apm.start_trace(name="start"):
             context = {
                 "span_id": self.apm.get_span_id(),
                 "trace_id": self.apm.get_trace_id(),
@@ -102,7 +102,7 @@ class Application:
         logger.info("The FastPubSub processes started")
 
     async def _shutdown(self) -> None:
-        with self.apm.background_transaction(name="shutdown"):
+        with self.apm.start_trace(name="shutdown"):
             context = {
                 "span_id": self.apm.get_span_id(),
                 "trace_id": self.apm.get_trace_id(),

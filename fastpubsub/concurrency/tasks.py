@@ -134,7 +134,7 @@ class PubSubPollTask:
 
     @contextmanager
     def _contextualize(self, message: Message) -> Generator[None]:
-        with self.apm.background_transaction(name=self.subscriber.name):
+        with self.apm.start_trace(name=self.subscriber.name):
             self.apm.set_distributed_trace_context(message.attributes)
             context = {
                 "name": self.subscriber.name,

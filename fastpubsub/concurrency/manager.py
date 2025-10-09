@@ -11,6 +11,7 @@ class AsyncTaskManager:
 
     def __init__(self) -> None:
         self._tasks: list[PubSubPollTask] = []
+        self._task_group: TaskGroup | None = None
 
     async def create_task(self, subscriber: Subscriber) -> None:
         """Registers a subscriber configuration to be managed."""
@@ -18,11 +19,8 @@ class AsyncTaskManager:
 
     async def start(self) -> None:
         """Starts the subscribers tasks process using a task group."""
-        if not self._tasks:
-            return
 
-        self._task_group: TaskGroup = create_task_group()
-        self._task_group = await self._task_group.__aenter__()
+        self._task_group = await create_task_group().__aenter__()
         for task in self._tasks:
             self._task_group.start_soon(task.start)
 
@@ -42,5 +40,5 @@ class AsyncTaskManager:
 
     async def shutdown(self) -> None:
         """Terminates the manager process and all its children gracefully."""
-        self._task_group.cancel_scope.cancel()
-        await self._task_group.__aexit__(None, None, None)
+        if self._task_group:
+            await self._task_group.__aexit__(None, None, None)

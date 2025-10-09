@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator
 from contextlib import contextmanager
 from functools import cache
+from types import TracebackType
 from typing import Any
 
 from fastpubsub.exceptions import FastPubSubException
@@ -30,14 +31,14 @@ class ApmProvider(ABC):
 
     @abstractmethod
     @contextmanager
-    def background_transaction(self, name: str) -> Generator[Any]:
-        """Decorator for a background transaction (a top-level trace)."""
+    def start_trace(self, name: str, context: dict[str, str] | None = None) -> Generator[Any]:
+        """Decorator for a trace (a top-level trace)."""
         pass
 
     @abstractmethod
     @contextmanager
-    def span(self, name: str) -> Generator[Any]:
-        """Decorator for a span (a nested operation within a transaction)."""
+    def start_span(self, name: str) -> Generator[Any]:
+        """Decorator for a span (a nested operation within a trace)."""
         pass
 
     @abstractmethod
@@ -51,8 +52,31 @@ class ApmProvider(ABC):
         pass
 
     @abstractmethod
-    def record_custom_event(self, event_type: str, params: dict[str, str]) -> None:
-        """Records a custom event with associated attributes."""
+    def report_custom_event(self, event_name: str, params: dict[str, str]) -> None:
+        """Reports a custom event with associated attributes."""
+        pass
+
+    @abstractmethod
+    def report_log_record(
+        self, message: str, level: str, timestamp: float, attributes: dict[str, str] | None = None
+    ) -> None:
+        """Reports a log message with associated attributes."""
+        pass
+
+    @abstractmethod
+    def report_exception(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
+        attributes: dict[str, str] | None = None,
+    ) -> None:
+        """Reports a exception associated with the trace."""
+        pass
+
+    @abstractmethod
+    def add_custom_metric(self, metric_name: str, value: int | float | dict[str, str]) -> None:
+        """Reports a custom metric associated with the trace."""
         pass
 
     @abstractmethod
@@ -81,11 +105,11 @@ class NoOpProvider(ApmProvider):
         return None
 
     @contextmanager
-    def background_transaction(self, name: str) -> Generator[Any]:
+    def start_trace(self, name: str, context: dict[str, str] | None = None) -> Generator[Any]:
         yield
 
     @contextmanager
-    def span(self, name: str) -> Generator[Any]:
+    def start_span(self, name: str) -> Generator[Any]:
         yield
 
     def set_distributed_trace_context(self, headers: dict[str, str]) -> None:
@@ -94,7 +118,24 @@ class NoOpProvider(ApmProvider):
     def get_distributed_trace_context(self) -> dict[str, str]:
         return {}
 
-    def record_custom_event(self, event_type: str, params: dict[str, str]) -> None:
+    def report_custom_event(self, event_name: str, params: dict[str, str]) -> None:
+        return None
+
+    def report_log_record(
+        self, message: str, level: str, timestamp: float, attributes: dict[str, str] | None = None
+    ) -> None:
+        return None
+
+    def report_exception(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
+        attributes: dict[str, str] | None = None,
+    ) -> None:
+        return None
+
+    def add_custom_metric(self, metric_name: str, value: int | float | dict[str, str]) -> None:
         return None
 
     def get_trace_id(self) -> str | None:
@@ -142,23 +183,25 @@ class NewRelicProvider(ApmProvider):
             self._agent.shutdown_agent()
         except Exception:
             logger.exception(
-                f"Failed to initialize shutdown New Relic for process [{os.getpid()}].",
+                f"Failed to shutdown New Relic for process [{os.getpid()}].",
                 stacklevel=5,
             )
 
     @contextmanager
-    def background_transaction(self, name: str) -> Generator[Any]:
+    def start_trace(self, name: str, context: dict[str, str] | None = None) -> Generator[Any]:
         app = self._agent.application(activate=False)
         with self._agent.BackgroundTask(application=app, name=name) as transaction:
+            if context and isinstance(context, dict):
+                self.set_distributed_trace_context(context)
+
             yield transaction
 
     @contextmanager
-    def span(self, name: str) -> Generator[Any]:
-        with self._agent.FunctionTrace(name=name):
-            yield
+    def start_span(self, name: str) -> Generator[Any]:
+        with self._agent.FunctionTrace(name=name) as function:
+            yield function
 
     def set_distributed_trace_context(self, headers: dict[str, str]) -> None:
-        """Sets the distributed trace for headers"""
         if not headers:
             return
 
@@ -168,18 +211,34 @@ class NewRelicProvider(ApmProvider):
         self._agent.accept_distributed_trace_headers(context, transport_type="Queue")
 
     def get_distributed_trace_context(self) -> dict[str, str]:
-        """Get the distributed trace for headers from current context"""
-
         headers: list[tuple[str, str]] = []
         self._agent.insert_distributed_trace_headers(headers)
         return dict(headers)
 
-    def record_custom_event(self, event_type: str, params: dict[str, str]) -> None:
-        """Records a New Relic custom event. Must be called within a transaction."""
+    def report_custom_event(self, event_type: str, params: dict[str, str]) -> None:
         try:
             self._agent.record_custom_event(event_type, params)
         except Exception:
             logger.exception("Failed to record New Relic custom event", stacklevel=5)
+
+    def report_log_record(
+        self, message: str, level: str, timestamp: float, attributes: dict[str, str] | None = None
+    ) -> None:
+        self._agent.record_log_event(
+            message=message, level=level, timestamp=timestamp, attributes=attributes
+        )
+
+    def report_exception(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
+        attributes: dict[str, str] | None = None,
+    ) -> None:
+        self._agent.record_exception(exc=exc_type, value=exc_value, tb=traceback, params=attributes)
+
+    def add_custom_metric(self, metric_name: str, value: int | float | dict[str, str]) -> None:
+        self._agent.record_custom_metric(name=metric_name, value=value)
 
     def get_trace_id(self) -> str | None:
         trace_id = self._agent.current_trace_id()
