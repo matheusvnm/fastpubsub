@@ -4,6 +4,7 @@ from typing import Any
 
 import anyio
 from anyio import create_task_group, get_cancelled_exc_class
+from anyio.abc import TaskGroup
 from google.api_core.exceptions import (
     Aborted,
     Cancelled,
@@ -61,29 +62,34 @@ class PubSubPollTask:
 
     async def start(self) -> None:
         logger.debug(f"The message poll loop started for {self.subscriber.name}")
-
-        async with create_task_group() as tg:
-            self.running = True
+        self.running = True
+        async with create_task_group() as task_group:
             while self.running:
                 try:
-                    messages = await self.client.pull(
-                        self.subscriber.subscription_name,
-                        self.subscriber.control_flow_policy.max_messages,
-                    )
-
-                    self.ready = True
-                    for received_message in messages:
-                        message = await self._deserialize_message(received_message)
-                        tg.start_soon(self._handle, message)
-
-                    await anyio.sleep(0.5)
+                    await self._consume_messages(task_group)
                 except get_cancelled_exc_class():
                     logger.debug("We got a cancellation from parent, we will cancel the subtasks")
                     self.shutdown()
-                    tg.cancel_scope.cancel()
+                    task_group.cancel_scope.cancel()
                     raise
                 except Exception as e:
                     self._on_exception(e)
+
+    async def _consume_messages(self, task_group: TaskGroup) -> None:
+        received_messages = await self.client.pull(
+            self.subscriber.subscription_name, self.subscriber.control_flow_policy.max_messages
+        )
+
+        self.ready = True
+        messages_to_consume = []
+        for received_message in received_messages:
+            message = await self._deserialize_message(received_message)
+            messages_to_consume.append(message)
+
+        for message in messages_to_consume:
+            task_group.start_soon(self._consume, message)
+
+        await anyio.sleep(0.5)
 
     async def _deserialize_message(self, received_message: ReceivedMessage) -> Message:
         wrapped_message = received_message.message
@@ -105,7 +111,7 @@ class PubSubPollTask:
             delivery_attempt=delivery_attempt,
         )
 
-    async def _handle(self, message: Message) -> Any:
+    async def _consume(self, message: Message) -> Any:
         with self._contextualize(message=message):
             try:
                 callstack = await self.subscriber.build_callstack()
