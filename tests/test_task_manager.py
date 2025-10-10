@@ -91,11 +91,13 @@ class TestAsyncTaskManager:
     @pytest.mark.asyncio
     async def test_shutdown(self):
         task_group = AsyncMock()
+        task_group.cancel_scope.cancel = MagicMock()
 
         task_manager = AsyncTaskManager()
         task_manager._task_group = task_group
         await task_manager.shutdown()
 
+        task_group.cancel_scope.cancel.assert_called_once()
         task_group.__aexit__.assert_called_once()
 
 

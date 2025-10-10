@@ -241,16 +241,28 @@ class NewRelicProvider(ApmProvider):
         self._agent.record_custom_metric(name=metric_name, value=value)
 
     def get_trace_id(self) -> str | None:
+        if not self.active():
+            logger.warning("The new relic agent is not active.")
+            return None
+
+        if not self._agent.current_transaction():
+            logger.warning("There is no transaction trace active.")
+            return  None
+
         trace_id = self._agent.current_trace_id()
-        if trace_id:
-            return str(trace_id)
-        return None
+        return str(trace_id) if trace_id else None
 
     def get_span_id(self) -> str | None:
+        if not self.active():
+            logger.warning("The new relic agent is not active.")
+            return None
+
+        if not self._agent.current_transaction():
+            logger.warning("There is no transaction trace active.")
+            return  None
+
         span_id = self._agent.current_span_id()
-        if span_id:
-            return str(span_id)
-        return None
+        return str(span_id) if span_id else None
 
     def active(self) -> bool:
         application = self._agent.application(activate=False)
