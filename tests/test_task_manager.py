@@ -273,7 +273,7 @@ class TestPubSubPollTask:
         build_callstack_mock = AsyncMock(return_value=callstack_mock)
 
         subscriber = MagicMock()
-        subscriber.build_callstack = build_callstack_mock
+        subscriber._build_callstack = build_callstack_mock
 
         task = PubSubPollTask(subscriber)
         await task._consume(default_message)
@@ -294,7 +294,7 @@ class TestPubSubPollTask:
         build_callstack_mock = AsyncMock(return_value=callstack_mock)
 
         subscriber = MagicMock()
-        subscriber.build_callstack = build_callstack_mock
+        subscriber._build_callstack = build_callstack_mock
 
         task = PubSubPollTask(subscriber)
         await task._consume(default_message)
@@ -315,7 +315,7 @@ class TestPubSubPollTask:
         build_callstack_mock = AsyncMock(return_value=callstack_mock)
 
         subscriber = MagicMock()
-        subscriber.build_callstack = build_callstack_mock
+        subscriber._build_callstack = build_callstack_mock
 
         task = PubSubPollTask(subscriber)
         await task._consume(default_message)
@@ -338,7 +338,7 @@ class TestPubSubPollTask:
         build_callstack_mock = AsyncMock(return_value=callstack_mock)
 
         subscriber = MagicMock()
-        subscriber.build_callstack = build_callstack_mock
+        subscriber._build_callstack = build_callstack_mock
 
         task = PubSubPollTask(subscriber)
         await task._consume(default_message)

@@ -1,3 +1,5 @@
+"""Subscriber task for polling messages."""
+
 from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
@@ -52,7 +54,14 @@ FATAL_GCP_EXCEPTIONS = (
 
 
 class PubSubPollTask:
+    """A task for polling messages from a Pub/Sub subscription."""
+
     def __init__(self, subscriber: Subscriber) -> None:
+        """Initializes the PubSubPollTask.
+
+        Args:
+            subscriber: The subscriber to poll messages for.
+        """
         self.ready = False
         self.running = False
         self.subscriber = subscriber
@@ -61,6 +70,7 @@ class PubSubPollTask:
         self.client = PubSubClient(self.subscriber.project_id)
 
     async def start(self) -> None:
+        """Starts the message polling loop."""
         logger.debug(f"The message poll loop started for {self.subscriber.name}")
         self.running = True
         async with create_task_group() as task_group:
@@ -114,7 +124,7 @@ class PubSubPollTask:
     async def _consume(self, message: Message) -> Any:
         with self._contextualize(message=message):
             try:
-                callstack = await self.subscriber.build_callstack()
+                callstack = await self.subscriber._build_callstack()
                 response = await callstack.on_message(message)
                 await self.client.ack([message.ack_id], self.subscriber.subscription_name)
                 logger.info("Message successfully processed.")
@@ -188,10 +198,21 @@ class PubSubPollTask:
         return False
 
     def task_ready(self) -> bool:
+        """Checks if the task is ready.
+
+        Returns:
+            True if the task is ready, False otherwise.
+        """
         return self.ready
 
     def task_alive(self) -> bool:
+        """Checks if the task is alive.
+
+        Returns:
+            True if the task is alive, False otherwise.
+        """
         return self.running
 
     def shutdown(self) -> None:
+        """Shuts down the task."""
         self.running = False

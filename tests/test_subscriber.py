@@ -74,17 +74,17 @@ class TestSubscriber:
         subscribers = broker.router._get_subscribers()
 
         subscriber_a = subscribers["a.sub_a"]
-        callstack_a = await subscriber_a.build_callstack()
+        callstack_a = await subscriber_a._build_callstack()
         expected_output = [first_middleware, HandleMessageCommand]
         assert callstack_matches(callstack_a, expected_output)
 
         subscriber_b = subscribers["a.b.sub_b"]
-        callstack_b = await subscriber_b.build_callstack()
+        callstack_b = await subscriber_b._build_callstack()
         expected_output = [second_middleware, first_middleware, HandleMessageCommand]
         assert callstack_matches(callstack_b, expected_output)
 
         subscriber_c = subscribers["sub_c"]
-        callstack_c = await subscriber_c.build_callstack()
+        callstack_c = await subscriber_c._build_callstack()
         expected_output = [HandleMessageCommand]
         assert callstack_matches(callstack_c, expected_output)
 
@@ -92,9 +92,9 @@ class TestSubscriber:
         assert subscriber.name == "some_subscriber_handler"
 
     def test_subscriber_set_project_id(self, subscriber: Subscriber):
-        subscriber.set_project_id("")
-        subscriber.set_project_id(None)
-        subscriber.set_project_id("some-project")
+        subscriber._set_project_id("")
+        subscriber._set_project_id(None)
+        subscriber._set_project_id("some-project")
 
     def test_subscriber_include_middleware_only_once(
         self,

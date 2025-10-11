@@ -1,3 +1,5 @@
+"""Builds and configures Pub/Sub subscriptions."""
+
 from anyio import create_task_group
 
 from fastpubsub.clients.pubsub import PubSubClient
@@ -5,11 +7,23 @@ from fastpubsub.pubsub.subscriber import Subscriber
 
 
 class PubSubSubscriptionBuilder:
+    """A builder for creating and updating Pub/Sub subscriptions."""
+
     def __init__(self, project_id: str) -> None:
+        """Initializes the PubSubSubscriptionBuilder.
+
+        Args:
+            project_id: The Google Cloud project ID.
+        """
         self.client = PubSubClient(project_id=project_id)
         self.created_topics: set[str] = set()
 
     async def build(self, subscriber: Subscriber) -> None:
+        """Builds a subscription for the given subscriber.
+
+        Args:
+            subscriber: The subscriber to build the subscription for.
+        """
         self.subscriber = subscriber
         if self.subscriber.lifecycle_policy.autocreate:
             await self._create_topics()

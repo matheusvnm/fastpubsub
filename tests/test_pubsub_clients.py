@@ -38,8 +38,8 @@ def subscriber():
         control_flow_policy=MessageControlFlowPolicy(max_messages=1),
         dead_letter_policy=DeadLetterPolicy(topic_name="dlt", max_delivery_attempts=5),
     )
-    subscriber.set_project_id("test-project")
-    subscriber.build_callstack = AsyncMock()
+    subscriber._set_project_id("test-project")
+    subscriber._build_callstack = AsyncMock()
     return subscriber
 
 

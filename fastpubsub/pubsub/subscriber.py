@@ -1,3 +1,5 @@
+"""Subscriber logic."""
+
 from collections.abc import Sequence
 
 from pydantic import ConfigDict, validate_call
@@ -16,6 +18,8 @@ from fastpubsub.types import AsyncCallable
 
 
 class Subscriber:
+    """A class representing a Pub/Sub subscriber."""
+
     def __init__(
         self,
         func: AsyncCallable,
@@ -28,6 +32,19 @@ class Subscriber:
         dead_letter_policy: DeadLetterPolicy | None = None,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ) -> None:
+        """Initializes the Subscriber.
+
+        Args:
+            func: The function to call when a message is received.
+            topic_name: The name of the topic to subscribe to.
+            subscription_name: The name of the subscription.
+            retry_policy: The retry policy for the subscription.
+            lifecycle_policy: The lifecycle policy for the subscription.
+            delivery_policy: The delivery policy for the subscription.
+            control_flow_policy: The control flow policy for the subscription.
+            dead_letter_policy: The dead-letter policy for the subscription.
+            middlewares: A sequence of middlewares to apply.
+        """
         self.project_id = ""
         self.topic_name = topic_name
         self.subscription_name = subscription_name
@@ -45,13 +62,18 @@ class Subscriber:
 
     @validate_call(config=ConfigDict(strict=True))
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
+        """Includes a middleware in the subscriber.
+
+        Args:
+            middleware: The middleware to include.
+        """
         if middleware in self.middlewares:
             return
 
         ensure_async_middleware(middleware)
         self.middlewares.append(middleware)
 
-    async def build_callstack(self) -> HandleMessageCommand | BaseMiddleware:
+    async def _build_callstack(self) -> HandleMessageCommand | BaseMiddleware:
         callstack: HandleMessageCommand | BaseMiddleware = self.handler
         for middleware in reversed(self.middlewares):
             callstack = middleware(callstack)
@@ -59,11 +81,12 @@ class Subscriber:
 
     @property
     def name(self) -> str:
+        """The name of the subscriber."""
         return self.handler.target.__name__
 
-    def set_project_id(self, project_id: str) -> None:
+    def _set_project_id(self, project_id: str) -> None:
         self.project_id = project_id
 
-    def add_prefix(self, new_prefix: str) -> None:
+    def _add_prefix(self, new_prefix: str) -> None:
         subscription_name = self.subscription_name.split(".")[-1]
         self.subscription_name = f"{new_prefix}.{subscription_name}"

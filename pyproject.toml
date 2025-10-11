@@ -20,6 +20,35 @@ dependencies = [
     "uvicorn>=0.35.0",
 ]
 
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development",
+    "Topic :: System :: Networking",
+    "Topic :: System :: Distributed Computing",
+    "Typing :: Typed",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Environment :: Web Environment",
+    "Framework :: AsyncIO",
+    "Framework :: Pydantic",
+    "Framework :: Pydantic :: 2",
+]
+
+
+
 [project.scripts]
 fastpubsub = "fastpubsub.cli.main:app"
 
@@ -68,8 +97,12 @@ target-version = "py313"
 docstring-code-format = true
 
 [tool.ruff.lint]
-select = ["E", "W", "I", "C4", "UP", "F", "B", "ARG"]
+select = ["E", "W", "D", "I", "C4", "UP", "F", "B", "ARG"]
 extend-ignore = ["B008", "B006", "ARG001", "ARG002"]
+per-file-ignores = { "tests/*" = ["D"], "examples/*" = ["D"] }
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.uv]
 package = true

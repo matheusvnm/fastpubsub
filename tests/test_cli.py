@@ -95,7 +95,7 @@ class TestCLI:
 
 class TestApplicationRunner:
     @patch("uvicorn.run")
-    @patch("fastpubsub.cli.runner.ApplicationRunner.validate_application")
+    @patch("fastpubsub.cli.runner.ApplicationRunner._validate_application")
     def test_run(self, mock_validate: MagicMock, mock_uvicorn_run: MagicMock):
         app_config = AppConfiguration(
             app="my_app:app",
@@ -121,8 +121,8 @@ class TestApplicationRunner:
             app_config.app, lifespan="on", **asdict(server_config)
         )
 
-    @patch("fastpubsub.cli.runner.ApplicationRunner.resolve_application_posix_path")
-    @patch("fastpubsub.cli.runner.ApplicationRunner.translate_pypath_to_posix")
+    @patch("fastpubsub.cli.runner.ApplicationRunner._resolve_application_posix_path")
+    @patch("fastpubsub.cli.runner.ApplicationRunner._translate_pypath_to_posix")
     @patch("uvicorn.importer.import_from_string")
     def test_validate_application_invalid_app_instance(
         self, mock_import: MagicMock, mock_translate: MagicMock, mock_resolve: MagicMock
@@ -130,10 +130,10 @@ class TestApplicationRunner:
         mock_import.return_value = object()
         runner_instance = ApplicationRunner()
         with pytest.raises(FastPubSubCLIException):
-            runner_instance.validate_application("my_app:app")
+            runner_instance._validate_application("my_app:app")
 
-    @patch("fastpubsub.cli.runner.ApplicationRunner.resolve_application_posix_path")
-    @patch("fastpubsub.cli.runner.ApplicationRunner.translate_pypath_to_posix")
+    @patch("fastpubsub.cli.runner.ApplicationRunner._resolve_application_posix_path")
+    @patch("fastpubsub.cli.runner.ApplicationRunner._translate_pypath_to_posix")
     @patch("uvicorn.importer.import_from_string")
     def test_validate_application_valid_app(
         self, mock_import: MagicMock, mock_translate: MagicMock, mock_resolve: MagicMock
@@ -142,12 +142,12 @@ class TestApplicationRunner:
         mock_import.return_value = FastPubSub(broker=mock_broker)
         runner_instance = ApplicationRunner()
         # should not raise
-        runner_instance.validate_application("my_app:app")
+        runner_instance._validate_application("my_app:app")
 
     def test_translate_pypath_to_posix_invalid_format(self):
         runner_instance = ApplicationRunner()
         with pytest.raises(uvicorn.importer.ImportFromStringError):
-            runner_instance.translate_pypath_to_posix("invalid_path")
+            runner_instance._translate_pypath_to_posix("invalid_path")
 
 
 class TestUtils:

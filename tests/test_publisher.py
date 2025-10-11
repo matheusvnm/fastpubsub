@@ -64,9 +64,9 @@ class TestPublisher:
         message_publisher_b = router_b.publisher(topic_name="somerandomtopic")
         message_publisher_c = broker.publisher(topic_name="somerandomtopic")
 
-        callstack_a = await message_publisher_a.build_callstack()
-        callstack_b = await message_publisher_b.build_callstack()
-        callstack_c = await message_publisher_c.build_callstack()
+        callstack_a = await message_publisher_a._build_callstack()
+        callstack_b = await message_publisher_b._build_callstack()
+        callstack_c = await message_publisher_c._build_callstack()
 
         expected_output_a = [first_middleware, PublishMessageCommand]
         assert callstack_matches(callstack_a, expected_output_a)
@@ -86,7 +86,7 @@ class TestPublisher:
         ],
     )
     def test_set_project_id(self, publisher: Publisher, project_id: str):
-        publisher.set_project_id(project_id)
+        publisher._set_project_id(project_id)
 
     def test_include_middleware_only_once(
         self,

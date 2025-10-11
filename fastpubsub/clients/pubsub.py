@@ -1,3 +1,5 @@
+"""A client for interacting with Google Cloud Pub/Sub."""
+
 import os
 from concurrent.futures import Future
 from contextlib import suppress
@@ -25,7 +27,14 @@ DEFAULT_PUBSUB_TIMEOUT = 10.0
 
 
 class PubSubClient:
+    """A client for interacting with Google Cloud Pub/Sub."""
+
     def __init__(self, project_id: str) -> None:
+        """Initializes the PubSubClient.
+
+        Args:
+            project_id: The Google Cloud project ID.
+        """
         self.project_id = project_id
         self.is_emulator = True if os.getenv("PUBSUB_EMULATOR_HOST") else False
 
@@ -77,6 +86,15 @@ class PubSubClient:
         delivery_policy: MessageDeliveryPolicy,
         dead_letter_policy: DeadLetterPolicy | None = None,
     ) -> None:
+        """Creates a subscription.
+
+        Args:
+            topic_name: The name of the topic.
+            subscription_name: The name of the subscription.
+            retry_policy: The retry policy for the subscription.
+            delivery_policy: The delivery policy for the subscription.
+            dead_letter_policy: The dead-letter policy for the subscription.
+        """
         with SubscriberClient() as client:
             subscription_request = self._create_subscription_request(
                 topic_name=topic_name,
@@ -104,6 +122,15 @@ class PubSubClient:
         delivery_policy: MessageDeliveryPolicy,
         dead_letter_policy: DeadLetterPolicy | None = None,
     ) -> None:
+        """Updates a subscription.
+
+        Args:
+            topic_name: The name of the topic.
+            subscription_name: The name of the subscription.
+            retry_policy: The retry policy for the subscription.
+            delivery_policy: The delivery policy for the subscription.
+            dead_letter_policy: The dead-letter policy for the subscription.
+        """
         with SubscriberClient() as client:
             subscription_request = self._create_subscription_request(
                 topic_name=topic_name,
@@ -147,6 +174,15 @@ class PubSubClient:
                 ) from e
 
     async def pull(self, subscription_name: str, max_messages: int) -> list[ReceivedMessage]:
+        """Pulls messages from a subscription.
+
+        Args:
+            subscription_name: The name of the subscription.
+            max_messages: The maximum number of messages to pull.
+
+        Returns:
+            A list of received messages.
+        """
         with SubscriberClient() as client:
             subscription_path = client.subscription_path(self.project_id, subscription_name)
             response = await run_in_threadpool(
@@ -159,6 +195,12 @@ class PubSubClient:
         return list(response.received_messages)
 
     async def ack(self, ack_ids: list[str], subscription_name: str) -> None:
+        """Acknowledges messages.
+
+        Args:
+            ack_ids: A list of acknowledgment IDs.
+            subscription_name: The name of the subscription.
+        """
         with SubscriberClient() as client:
             subscription_path = client.subscription_path(self.project_id, subscription_name)
 
@@ -170,6 +212,12 @@ class PubSubClient:
             )
 
     async def nack(self, ack_ids: list[str], subscription_name: str) -> None:
+        """Nacknowledges messages.
+
+        Args:
+            ack_ids: A list of acknowledgment IDs.
+            subscription_name: The name of the subscription.
+        """
         with SubscriberClient() as client:
             subscription_path = client.subscription_path(self.project_id, subscription_name)
 
@@ -182,6 +230,13 @@ class PubSubClient:
             )
 
     async def create_topic(self, topic_name: str, create_default_subscription: bool = True) -> None:
+        """Creates a topic.
+
+        Args:
+            topic_name: The name of the topic.
+            create_default_subscription: Whether to create a default
+                subscription for the topic.
+        """
         with suppress(AlreadyExists):
             with PublisherClient() as publisher_client:
                 logger.debug(f"Creating topic '{topic_name}'.")
@@ -218,6 +273,14 @@ class PubSubClient:
         ordering_key: str,
         attributes: dict[str, str] | None,
     ) -> None:
+        """Publishes a message.
+
+        Args:
+            topic_name: The name of the topic.
+            data: The message data.
+            ordering_key: The ordering key for the message.
+            attributes: A dictionary of message attributes.
+        """
         ordered = True if ordering_key else False
         publisher_options = PublisherOptions(enable_message_ordering=ordered)
         with PublisherClient(publisher_options=publisher_options) as client:

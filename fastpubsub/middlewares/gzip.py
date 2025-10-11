@@ -1,3 +1,5 @@
+"""Gzip middleware for FastPubSub."""
+
 import gzip
 from typing import Any
 
@@ -7,7 +9,14 @@ from fastpubsub.middlewares.base import BaseMiddleware
 
 # V2: Middlewares must can have args/kwargs
 class GZipMiddleware(BaseMiddleware):
+    """A middleware for compressing and decompressing messages using gzip."""
+
     async def on_message(self, message: Message) -> Any:
+        """Decompresses a message.
+
+        Args:
+            message: The message to decompress.
+        """
         if message.attributes and message.attributes.get("Content-Encoding") == "gzip":
             decompressed_data = gzip.decompress(data=message.data)
             message = Message(
@@ -24,6 +33,13 @@ class GZipMiddleware(BaseMiddleware):
     async def on_publish(
         self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
+        """Compresses a message.
+
+        Args:
+            data: The message data to compress.
+            ordering_key: The ordering key for the message.
+            attributes: A dictionary of message attributes.
+        """
         if not attributes:
             attributes = {}
 

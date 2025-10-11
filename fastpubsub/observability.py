@@ -1,3 +1,5 @@
+"""Observability utilities."""
+
 import os
 from abc import ABC, abstractmethod
 from collections.abc import Generator
@@ -23,16 +25,16 @@ class ApmProvider(ABC):
 
     @abstractmethod
     def start(self) -> None:
-        """
-        Initializes the APM agent if it's not already running.
+        """Initializes the APM agent if it's not already running.
+
         This is for environments without an auto-starting wrapper.
         """
         pass
 
     @abstractmethod
     def shutdown(self) -> None:
-        """
-        Shutdowm the APM agent if it's running.
+        """Shutdowm the APM agent if it's running.
+
         This is for environments without an auto-starting wrapper.
         """
         pass
@@ -107,31 +109,68 @@ class NoOpProvider(ApmProvider):
     """A provider that performs no operations."""
 
     def start(self) -> None:
+        """Starts the APM provider."""
         return None
 
     def shutdown(self) -> None:
+        """Shuts down the APM provider."""
         return None
 
     @contextmanager
     def start_trace(self, name: str, context: dict[str, str] | None = None) -> Generator[Any]:
+        """Starts a trace.
+
+        Args:
+            name: The name of the trace.
+            context: The distributed trace context.
+        """
         yield
 
     @contextmanager
     def start_span(self, name: str) -> Generator[Any]:
+        """Starts a span.
+
+        Args:
+            name: The name of the span.
+        """
         yield
 
     def set_distributed_trace_context(self, headers: dict[str, str]) -> None:
+        """Sets the distributed trace context.
+
+        Args:
+            headers: The distributed trace headers.
+        """
         return None
 
     def get_distributed_trace_context(self) -> dict[str, str]:
+        """Gets the distributed trace context.
+
+        Returns:
+            The distributed trace context.
+        """
         return {}
 
     def report_custom_event(self, event_name: str, params: dict[str, str]) -> None:
+        """Reports a custom event.
+
+        Args:
+            event_name: The name of the event.
+            params: The event parameters.
+        """
         return None
 
     def report_log_record(
         self, message: str, level: str, timestamp: float, attributes: dict[str, str] | None = None
     ) -> None:
+        """Reports a log record.
+
+        Args:
+            message: The log message.
+            level: The log level.
+            timestamp: The timestamp of the log record.
+            attributes: A dictionary of attributes.
+        """
         return None
 
     def report_exception(
@@ -141,18 +180,47 @@ class NoOpProvider(ApmProvider):
         traceback: TracebackType | None = None,
         attributes: dict[str, str] | None = None,
     ) -> None:
+        """Reports an exception.
+
+        Args:
+            exc_type: The type of the exception.
+            exc_value: The exception value.
+            traceback: The traceback.
+            attributes: A dictionary of attributes.
+        """
         return None
 
     def add_custom_metric(self, metric_name: str, value: int | float | dict[str, str]) -> None:
+        """Adds a custom metric.
+
+        Args:
+            metric_name: The name of the metric.
+            value: The value of the metric.
+        """
         return None
 
     def get_trace_id(self) -> str | None:
+        """Gets the trace ID.
+
+        Returns:
+            The trace ID.
+        """
         return ""
 
     def get_span_id(self) -> str | None:
+        """Gets the span ID.
+
+        Returns:
+            The span ID.
+        """
         return ""
 
     def active(self) -> bool:
+        """Checks if the provider is active.
+
+        Returns:
+            True if the provider is active, False otherwise.
+        """
         return False
 
 
@@ -160,6 +228,7 @@ class NewRelicProvider(ApmProvider):
     """APM provider for New Relic."""
 
     def __init__(self) -> None:
+        """Initializes the NewRelicProvider."""
         if not _new_relic_agent:
             raise FastPubSubException(
                 "No newrelic agent found. "
@@ -187,6 +256,7 @@ class NewRelicProvider(ApmProvider):
             )
 
     def shutdown(self) -> None:
+        """Shuts down the New Relic agent."""
         logger.info(f"Performing New Relic agent shutdown for process [{os.getpid()}].")
         try:
             self._agent.shutdown_agent()
@@ -198,6 +268,12 @@ class NewRelicProvider(ApmProvider):
 
     @contextmanager
     def start_trace(self, name: str, context: dict[str, str] | None = None) -> Generator[Any]:
+        """Starts a trace.
+
+        Args:
+            name: The name of the trace.
+            context: The distributed trace context.
+        """
         app = self._agent.application(activate=False)
         with self._agent.BackgroundTask(application=app, name=name) as transaction:
             if context and isinstance(context, dict):
@@ -207,10 +283,20 @@ class NewRelicProvider(ApmProvider):
 
     @contextmanager
     def start_span(self, name: str) -> Generator[Any]:
+        """Starts a span.
+
+        Args:
+            name: The name of the span.
+        """
         with self._agent.FunctionTrace(name=name) as function:
             yield function
 
     def set_distributed_trace_context(self, headers: dict[str, str]) -> None:
+        """Sets the distributed trace context.
+
+        Args:
+            headers: The distributed trace headers.
+        """
         if not headers:
             return
 
@@ -220,11 +306,22 @@ class NewRelicProvider(ApmProvider):
         self._agent.accept_distributed_trace_headers(context, transport_type="Queue")
 
     def get_distributed_trace_context(self) -> dict[str, str]:
+        """Gets the distributed trace context.
+
+        Returns:
+            The distributed trace context.
+        """
         headers: list[tuple[str, str]] = []
         self._agent.insert_distributed_trace_headers(headers)
         return dict(headers)
 
     def report_custom_event(self, event_name: str, params: dict[str, str]) -> None:
+        """Reports a custom event.
+
+        Args:
+            event_name: The name of the event.
+            params: The event parameters.
+        """
         try:
             self._agent.record_custom_event(event_type=event_name, param=params)
         except Exception:
@@ -233,6 +330,14 @@ class NewRelicProvider(ApmProvider):
     def report_log_record(
         self, message: str, level: str, timestamp: float, attributes: dict[str, str] | None = None
     ) -> None:
+        """Reports a log record.
+
+        Args:
+            message: The log message.
+            level: The log level.
+            timestamp: The timestamp of the log record.
+            attributes: A dictionary of attributes.
+        """
         self._agent.record_log_event(
             message=message, level=level, timestamp=timestamp, attributes=attributes
         )
@@ -244,24 +349,53 @@ class NewRelicProvider(ApmProvider):
         traceback: TracebackType | None = None,
         attributes: dict[str, str] | None = None,
     ) -> None:
+        """Reports an exception.
+
+        Args:
+            exc_type: The type of the exception.
+            exc_value: The exception value.
+            traceback: The traceback.
+            attributes: A dictionary of attributes.
+        """
         self._agent.record_exception(exc=exc_type, value=exc_value, tb=traceback, params=attributes)
 
     def add_custom_metric(self, metric_name: str, value: int | float | dict[str, str]) -> None:
+        """Adds a custom metric.
+
+        Args:
+            metric_name: The name of the metric.
+            value: The value of the metric.
+        """
         self._agent.record_custom_metric(name=metric_name, value=value)
 
     def get_trace_id(self) -> str | None:
+        """Gets the trace ID.
+
+        Returns:
+            The trace ID.
+        """
         trace_id = self._agent.current_trace_id()
         if trace_id:
             return str(trace_id)
         return None
 
     def get_span_id(self) -> str | None:
+        """Gets the span ID.
+
+        Returns:
+            The span ID.
+        """
         span_id = self._agent.current_span_id()
         if span_id:
             return str(span_id)
         return None
 
     def active(self) -> bool:
+        """Checks if the provider is active.
+
+        Returns:
+            True if the provider is active, False otherwise.
+        """
         application = self._agent.application(activate=False)
         return bool(application) and bool(application.active)
 
@@ -273,6 +407,14 @@ PROVIDER_MAP: dict[str, type[ApmProvider]] = {
 
 @cache
 def get_apm_provider(provider_name: str | None = None) -> ApmProvider:
+    """Gets the APM provider.
+
+    Args:
+        provider_name: The name of the provider.
+
+    Returns:
+        The APM provider.
+    """
     name = provider_name or os.getenv("FASTPUBSUB_APM_PROVIDER")
     name = name.lower() if isinstance(name, str) else ""
 

@@ -1,3 +1,5 @@
+"""Concurrency utilities."""
+
 import inspect
 from collections.abc import Callable
 from types import FunctionType
@@ -10,6 +12,11 @@ from fastpubsub.types import AsyncCallable, AsyncDecoratedCallable
 def ensure_async_callable_function(
     callable_object: Callable[[], Any] | AsyncCallable | AsyncDecoratedCallable,
 ) -> None:
+    """Ensures that a callable is an async function.
+
+    Args:
+        callable_object: The callable to check.
+    """
     if not isinstance(callable_object, FunctionType):
         raise TypeError(f"The object must be a function type but it is {callable_object}.")
 
@@ -18,6 +25,11 @@ def ensure_async_callable_function(
 
 
 def ensure_async_middleware(middleware: type[BaseMiddleware]) -> None:
+    """Ensures that a middleware is an async middleware.
+
+    Args:
+        middleware: The middleware to check.
+    """
     if not issubclass(middleware, BaseMiddleware):
         raise TypeError(f"The object {middleware} must be a {BaseMiddleware.__name__}.")
 

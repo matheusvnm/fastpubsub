@@ -1,3 +1,5 @@
+"""Command-line interface utilities."""
+
 import logging
 import os
 from enum import StrEnum
@@ -63,6 +65,7 @@ class APMProviders(StrEnum):
 
 
 def ensure_pubsub_credentials() -> None:
+    """Ensures that the Pub/Sub credentials are set."""
     credentials = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     emulator_host = os.getenv("PUBSUB_EMULATOR_HOST")
     if not credentials and not emulator_host:

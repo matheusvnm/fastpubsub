@@ -17,7 +17,7 @@ class TestPublishMessage:
         data = {"data": b"data", "ordering_key": "key", "attributes": {"attr1": "val1"}}
 
         with patch.object(
-            Publisher, "build_callstack", return_value=AsyncMock()
+            Publisher, "_build_callstack", return_value=AsyncMock()
         ) as mock_build_callstack:
             await publisher.publish(**data)
             await router_a.publish(topic_name="topic", **data)

@@ -12,7 +12,15 @@ from fastpubsub.pubsub.commands import PublishMessageCommand
 
 
 class Publisher:
+    """A class for publishing messages to a Pub/Sub topic."""
+
     def __init__(self, topic_name: str, middlewares: list[type[BaseMiddleware]]):
+        """Initializes the Publisher.
+
+        Args:
+            topic_name: The name of the topic.
+            middlewares: A list of middlewares to apply.
+        """
         self.project_id = ""
         self.topic_name = topic_name
         self.middlewares: list[type[BaseMiddleware]] = []
@@ -29,14 +37,22 @@ class Publisher:
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:
-        callstack = await self.build_callstack(autocreate=autocreate)
+        """Publishes a message to the topic.
+
+        Args:
+            data: The message data.
+            ordering_key: The ordering key for the message.
+            attributes: A dictionary of message attributes.
+            autocreate: Whether to automatically create the topic.
+        """
+        callstack = await self._build_callstack(autocreate=autocreate)
         serialized_message = await self._serialize_message(data)
 
         await callstack.on_publish(
             data=serialized_message, ordering_key=ordering_key, attributes=attributes
         )
 
-    async def build_callstack(
+    async def _build_callstack(
         self, autocreate: bool = True
     ) -> PublishMessageCommand | BaseMiddleware:
         callstack: PublishMessageCommand | BaseMiddleware = PublishMessageCommand(
@@ -69,11 +85,16 @@ class Publisher:
 
     @validate_call(config=ConfigDict(strict=True))
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
+        """Includes a middleware in the publisher.
+
+        Args:
+            middleware: The middleware to include.
+        """
         if middleware in self.middlewares:
             return
 
         ensure_async_middleware(middleware)
         self.middlewares.append(middleware)
 
-    def set_project_id(self, project_id: str) -> None:
+    def _set_project_id(self, project_id: str) -> None:
         self.project_id = project_id

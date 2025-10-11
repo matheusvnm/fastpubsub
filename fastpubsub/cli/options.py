@@ -1,3 +1,5 @@
+"""Command-line interface options."""
+
 from typing import Annotated
 
 import typer

@@ -1,3 +1,5 @@
+"""A router for organizing publishers and subscribers."""
+
 import re
 from collections import OrderedDict
 from collections.abc import Sequence
@@ -23,6 +25,8 @@ _PREFIX_REGEX = re.compile(r"^[a-zA-Z0-9]+([_./][a-zA-Z0-9]+)*$")
 
 
 class PubSubRouter:
+    """A router for organizing publishers and subscribers."""
+
     def __init__(
         self,
         prefix: str = "",
@@ -30,6 +34,17 @@ class PubSubRouter:
         routers: Sequence["PubSubRouter"] | None = None,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ):
+        """Initializes the PubSubRouter.
+
+        Args:
+            prefix: A prefix to apply to all subscribers and publishers in the
+                router. If set, the subscriber alias will be: <prefix>.<alias>.
+                Also, it affects the subscription name. A subscription will be
+                <prefix>.<subscription_name>.
+            routers: A sequence of childrens routers to include.
+            middlewares: A sequence of middlewares to apply to all subscribers
+                in this router and its children.
+        """
         if prefix and not _PREFIX_REGEX.match(prefix):
             raise FastPubSubException(
                 "Prefix must be a string that starts and ends with a letter or number, "
@@ -57,7 +72,7 @@ class PubSubRouter:
             for middleware in middlewares:
                 self.include_middleware(middleware)
 
-    def set_project_id(self, project_id: str) -> None:
+    def _set_project_id(self, project_id: str) -> None:
         if self.project_id or not project_id:
             return
 
@@ -66,16 +81,21 @@ class PubSubRouter:
 
     def _propagate_project_id(self) -> None:
         for router in self.routers:
-            router.add_prefix(self.prefix)
-            router.set_project_id(self.project_id)
+            router._add_prefix(self.prefix)
+            router._set_project_id(self.project_id)
 
         for publisher in self.publishers.values():
-            publisher.set_project_id(self.project_id)
+            publisher._set_project_id(self.project_id)
 
         for subscriber in self.subscribers.values():
-            subscriber.set_project_id(self.project_id)
+            subscriber._set_project_id(self.project_id)
 
     def include_router(self, router: "PubSubRouter") -> None:
+        """Includes a child router in the current router.
+
+        Args:
+            router: The router to include.
+        """
         if not (router and isinstance(router, PubSubRouter)):
             raise FastPubSubException(f"Your routers must be of type {self.__class__.__name__}")
 
@@ -85,14 +105,14 @@ class PubSubRouter:
             # and this is the only error case.
             raise FastPubSubException(f"There is a cyclical reference on router {self.prefix}.")
 
-        router.add_prefix(self.prefix)
+        router._add_prefix(self.prefix)
         for existing_router in self.routers:
             if existing_router.prefix == router.prefix:
                 raise FastPubSubException(
                     f"The prefix={router.prefix} is duplicated, it must be unique."
                 )
 
-        router.set_project_id(self.project_id)
+        router._set_project_id(self.project_id)
         for middleware in self.middlewares:
             router.include_middleware(middleware)
 
@@ -118,6 +138,36 @@ class PubSubRouter:
         max_messages: int = 50,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ) -> SubscribedCallable:
+        """Decorator to register a function as a subscriber.
+
+        Args:
+            alias: A unique name for the subscriber. You can use this alias to
+                select which subscription to use.
+            topic_name: The name of the topic to subscribe to.
+            subscription_name: The name of the subscription.
+            subscription_name: The name of the subscription.
+            autocreate: Whether to automatically create the topic and
+                subscription if it does not exists.
+            autoupdate: Whether to automatically update the subscription.
+            filter_expression: A filter expression to apply to the
+                subscription to filter messages.
+            filter_expression: A filter expression to apply to the
+                subscription to filter messages.
+            dead_letter_topic: The name of the dead-letter topic.
+            max_delivery_attempts: The maximum number of delivery attempts
+                before sending the message to the dead-letter.
+            ack_deadline_seconds: The acknowledgment deadline in seconds.
+            enable_message_ordering: Whether to enable message ordering.
+            enable_exactly_once_delivery: Whether to enable exactly-once delivery.
+            min_backoff_delay_secs: The minimum backoff delay in seconds.
+            max_backoff_delay_secs: The maximum backoff delay in seconds.
+            max_messages: The maximum number of messages to fetch from the broker.
+            middlewares: A sequence of middlewares to apply **only to the subscriber**.
+
+        Returns:
+            A decorator that registers the function as a subscriber.
+        """
+
         def decorator(func: AsyncDecoratedCallable) -> AsyncDecoratedCallable:
             ensure_async_callable_function(func)
 
@@ -173,7 +223,7 @@ class PubSubRouter:
                 dead_letter_policy=dead_letter_policy,
                 middlewares=subscriber_middlewares,
             )
-            subscriber.set_project_id(self.project_id)
+            subscriber._set_project_id(self.project_id)
             self.subscribers[prefixed_alias.lower()] = subscriber
             return func
 
@@ -181,10 +231,18 @@ class PubSubRouter:
 
     @validate_call(config=ConfigDict(strict=True))
     def publisher(self, topic_name: str) -> Publisher:
+        """Returns a publisher for the given topic.
+
+        Args:
+            topic_name: The name of the topic.
+
+        Returns:
+            A publisher for the given topic.
+        """
         publisher = self.publishers.get(topic_name)
         if not publisher:
             publisher = Publisher(topic_name=topic_name, middlewares=self.middlewares)
-            publisher.set_project_id(self.project_id)
+            publisher._set_project_id(self.project_id)
             self.publishers[topic_name] = publisher
 
         return publisher
@@ -198,6 +256,15 @@ class PubSubRouter:
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:
+        """Publishes a message to the given topic.
+
+        Args:
+            topic_name: The name of the topic.
+            data: The message data.
+            ordering_key: The ordering key for the message.
+            attributes: A dictionary of message attributes.
+            autocreate: Whether to automatically create the topic if it does not exists.
+        """
         publisher = self.publisher(topic_name=topic_name)
         await publisher.publish(
             data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
@@ -205,6 +272,11 @@ class PubSubRouter:
 
     @validate_call(config=ConfigDict(strict=True))
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
+        """Includes a middleware in the router.
+
+        Args:
+            middleware: The middleware to include.
+        """
         for publisher in self.publishers.values():
             publisher.include_middleware(middleware)
 
@@ -228,7 +300,7 @@ class PubSubRouter:
         return subscribers
 
     @validate_call
-    def add_prefix(self, prefix: str) -> None:
+    def _add_prefix(self, prefix: str) -> None:
         if not prefix:
             return
 
@@ -241,12 +313,12 @@ class PubSubRouter:
 
         self.prefix = ".".join(list(prefixes.keys()))
         for router in self.routers:
-            router.add_prefix(prefix=prefix)
+            router._add_prefix(prefix=prefix)
 
         subscribers_to_realias = dict(self.subscribers)
         self.subscribers.clear()
         for alias, subscriber in subscribers_to_realias.items():
-            subscriber.add_prefix(self.prefix)
+            subscriber._add_prefix(self.prefix)
 
             old_alias = alias.split(".")[-1]
             new_prefixed_alias = f"{self.prefix}.{old_alias}"

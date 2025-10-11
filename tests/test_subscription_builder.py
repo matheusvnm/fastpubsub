@@ -52,7 +52,7 @@ class TestSubscriptionBuilder:
             middlewares=[],
         )
 
-        subscriber.set_project_id("proj_id")
+        subscriber._set_project_id("proj_id")
         return subscriber
 
     @pytest.fixture

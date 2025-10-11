@@ -1,3 +1,5 @@
+"""FastPubSub command-line interface."""
+
 import rich
 import typer
 
@@ -59,9 +61,7 @@ def main(
     ctx: CLIContext,
     version: AppVersionOption = False,
 ) -> None:
-    """
-    Display helpful tips when the main command is run without any subcommands.
-    """
+    """Display helpful tips when the main command is run without any subcommands."""
     if ctx.invoked_subcommand is None and not version:
         rich.print("\n[bold]Welcome to the FastPubSub CLI! ✨[/bold]")
         rich.print("\n[dim]A CLI to run FastPubSub applications and interact with Pub/Sub.[/dim]")
@@ -103,6 +103,21 @@ def run(
     server_log_level: AppServerLogLevelOption = LogLevels.WARNING,
     apm_provider: AppApmProvider = AppApmProvider.NOOP,
 ) -> None:
+    """Runs a FastPubSub application.
+
+    Args:
+        app: The application to run.
+        workers: The number of worker processes.
+        subscribers: The subscribers to run.
+        reload: Whether to enable auto-reloading.
+        host: The host to bind to.
+        port: The port to bind to.
+        log_level: The log level.
+        log_serialize: Whether to serialize logs.
+        log_colorize: Whether to colorize logs.
+        server_log_level: The server (uvicorn) log level.
+        apm_provider: The APM provider to use.
+    """
     ensure_pubsub_credentials()
     translated_log_level = get_log_level(log_level)
     app_configuration = AppConfiguration(
@@ -129,14 +144,13 @@ def run(
 
 @app.command(name="help")
 def show_help(ctx: typer.Context) -> None:
-    """
-    Show this message and exit.
-    """
+    """Show this message and exit."""
     if ctx.parent:
         rich.print(ctx.parent.get_help())
 
 
 def execute_app() -> None:
+    """Execute the FastPubSub CLI application."""
     app()
 
 

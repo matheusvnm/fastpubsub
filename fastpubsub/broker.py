@@ -18,18 +18,28 @@ from fastpubsub.types import SubscribedCallable
 
 
 class PubSubBroker:
+    """Manages the connection with PubSub Broker."""
+
     def __init__(
         self,
         project_id: str,
         routers: Sequence[PubSubRouter] | None = None,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ):
+        """Initializes the PubSubBroker.
+
+        Args:
+            project_id: The Google Cloud project ID.
+            routers: A sequence of routers to include.
+            middlewares: A sequence of middlewares to apply to all messages
+                incoming to subscribers and publishers.
+        """
         if not (project_id and isinstance(project_id, str) and len(project_id.strip()) > 0):
             raise FastPubSubException(f"The project id value ({project_id}) is invalid.")
 
         self.project_id = project_id
         self.router = PubSubRouter(routers=routers, middlewares=middlewares)
-        self.router.set_project_id(self.project_id)
+        self.router._set_project_id(self.project_id)
         self.task_manager = AsyncTaskManager()
 
     @validate_call(config=ConfigDict(strict=True))
@@ -50,8 +60,37 @@ class PubSubBroker:
         min_backoff_delay_secs: int = 10,
         max_backoff_delay_secs: int = 600,
         max_messages: int = 50,
-        middlewares: tuple[type[BaseMiddleware]] | None = None,
+        middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ) -> SubscribedCallable:
+        """Decorator to register a function as a subscriber.
+
+        Args:
+            alias: A unique name for the subscriber. You can use this alias to
+                select which subscription to use.
+            topic_name: The name of the topic to subscribe to.
+            subscription_name: The name of the subscription.
+            subscription_name: The name of the subscription.
+            autocreate: Whether to automatically create the topic and
+                subscription if it does not exists.
+            autoupdate: Whether to automatically update the subscription.
+            filter_expression: A filter expression to apply to the
+                subscription to filter messages.
+            filter_expression: A filter expression to apply to the
+                subscription to filter messages.
+            dead_letter_topic: The name of the dead-letter topic.
+            max_delivery_attempts: The maximum number of delivery attempts
+                before sending the message to the dead-letter.
+            ack_deadline_seconds: The acknowledgment deadline in seconds.
+            enable_message_ordering: Whether to enable message ordering.
+            enable_exactly_once_delivery: Whether to enable exactly-once delivery.
+            min_backoff_delay_secs: The minimum backoff delay in seconds.
+            max_backoff_delay_secs: The maximum backoff delay in seconds.
+            max_messages: The maximum number of messages to fetch from the broker.
+            middlewares: A sequence of middlewares to apply **only to the subscriber**.
+
+        Returns:
+            A decorator that registers the function as a subscriber.
+        """
         return self.router.subscriber(
             alias=alias,
             topic_name=topic_name,
@@ -72,6 +111,14 @@ class PubSubBroker:
 
     @validate_call(config=ConfigDict(strict=True))
     def publisher(self, topic_name: str) -> Publisher:
+        """Returns a publisher for the given topic.
+
+        Args:
+            topic_name: The name of the topic.
+
+        Returns:
+            A publisher for the given topic.
+        """
         return self.router.publisher(topic_name=topic_name)
 
     @validate_call(config=ConfigDict(strict=True))
@@ -83,6 +130,15 @@ class PubSubBroker:
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:
+        """Publishes a message to the given topic.
+
+        Args:
+            topic_name: The name of the topic.
+            data: The message data.
+            ordering_key: The ordering key for the message.
+            attributes: A dictionary of message attributes.
+            autocreate: Whether to automatically create the topic if it does not exists.
+        """
         return await self.router.publish(
             topic_name=topic_name,
             data=data,
@@ -92,13 +148,24 @@ class PubSubBroker:
         )
 
     def include_router(self, router: PubSubRouter) -> None:
+        """Includes a router in the broker.
+
+        Args:
+            router: The router to include.
+        """
         return self.router.include_router(router)
 
     @validate_call(config=ConfigDict(strict=True))
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
+        """Includes a middleware in the broker.
+
+        Args:
+            middleware: The middleware to include.
+        """
         return self.router.include_middleware(middleware)
 
     async def start(self) -> None:
+        """Starts the broker."""
         subscribers = self._filter_subscribers()
         if not subscribers:
             logger.error("No subscriber found for running.")
@@ -114,6 +181,11 @@ class PubSubBroker:
         await self.task_manager.start()
 
     async def alive(self) -> bool:
+        """Checks if the message consumer tasks are alive.
+
+        Returns:
+            True if they are alive, False otherwise.
+        """
         subscribers = await self.task_manager.alive()
         if not subscribers:
             logger.info("The subscribers are not active. May be they are deactivated?")
@@ -127,6 +199,11 @@ class PubSubBroker:
         return True
 
     async def ready(self) -> bool:
+        """Checks if the message consumer tasks are ready.
+
+        Returns:
+            True if they are ready, False otherwise.
+        """
         subscribers = await self.task_manager.ready()
         if not subscribers:
             logger.info("The subscribers are not active. May be they are deactivated?")
@@ -173,4 +250,5 @@ class PubSubBroker:
         return selected_subscribers
 
     async def shutdown(self) -> None:
+        """Shuts down the broker."""
         await self.task_manager.shutdown()

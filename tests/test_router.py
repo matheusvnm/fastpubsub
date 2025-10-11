@@ -73,7 +73,7 @@ class TestPubSubRouter:
         level3_router = PubSubRouter()
         level2_router = PubSubRouter(routers=(level3_router,))
         level1_router = PubSubRouter(routers=(level2_router,))
-        level1_router.set_project_id("test-project")
+        level1_router._set_project_id("test-project")
 
         assert level1_router.project_id == "test-project"
         assert level2_router.project_id == "test-project"

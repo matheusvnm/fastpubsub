@@ -36,7 +36,7 @@ class TestApplicationLifecycle:
             after_shutdown=[after_shutdown_action],
         )
 
-        async with app.run(app):
+        async with app._run(app):
             on_startup_action.assert_called_once()
             after_startup_action.assert_called_once()
             mock_broker.start.assert_called_once()
@@ -59,7 +59,7 @@ class TestApplicationLifecycle:
         app.on_shutdown(on_shutdown_mock)
         app.after_shutdown(after_shutdown_mock)
 
-        async with app.run(app):
+        async with app._run(app):
             on_startup_mock.assert_called_once()
             after_startup_mock.assert_called_once()
 
@@ -91,7 +91,7 @@ class TestApplicationLifecycle:
             lifespan=lifespan,
         )
 
-        async with app.run(app):
+        async with app._run(app):
             on_startup_action.assert_called_once()
             after_startup_action.assert_called_once()
             mock_broker.start.assert_called_once()
