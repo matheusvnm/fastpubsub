@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, validate_call
 
 from fastpubsub.concurrency.utils import ensure_async_middleware
 from fastpubsub.exceptions import FastPubSubException
@@ -12,8 +12,16 @@ from fastpubsub.pubsub.commands import PublishMessageCommand
 
 
 class Publisher:
-    def __init__(self, project_id: str, topic_name: str, middlewares: list[type[BaseMiddleware]]):
-        self.project_id = project_id
+    """A class for publishing messages to a Pub/Sub topic."""
+
+    def __init__(self, topic_name: str, middlewares: list[type[BaseMiddleware]]):
+        """Initializes the Publisher.
+
+        Args:
+            topic_name: The name of the topic.
+            middlewares: A list of middlewares to apply.
+        """
+        self.project_id = ""
         self.topic_name = topic_name
         self.middlewares: list[type[BaseMiddleware]] = []
 
@@ -21,34 +29,43 @@ class Publisher:
             for middleware in middlewares:
                 self.include_middleware(middleware)
 
+    @validate_call(config=ConfigDict(strict=True))
     async def publish(
         self,
-        data: BaseModel | dict[str, Any] | str | bytes | bytearray,
+        data: dict[str, Any] | str | bytes | BaseModel,
         ordering_key: str = "",
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
     ) -> None:
-        callstack = self._build_callstack(autocreate=autocreate)
-        serialized_message = self._serialize_message(data)
-        await callstack.on_publish(serialized_message, ordering_key, attributes)
+        """Publishes a message to the topic.
 
-    def _build_callstack(self, autocreate: bool = True) -> PublishMessageCommand | BaseMiddleware:
-        publish_command: PublishMessageCommand | BaseMiddleware = PublishMessageCommand(
+        Args:
+            data: The message data.
+            ordering_key: The ordering key for the message.
+            attributes: A dictionary of message attributes.
+            autocreate: Whether to automatically create the topic.
+        """
+        callstack = await self._build_callstack(autocreate=autocreate)
+        serialized_message = await self._serialize_message(data)
+
+        await callstack.on_publish(
+            data=serialized_message, ordering_key=ordering_key, attributes=attributes
+        )
+
+    async def _build_callstack(
+        self, autocreate: bool = True
+    ) -> PublishMessageCommand | BaseMiddleware:
+        callstack: PublishMessageCommand | BaseMiddleware = PublishMessageCommand(
             project_id=self.project_id, topic_name=self.topic_name, autocreate=autocreate
         )
 
         for middleware in reversed(self.middlewares):
-            publish_command = middleware(next_call=publish_command)
-        return publish_command
+            callstack = middleware(next_call=callstack)
+        return callstack
 
-    def _serialize_message(
-        self, data: BaseModel | dict[str, Any] | str | bytes | bytearray
-    ) -> bytes:
+    async def _serialize_message(self, data: BaseModel | dict[str, Any] | str | bytes) -> bytes:
         if isinstance(data, bytes):
             return data
-
-        if isinstance(data, bytearray):
-            return bytes(data)
 
         if isinstance(data, str):
             return data.encode(encoding="utf-8")
@@ -62,19 +79,22 @@ class Publisher:
             return json_data.encode(encoding="utf-8")
 
         raise FastPubSubException(
-            f"The message {data} is not serializable."
-            "Please send as one of the following formats: BaseModel, dict, str, bytes or bytearray)"
+            f"The message {data} is not serializable. "
+            "Please send as one of the following formats: BaseModel, dict, str or bytes."
         )
 
+    @validate_call(config=ConfigDict(strict=True))
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
-        if not (middleware and issubclass(middleware, BaseMiddleware)):
-            raise FastPubSubException(f"The middleware should be a {BaseMiddleware.__name__} type.")
+        """Includes a middleware in the publisher.
 
+        Args:
+            middleware: The middleware to include.
+        """
         if middleware in self.middlewares:
             return
 
         ensure_async_middleware(middleware)
         self.middlewares.append(middleware)
 
-    def set_project_id(self, project_id: str) -> None:
+    def _set_project_id(self, project_id: str) -> None:
         self.project_id = project_id

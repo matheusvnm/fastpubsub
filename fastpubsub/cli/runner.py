@@ -1,3 +1,5 @@
+"""Application runner."""
+
 import os
 import sys
 from dataclasses import dataclass, field
@@ -13,6 +15,8 @@ from fastpubsub.exceptions import FastPubSubCLIException
 
 @dataclass(frozen=True)
 class ServerConfiguration:
+    """Server configuration."""
+
     host: str
     port: int
     workers: int
@@ -22,6 +26,8 @@ class ServerConfiguration:
 
 @dataclass(frozen=True)
 class AppConfiguration:
+    """Application configuration."""
+
     app: str
     log_level: int
     log_serialize: bool
@@ -31,14 +37,21 @@ class AppConfiguration:
 
 
 class ApplicationRunner:
+    """Runs a FastPubSub application."""
+
     def run(self, app_config: AppConfiguration, server_config: ServerConfiguration) -> None:
-        self.setup_enviroment(app_config=app_config)
+        """Runs a FastPubSub application.
+
+        Args:
+            app_config: The application configuration.
+            server_config: The server configuration.
+        """
+        self._setup_enviroment(app_config=app_config)
 
         logger.setup_logger()
 
-        self.validate_application(app_config.app)
+        self._validate_application(app_config.app)
 
-        # TODO: Implement a ASGIMultiprocess
         uvicorn.run(
             app_config.app,
             lifespan="on",
@@ -49,7 +62,7 @@ class ApplicationRunner:
             reload=server_config.reload,
         )
 
-    def setup_enviroment(self, app_config: AppConfiguration) -> None:
+    def _setup_enviroment(self, app_config: AppConfiguration) -> None:
         os.environ["FASTPUBSUB_LOG_LEVEL"] = str(app_config.log_level)
         os.environ["FASTPUBSUB_ENABLE_LOG_SERIALIZE"] = (
             str(1) if app_config.log_serialize else str(0)
@@ -58,15 +71,15 @@ class ApplicationRunner:
         os.environ["FASTPUBSUB_SUBSCRIBERS"] = ",".join(app_config.subscribers)
         os.environ["FASTPUBSUB_APM_PROVIDER"] = app_config.apm_provider
 
-    def validate_application(self, path: str) -> None:
-        posix_path = self.translate_pypath_to_posix(pypath=path)
-        self.resolve_application_posix_path(posix_path=posix_path)
+    def _validate_application(self, path: str) -> None:
+        posix_path = self._translate_pypath_to_posix(pypath=path)
+        self._resolve_application_posix_path(posix_path=posix_path)
 
         app = uvicorn.importer.import_from_string(path)
         if not app or not isinstance(app, FastPubSub):
             raise FastPubSubCLIException(f"The app {path} is not a {FastPubSub} instance")
 
-    def translate_pypath_to_posix(self, pypath: str) -> Path:
+    def _translate_pypath_to_posix(self, pypath: str) -> Path:
         try:
             module, _ = pypath.split(os.path.pathsep)
             posix_text_path = module.replace(os.path.extsep, os.path.sep)
@@ -76,7 +89,7 @@ class ApplicationRunner:
                 f'The application path "{pypath}" must be in format "<module>:<attribute>".'
             ) from e
 
-    def resolve_application_posix_path(self, posix_path: Path) -> None:
+    def _resolve_application_posix_path(self, posix_path: Path) -> None:
         module_path = posix_path.resolve()
         if module_path.is_file() and module_path.stem == "__init__":
             module_path = module_path.parent

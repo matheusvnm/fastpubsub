@@ -1,3 +1,5 @@
+"""FastPubSub command-line interface."""
+
 import rich
 import typer
 
@@ -21,12 +23,15 @@ from fastpubsub.cli.runner import AppConfiguration, ApplicationRunner, ServerCon
 from fastpubsub.cli.utils import LogLevels, ensure_pubsub_credentials, get_log_level
 
 app = typer.Typer(
+    name="fastpubsub",
     help="A CLI to run FastPubSub applications and interact with Pub/Sub (locally and on cloud).",
     pretty_exceptions_short=True,
     invoke_without_command=True,
     rich_markup_mode="markdown",
 )
 
+# V2: this command and its subcommands will be released on the future"
+"""
 pubsub = typer.Typer(
     name="pubsub",
     help="Commands for interacting with Google Cloud Pub/Sub.",
@@ -48,6 +53,7 @@ pubsub_local = typer.Typer(
 pubsub.add_typer(pubsub_cloud)
 pubsub.add_typer(pubsub_local)
 app.add_typer(pubsub)
+"""
 
 
 @app.callback()
@@ -55,19 +61,22 @@ def main(
     ctx: CLIContext,
     version: AppVersionOption = False,
 ) -> None:
-    """
-    Display helpful tips when the main command is run without any subcommands.
-    """
-    if ctx.invoked_subcommand is None:
-        # TODO: Add a better explanation
+    """Display helpful tips when the main command is run without any subcommands."""
+    if ctx.invoked_subcommand is None and not version:
         rich.print("\n[bold]Welcome to the FastPubSub CLI! ✨[/bold]")
-        rich.print("\nUsage Tips:")
-        rich.print("  - To start your application, use the `run` command: `fastpubsub run`")
+        rich.print("\n[dim]A CLI to run FastPubSub applications and interact with Pub/Sub.[/dim]")
+        rich.print("\n[bold]Usage[/bold]: [cyan]fastpubsub [COMMAND] [ARGS]...[/cyan]")
+        rich.print("\n[bold]Common Commands:[/bold]")
+        rich.print("  [green]run[/green]    Run a FastPubSub application.")
+        rich.print("  [green]help[/green]   Get detailed help for a command.")
         rich.print(
-            "  - To interact with Pub/Sub, use the `pubsub` command: `fastpubsub pubsub --help`"
+            "\nRun '[cyan]fastpubsub --help[/cyan]' for "
+            "a list of all available commands and options."
         )
-        rich.print("  - To see all options for a command: `fastpubsub <command> --help`")
-        rich.print("  - For a detailed guide with examples: `fastpubsub help`")
+        rich.print(
+            "For more information, visit our documentation at "
+            "[link=https://github.com/matheusvnm/fastpubsub]https://github.com/matheusvnm/fastpubsub[/link]"
+        )
 
     if version:
         import platform
@@ -88,12 +97,27 @@ def run(
     reload: AppHotReloadOption = False,
     host: AppHostOption = "0.0.0.0",
     port: AppPortOption = 8000,
-    log_level: AppLogLevelOption = LogLevels.info,
+    log_level: AppLogLevelOption = LogLevels.INFO,
     log_serialize: AppLogSerializeOption = False,
     log_colorize: AppLogColorizeOption = False,
-    server_log_level: AppServerLogLevelOption = LogLevels.warning,
+    server_log_level: AppServerLogLevelOption = LogLevels.WARNING,
     apm_provider: AppApmProvider = AppApmProvider.NOOP,
 ) -> None:
+    """Runs a FastPubSub application.
+
+    Args:
+        app: The application to run.
+        workers: The number of worker processes.
+        subscribers: The subscribers to run.
+        reload: Whether to enable auto-reloading.
+        host: The host to bind to.
+        port: The port to bind to.
+        log_level: The log level.
+        log_serialize: Whether to serialize logs.
+        log_colorize: Whether to colorize logs.
+        server_log_level: The server (uvicorn) log level.
+        apm_provider: The APM provider to use.
+    """
     ensure_pubsub_credentials()
     translated_log_level = get_log_level(log_level)
     app_configuration = AppConfiguration(
@@ -119,11 +143,14 @@ def run(
 
 
 @app.command(name="help")
-def show_help() -> None:
-    pass
+def show_help(ctx: typer.Context) -> None:
+    """Show this message and exit."""
+    if ctx.parent:
+        rich.print(ctx.parent.get_help())
 
 
 def execute_app() -> None:
+    """Execute the FastPubSub CLI application."""
     app()
 
 

@@ -1,3 +1,5 @@
+"""Logging configuration for FastPubSub."""
+
 import json
 import logging
 import os
@@ -11,15 +13,27 @@ class ContextStore:
     """A thread-safe store for logging context."""
 
     def __init__(self) -> None:
+        """Initializes the ContextStore."""
         self._context = threading.local()
 
     def set(self, data: dict[str, Any]) -> None:
+        """Sets the context data.
+
+        Args:
+            data: The context data to set.
+        """
         self._context.data = data
 
     def get(self) -> dict[str, Any]:
+        """Gets the context data.
+
+        Returns:
+            The context data.
+        """
         return getattr(self._context, "data", {})
 
     def clear(self) -> None:
+        """Clears the context data."""
         self._context.data = {}
 
 
@@ -27,9 +41,11 @@ _context_store = ContextStore()
 
 
 class ContextFilter(logging.Filter):
-    """
-    A logging filter that injects context from the ContextStore and the
-    'extra' kwarg into each log record.
+    """A logging filter that injects context.
+
+    The ContextStore and the 'extra' kwarg into each log record
+    is used for this matter.
+
     """
 
     # These are the standard attributes of a LogRecord
@@ -60,6 +76,14 @@ class ContextFilter(logging.Filter):
     )
 
     def filter(self, record: logging.LogRecord) -> bool:
+        """Filters a log record.
+
+        Args:
+            record: The log record to filter.
+
+        Returns:
+            True if the record should be logged, False otherwise.
+        """
         thread_context = _context_store.get().copy()
 
         extra_context = {
@@ -80,8 +104,7 @@ class FastPubSubLogger(logging.Logger):
 
     @contextmanager
     def contextualize(self, **kwargs: Any) -> Any:
-        """
-        A context manager to add temporary context to logs.
+        """A context manager to add temporary context to logs.
 
         Example:
             with logger.contextualize(trace_id="12345"):
@@ -96,6 +119,14 @@ class TextFormatter(logging.Formatter):
     """Formats logs as a human-readable string."""
 
     def format(self, record: logging.LogRecord) -> str:
+        """Formats a log record.
+
+        Args:
+            record: The log record to format.
+
+        Returns:
+            The formatted log record.
+        """
         log_message = super().format(record)
 
         if hasattr(record, "context") and record.context:
@@ -110,6 +141,14 @@ class JsonFormatter(logging.Formatter):
     """Formats logs as a JSON string."""
 
     def format(self, record: logging.LogRecord) -> str:
+        """Formats a log record.
+
+        Args:
+            record: The log record to format.
+
+        Returns:
+            The formatted log record.
+        """
         log_object = {
             "timestamp": self.formatTime(record, self.datefmt),
             "level": record.levelname,
@@ -130,10 +169,8 @@ class JsonFormatter(logging.Formatter):
 
 
 def setup_logger() -> FastPubSubLogger:
-    """
-    Enables and configures the FastPubSub logger.
-    """
-    # TODO: Add colorized logger
+    """Enables and configures the FastPubSub logger."""
+    # V2: Add colorized logs
     log_level = int(os.getenv("FASTPUBSUB_LOG_LEVEL", logging.INFO))
     log_serialize = bool(int(os.getenv("FASTPUBSUB_ENABLE_LOG_SERIALIZE", 0)))
 
@@ -166,5 +203,4 @@ def setup_logger() -> FastPubSubLogger:
     return cast(FastPubSubLogger, logger)
 
 
-# Bydefault get the root log. We initialize it correctly elsewhere
 logger: FastPubSubLogger = setup_logger()

@@ -1,3 +1,5 @@
+"""Command-line interface utilities."""
+
 import logging
 import os
 from enum import StrEnum
@@ -8,23 +10,23 @@ from fastpubsub.exceptions import FastPubSubCLIException
 class LogLevels(StrEnum):
     """A class to represent log levels."""
 
-    critical = "CRITICAL"
-    fatal = "FATAL"
-    error = "ERROR"
-    warning = "WARNING"
-    warn = "WARN"
-    info = "INFO"
-    debug = "DEBUG"
+    CRITICAL = "CRITICAL"
+    FATAL = "FATAL"
+    ERROR = "ERROR"
+    WARNING = "WARNING"
+    WARN = "WARN"
+    INFO = "INFO"
+    DEBUG = "DEBUG"
 
 
 LOGGING_LEVEL_MAP: dict[str, int] = {
-    LogLevels.critical: logging.CRITICAL,
-    LogLevels.fatal: logging.FATAL,
-    LogLevels.error: logging.ERROR,
-    LogLevels.warning: logging.WARNING,
-    LogLevels.warn: logging.WARNING,
-    LogLevels.info: logging.INFO,
-    LogLevels.debug: logging.DEBUG,
+    LogLevels.CRITICAL: logging.CRITICAL,
+    LogLevels.FATAL: logging.FATAL,
+    LogLevels.ERROR: logging.ERROR,
+    LogLevels.WARNING: logging.WARNING,
+    LogLevels.WARN: logging.WARNING,
+    LogLevels.INFO: logging.INFO,
+    LogLevels.DEBUG: logging.DEBUG,
 }
 
 
@@ -45,7 +47,9 @@ def get_log_level(level: LogLevels | str | int) -> int:
         return LOGGING_LEVEL_MAP[level.value]
 
     if isinstance(level, str):  # pragma: no branch
-        return LOGGING_LEVEL_MAP[level.lower()]
+        upper_level = level.upper()
+        if upper_level in LOGGING_LEVEL_MAP:
+            return LOGGING_LEVEL_MAP[upper_level]
 
     possible_values = list(LogLevels._value2member_map_.values())
     raise FastPubSubCLIException(
@@ -61,10 +65,11 @@ class APMProviders(StrEnum):
 
 
 def ensure_pubsub_credentials() -> None:
+    """Ensures that the Pub/Sub credentials are set."""
     credentials = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     emulator_host = os.getenv("PUBSUB_EMULATOR_HOST")
     if not credentials and not emulator_host:
         raise FastPubSubCLIException(
-            "You should set either of the environment variables for authentication:"
-            " (GOOGLE_APPLICATION_CREDENTIALS, PUBSUB_EMULATOR_HOST)"
+            "You should set either of the environment variables for authentication: "
+            "(GOOGLE_APPLICATION_CREDENTIALS, PUBSUB_EMULATOR_HOST)"
         )

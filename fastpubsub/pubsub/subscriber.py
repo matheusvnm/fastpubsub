@@ -1,3 +1,9 @@
+"""Subscriber logic."""
+
+from collections.abc import Sequence
+
+from pydantic import ConfigDict, validate_call
+
 from fastpubsub.concurrency.utils import ensure_async_middleware
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
@@ -6,17 +12,17 @@ from fastpubsub.datastructures import (
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
-from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.commands import HandleMessageCommand
 from fastpubsub.types import AsyncCallable
 
 
 class Subscriber:
+    """A class representing a Pub/Sub subscriber."""
+
     def __init__(
         self,
         func: AsyncCallable,
-        project_id: str,
         topic_name: str,
         subscription_name: str,
         retry_policy: MessageRetryPolicy,
@@ -24,9 +30,22 @@ class Subscriber:
         delivery_policy: MessageDeliveryPolicy,
         control_flow_policy: MessageControlFlowPolicy,
         dead_letter_policy: DeadLetterPolicy | None = None,
-        middlewares: list[type[BaseMiddleware]] | None = None,
+        middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ) -> None:
-        self.project_id = project_id
+        """Initializes the Subscriber.
+
+        Args:
+            func: The function to call when a message is received.
+            topic_name: The name of the topic to subscribe to.
+            subscription_name: The name of the subscription.
+            retry_policy: The retry policy for the subscription.
+            lifecycle_policy: The lifecycle policy for the subscription.
+            delivery_policy: The delivery policy for the subscription.
+            control_flow_policy: The control flow policy for the subscription.
+            dead_letter_policy: The dead-letter policy for the subscription.
+            middlewares: A sequence of middlewares to apply.
+        """
+        self.project_id = ""
         self.topic_name = topic_name
         self.subscription_name = subscription_name
         self.retry_policy = retry_policy
@@ -41,29 +60,33 @@ class Subscriber:
             for middleware in middlewares:
                 self.include_middleware(middleware)
 
+    @validate_call(config=ConfigDict(strict=True))
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
-        if not (middleware and issubclass(middleware, BaseMiddleware)):
-            raise FastPubSubException(f"The middleware should be a {BaseMiddleware.__name__} type.")
+        """Includes a middleware in the subscriber.
 
+        Args:
+            middleware: The middleware to include.
+        """
         if middleware in self.middlewares:
             return
 
         ensure_async_middleware(middleware)
         self.middlewares.append(middleware)
 
-    @property
-    def callback(self) -> HandleMessageCommand | BaseMiddleware:
-        callback: HandleMessageCommand | BaseMiddleware = self.handler
+    async def _build_callstack(self) -> HandleMessageCommand | BaseMiddleware:
+        callstack: HandleMessageCommand | BaseMiddleware = self.handler
         for middleware in reversed(self.middlewares):
-            callback = middleware(callback)
-        return callback
+            callstack = middleware(callstack)
+        return callstack
 
     @property
     def name(self) -> str:
+        """The name of the subscriber."""
         return self.handler.target.__name__
 
-    def set_project_id(self, project_id: str) -> None:
+    def _set_project_id(self, project_id: str) -> None:
         self.project_id = project_id
 
-    def add_prefix(self, new_prefix: str) -> None:
-        self.subscription_name = f"{new_prefix}.{self.subscription_name}"
+    def _add_prefix(self, new_prefix: str) -> None:
+        subscription_name = self.subscription_name.split(".")[-1]
+        self.subscription_name = f"{new_prefix}.{subscription_name}"

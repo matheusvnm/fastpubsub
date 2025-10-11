@@ -3,6 +3,8 @@
 set -e
 set -x
 
-ruff format fastpubsub
-ruff check fastpubsub --select I --fix
-ruff check fastpubsub --fix
+TARGET_DIRECTORIES="fastpubsub tests examples/*"
+
+ruff format $TARGET_DIRECTORIES
+ruff check $TARGET_DIRECTORIES --select I --fix
+ruff check $TARGET_DIRECTORIES --fix
