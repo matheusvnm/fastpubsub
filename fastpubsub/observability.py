@@ -9,6 +9,14 @@ from typing import Any
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.logger import logger
 
+try:
+    import newrelic.agent
+
+    _new_relic_agent = newrelic.agent
+except ModuleNotFoundError:
+    _new_relic_agent = None
+    pass
+
 
 class ApmProvider(ABC):
     """Abstract base class defining the contract for any APM provider."""
@@ -152,21 +160,22 @@ class NewRelicProvider(ApmProvider):
     """APM provider for New Relic."""
 
     def __init__(self) -> None:
-        try:
-            import newrelic.agent
-
-            self._agent = newrelic.agent
-        except ModuleNotFoundError as e:
-            logger.exception("No newrelic module found.")
+        if not _new_relic_agent:
             raise FastPubSubException(
-                "No newrelic module found. "
+                "No newrelic agent found. "
                 "Please install it using 'pip install fastpubsub[newrelic]'."
-            ) from e
+            )
+
+        self._agent = _new_relic_agent
 
     def start(self) -> None:
         """Initializes and registers the agent if not already active."""
         logger.info(f"Performing New Relic agent initialization for process [{os.getpid()}].")
         try:
+            if self.active():
+                logger.warning("The New Relic is already active.")
+                return
+
             self._agent.initialize()
             self._agent.register_application(timeout=5.0)
             logger.info(
@@ -192,7 +201,7 @@ class NewRelicProvider(ApmProvider):
         app = self._agent.application(activate=False)
         with self._agent.BackgroundTask(application=app, name=name) as transaction:
             if context and isinstance(context, dict):
-                self.set_distributed_trace_context(context)
+                self.set_distributed_trace_context(headers=context)
 
             yield transaction
 
@@ -215,9 +224,9 @@ class NewRelicProvider(ApmProvider):
         self._agent.insert_distributed_trace_headers(headers)
         return dict(headers)
 
-    def report_custom_event(self, event_type: str, params: dict[str, str]) -> None:
+    def report_custom_event(self, event_name: str, params: dict[str, str]) -> None:
         try:
-            self._agent.record_custom_event(event_type, params)
+            self._agent.record_custom_event(event_type=event_name, param=params)
         except Exception:
             logger.exception("Failed to record New Relic custom event", stacklevel=5)
 
@@ -241,43 +250,33 @@ class NewRelicProvider(ApmProvider):
         self._agent.record_custom_metric(name=metric_name, value=value)
 
     def get_trace_id(self) -> str | None:
-        if not self.active():
-            logger.warning("The new relic agent is not active.")
-            return None
-
-        if not self._agent.current_transaction():
-            logger.warning("There is no transaction trace active.")
-            return  None
-
         trace_id = self._agent.current_trace_id()
-        return str(trace_id) if trace_id else None
+        if trace_id:
+            return str(trace_id)
+        return None
 
     def get_span_id(self) -> str | None:
-        if not self.active():
-            logger.warning("The new relic agent is not active.")
-            return None
-
-        if not self._agent.current_transaction():
-            logger.warning("There is no transaction trace active.")
-            return  None
-
         span_id = self._agent.current_span_id()
-        return str(span_id) if span_id else None
+        if span_id:
+            return str(span_id)
+        return None
 
     def active(self) -> bool:
         application = self._agent.application(activate=False)
         return bool(application) and bool(application.active)
 
 
-@cache
-def get_apm_provider() -> ApmProvider:
-    name = os.getenv("FASTPUBSUB_APM_PROVIDER", "")
-    name = name.lower()
+PROVIDER_MAP: dict[str, type[ApmProvider]] = {
+    "newrelic": NewRelicProvider,
+}
 
-    provider_map = {
-        "newrelic": NewRelicProvider,
-    }
-    provider_cls = provider_map.get(name, NoOpProvider)
+
+@cache
+def get_apm_provider(provider_name: str | None = None) -> ApmProvider:
+    name = provider_name or os.getenv("FASTPUBSUB_APM_PROVIDER")
+    name = name.lower() if isinstance(name, str) else ""
+
+    provider_cls = PROVIDER_MAP.get(name, NoOpProvider)
     provider = provider_cls()
 
     logger.debug(f"The observability method choosen is: {name} {provider_cls.__name__}")
