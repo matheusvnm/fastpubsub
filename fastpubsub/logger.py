@@ -4,9 +4,10 @@ import json
 import logging
 import os
 import sys
-import threading
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, cast
+from contextvars import ContextVar, Token
+from typing import Any, Self, cast
 
 
 class ContextStore:
@@ -14,15 +15,15 @@ class ContextStore:
 
     def __init__(self) -> None:
         """Initializes the ContextStore."""
-        self._context = threading.local()
+        self._context: ContextVar[dict[str, str] | None] = ContextVar("context_store", default=None)
 
-    def set(self, data: dict[str, Any]) -> None:
-        """Sets the context data.
+    def set(self, data: dict[str, Any]) -> Token[dict[str, str] | None]:
+        """Sets or updates the context data.
 
         Args:
             data: The context data to set.
         """
-        self._context.data = data
+        return self._context.set(data)
 
     def get(self) -> dict[str, Any]:
         """Gets the context data.
@@ -30,11 +31,15 @@ class ContextStore:
         Returns:
             The context data.
         """
-        return getattr(self._context, "data", {})
+        data = self._context.get()
+        if not data:
+            return {}
 
-    def clear(self) -> None:
-        """Clears the context data."""
-        self._context.data = {}
+        return data.copy()
+
+    def reset(self, token: Token[dict[str, str] | None]) -> None:
+        """Reset the context data to its previous token."""
+        self._context.reset(token)
 
 
 _context_store = ContextStore()
@@ -48,33 +53,6 @@ class ContextFilter(logging.Filter):
 
     """
 
-    # These are the standard attributes of a LogRecord
-    RESERVED_ATTRS = (
-        "args",
-        "asctime",
-        "created",
-        "exc_info",
-        "exc_text",
-        "filename",
-        "funcName",
-        "levelname",
-        "levelno",
-        "lineno",
-        "module",
-        "msecs",
-        "message",
-        "msg",
-        "name",
-        "pathname",
-        "process",
-        "processName",
-        "relativeCreated",
-        "stack_info",
-        "thread",
-        "threadName",
-        "taskName",
-    )
-
     def filter(self, record: logging.LogRecord) -> bool:
         """Filters a log record.
 
@@ -84,17 +62,8 @@ class ContextFilter(logging.Filter):
         Returns:
             True if the record should be logged, False otherwise.
         """
-        thread_context = _context_store.get().copy()
-
-        extra_context = {
-            key: value
-            for key, value in record.__dict__.items()
-            if key not in self.RESERVED_ATTRS and key not in ("context",)
-        }
-
-        # Merge the two, with the per-call 'extra' context taking precedence.
-        thread_context.update(extra_context)
-        record.context = thread_context
+        context = _context_store.get()
+        record.context = context
 
         return True
 
@@ -103,16 +72,20 @@ class FastPubSubLogger(logging.Logger):
     """A custom logger class with a 'contextualize' method."""
 
     @contextmanager
-    def contextualize(self, **kwargs: Any) -> Any:
+    def contextualize(self, **kwargs: Any) -> Generator[Self]:
         """A context manager to add temporary context to logs.
 
         Example:
             with logger.contextualize(trace_id="12345"):
                 logger.info("This log will have the trace_id.")
         """
-        _context_store.set(kwargs)
-        yield
-        _context_store.clear()
+        current_context = _context_store.get()
+        current_context.update(kwargs)
+        token = _context_store.set(current_context)
+        try:
+            yield self
+        finally:
+            _context_store.reset(token)
 
 
 class TextFormatter(logging.Formatter):

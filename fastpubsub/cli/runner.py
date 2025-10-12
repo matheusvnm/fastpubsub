@@ -52,7 +52,7 @@ class ApplicationRunner:
 
         self._validate_application(app_config.app)
 
-        logger.info("Starting FastPubSub processes")
+        logger.info("FastPubSub app starting...")
         uvicorn.run(
             app_config.app,
             lifespan="on",
@@ -62,7 +62,7 @@ class ApplicationRunner:
             workers=server_config.workers,
             reload=server_config.reload,
         )
-        logger.info("Terminating FastPubSub processes")
+        logger.info("FastPubSub app terminated.")
 
     def _setup_enviroment(self, app_config: AppConfiguration) -> None:
         os.environ["FASTPUBSUB_LOG_LEVEL"] = str(app_config.log_level)

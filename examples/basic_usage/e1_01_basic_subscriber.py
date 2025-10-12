@@ -10,7 +10,7 @@ app = FastPubSub(broker)
     topic_name="test-topic",
     subscription_name="test-basic-subscription",
 )
-async def handle(message: Message) -> None:
+async def process_message(message: Message) -> None:
     logger.info(f"Processed message: {message}")
 
 

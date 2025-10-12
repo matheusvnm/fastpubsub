@@ -71,14 +71,15 @@ class PubSubPollTask:
 
     async def start(self) -> None:
         """Starts the message polling loop."""
-        logger.debug(f"The message poll loop started for {self.subscriber.name}")
+        logger.info(f"The {self.subscriber.name} handler is waiting for messages.")
+
         self.running = True
         async with create_task_group() as task_group:
             while self.running:
                 try:
                     await self._consume_messages(task_group)
                 except get_cancelled_exc_class():
-                    logger.debug("We got a cancellation from parent, we will cancel the subtasks")
+                    logger.info(f"The {self.subscriber.name} handler is turning off...")
                     self.shutdown()
                     task_group.cancel_scope.cancel()
                     raise
@@ -144,8 +145,7 @@ class PubSubPollTask:
 
     @contextmanager
     def _contextualize(self, message: Message) -> Generator[None]:
-        with self.apm.start_trace(name=self.subscriber.name):
-            self.apm.set_distributed_trace_context(message.attributes)
+        with self.apm.start_trace(name=self.subscriber.name, context=message.attributes):
             context = {
                 "name": self.subscriber.name,
                 "span_id": self.apm.get_span_id(),
