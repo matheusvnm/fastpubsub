@@ -1,36 +1,37 @@
-# FastStream
+# FastPubSub
 
-<b>A high performance FastAPI-based message consumer framework for PubSub</b>
+*A high performance FastAPI-based message consumer framework for PubSub.*
 
-
----
-
-<div align="center">
-[![Package version](https://img.shields.io/pypi/v/pubsub?label=PyPI)](https://pypi.org/project/fastpubsub)
-[![Supported Python versions](https://img.shields.io/pypi/pyversions/pubsub.svg)](https://pypi.org/project/fastpubsub)\
-[![License](https://img.shields.io/github/license/matheusvnm/fastpubsub.svg)](https://github.com/matheusvnm/fastpubsub/blob/main/LICENSE)
-</div>
+[//]: # (Aqui devem ir algumas tags)
 
 
 ## Features
 
-- **Easy to use:** **FastPubSub** is designed to be intuitive and easy to use, even for beginners.
-- **Asynchronous:** **FastPubSub** is built on top of `anyio`, which allows it to run on top of either `asyncio` or `trio`.
-- **Fast:** **FastPubSub** is fast. It's built on top of `uvloop` and `pydantic` for performance.
-- **Typed:** **FastPubSub** is fully typed, which means you can get great editor support.
-- **Lifecycle events:** **FastPubSub** supports `on_startup`, `on_shutdown`, `after_startup`, and `after_shutdown` events.
-- **Middleware:** **FastPubSub** supports middlewares, which can be used to add custom logic to your subscribers and publishers.
-- **Routers:** **FastPubSub** supports routers, which can be used to organize your subscribers and publishers.
-- **CLI:** **FastPubSub** comes with a CLI that can be used to run your applications.
-- **Observability:** **FastPubSub** has built-in support for observability, with integrations for `New Relic` and other on plan such as `OpenTelemetry` and `Datadog`.
 
-## Installing
+FastPubSub ia modern, high-performance framework for building modern applications that process event messages on Google PubSub. It combines the standard PubSub Python SDK with FastAPI, Pydantic and Uvicorn to provide a easy-to-use development experience.
 
-```bash
+The key features are:
+
+- **Fast:** FastPubSub is (unironically) fast. It's built on top of [**FastAPI**](https://fastapi.tiangolo.com/), [**uvicorn**](https://uvicorn.dev/) and [**Google PubSub Python SDK**](https://github.com/googleapis/python-pubsub) for maximum performance.
+- **Intuitive**: It is designed to be intuitive and easy to use, even for beginners.
+- **Typed**: Providing a great editor support and less time reading docs.
+- **Robust**: Get production-ready code with sensible default values  avoiding shooting yourself in the foot.
+- **Asynchronous:** It is built on top of anyio, which allows it to run on top of either asyncio or trio.
+- **Batteries Included**: Providing its own CLI and other widely used tools such as [**pydantic**](https://docs.pydantic.dev/) for data validation, observability integrations and log contextualization.
+
+
+
+## Quick Start
+
+### Installation
+
+FastPubSub works on Linux, macOS, Windows and most Unix-style operating systems. You can install it with pip as usual:
+
+```shell
 pip install fastpubsub
 ```
 
-## Writing app code
+### Writing your first application
 
 **FastPubSub** brokers provide convenient function decorators (`@broker.subscriber`) and methods (`broker.publisher`) to allow you to delegate the actual process of:
 
@@ -39,61 +40,54 @@ pip install fastpubsub
 
 These decorators make it easy to specify the processing logic for your consumers and producers, allowing you to focus on the core business logic of your application without worrying about the underlying integration.
 
-Here is an example Python app using **FastPubSub** that consumes data from an incoming data stream and outputs the data to another one:
-
-
-```python
-from fastpubsub import FastPubSub, PubSubBroker, Message
-
-broker = PubSubBroker(project_id="your-project-id")
-app = FastPubSub(broker)
-
-@broker.subscriber(
-    alias="my-subscriber",
-    topic_name="my-topic",
-    subscription_name="my-subscription",
-)
-async def handle_message(message: Message):
-   await broker.publish(topic_name="out", data="Hi!")
-
-```
-
-With **FastPubSub**, you can effortlessly run multiple subscribers at once, allowing you to process data from different topics in concurrently. You can also select which subscribers to run, giving you fine-grained control over your application.
-
 Also, **Pydantic**’s [`BaseModel`](https://docs.pydantic.dev/usage/models/) class allows you to define messages using a declarative syntax for sending messages downstream, making it easy to specify the fields and types of your messages.
 
+Here is an example Python app using **FastPubSub** that consumes data from an incoming data stream and outputs two messages to another one:
+
 
 ```python
+# basic.py
+
 from pydantic import BaseModel, Field
 from fastpubsub import FastPubSub, PubSubBroker, Message
+from fastpubsub.logger import logger
 
 class Address(BaseModel):
     street: str = Field(..., examples=["5th Avenue"])
     number: str = Field(..., examples=["1548"])
 
 
-broker = PubSubBroker(project_id="your-project-id")
+broker = PubSubBroker(project_id="some-project-id")
 app = FastPubSub(broker)
 
 @broker.subscriber(
-    alias="my-subscriber",
-    topic_name="my-topic",
-    subscription_name="my-subscription",
+    alias="my_handler",
+    topic_name="in_topic",
+    subscription_name="sub_name",
 )
 async def handle_message(message: Message):
-   address = Address(street="Av. Flores", number="213")
-   await broker.publish(topic_name="out", data=address)
+   logger.info(f"The message {message.id} is processed.")
+   await broker.publish(topic_name="out_topic", data="Hi!")
 
+   address = Address(street="Av. Flores", number="213")
+   await broker.publish(topic_name="out_topic", data=address)
 ```
 
-## Running the application
-
-The application can be started using built-in **FastPubSub** CLI command.
-It is embedded in the library and its a core part of the system.
-
-To run the service, use the **FastPubSub CLI** command and pass the module (in this case, the file where the app implementation is located) and the app symbol to the command.
 
 
+### Running the application
+
+Before running the command make sure to set one of the variables (mutually exclusive):
+
+1. **Running PubSub on Cloud**: The environment variable  `GOOGLE_APPLICATION_CREDENTIALS` with the path of the service-account on your system.
+2. **Running PubSub Emulator**: The environment variable `PUBSUB_EMULATOR_HOST` with host:port of your local PubSub emulator.
+
+
+---
+
+After that, the application can be started using built-in **FastPubSub** CLI command. It is embedded in the library and its a core part of the system.
+
+To run the service, use the **FastPubSub** embedded CLI. Just execute the command ``run`` and pass the module (in this case, the file where the app implementation is located) and the app symbol to the command.
 
 ```bash
 fastpubsub run basic:app
@@ -103,8 +97,8 @@ After running the command, you should see the following output:
 
 
 ``` shell
-2025-10-11 19:32:13,245 | INFO     | 95921:124619031033664 | applications:_start_hooks:134 | Starting FastPubSub processes
-2025-10-11 19:32:13,475 | INFO     | 95921:124619031033664 | applications:_start_hooks:143 | The FastPubSub processes started
+2025-10-13 15:23:59,550 | INFO     | 97527:133552019097408 | runner:run:55 | FastPubSub app starting...
+2025-10-13 15:23:59,696 | INFO     | 97527:133552019097408 | tasks:start:74 | The handle_message handler is waiting for messages.
 ```
 
 Also, **FastPubSub** provides you with a great hot reload feature to improve your Development Experience
@@ -119,21 +113,43 @@ And multiprocessing horizontal scaling feature as well:
 fastpubsub run basic:app --workers 3
 ```
 
-You can learn more about **CLI** features [here](docs/cli.md)
+You can learn more about **CLI** features [here](docs/learn/tutorial/07.cli.md).
 
 
-## Advanced Features
+## Further Documentation
 
-**FastPubSub** is packed with advanced features that make it easy to build robust and scalable applications. Here are some of the features you can learn more about in our documentation:
+1. [Features](docs/features/00.index.md)
+2. [Getting Started](docs/getting-started/00.index.md)
+3. [Learn](docs/learn/00.index.md)
+    1. [Introduction to Google PubSub](docs/learn/01.intro-pubsub.md)
+    2. [Introduction to Async/Await](docs/learn/02.intro-async-await.md)
+    3. [Introduction to Virtual Environments](docs/learn/03.intro-venv.md)
+    4. [Tutorial: User Guide](docs/learn/tutorial/00.index.md)
+        1. [Subscription Basics](docs/learn/tutorial/01.subscription.md)
+        2. [Publishing Basics](docs/learn/tutorial/02.publishing.md)
+        3. [Lifespan and Hooks](docs/learn/tutorial/03.lifespan.md)
+        4. [Acknowledgement](docs/learn/tutorial/04.acknowledgement.md)
+        5. [Routers (and Hierarchy)](docs/learn/tutorial/05.routers.md)
+        6. [Middlewares (and Hierarchy)](docs/learn/tutorial/06.middlewares.md)
+        7. [Command line Interface (CLI)](docs/learn/tutorial/07.cli.md)
+        8. [Integrations](docs/learn/tutorial/integrations/00.index.md)
+            1. [FastAPI](docs/learn/tutorial/integrations/01.fastapi.md)
+            2. [Observability](docs/learn/tutorial/integrations/02.observability.md)
+            3. [Logging](docs/learn/tutorial/integrations/03.logger.md)
+            4. [Application Probes](docs/learn/tutorial/integrations/04.probes.md)
+    5. [Deployment Guide](docs/learn/deployment/00.index.md)
+        1. [On Virtual Machines](docs/learn/deployment/01.vm-guide.md)
+        2. [On Kubernetes](docs/learn/deployment/02.k8-guide.md)
 
-- [Basic Usage](./docs/basic_usage.md)
-- [Routers](./docs/routers.md)
-- [Middlewares](./docs/middlewares.md)
-- [Observability](./docs/observability.md)
-- [FastAPI Integration](./docs/fastapi_integration.md)
-- [Concurrency Model](./docs/concurrency_model.md)
 
-## How to contact us
+## Contact
+
 Please stay in touch by:
-- Sending a email at sandro-matheus@hotmail.com
-- Sending a message on my [linkedin](https://www.linkedin.com/in/matheusvnm/).
+
+Sending a email at sandro-matheus@hotmail.com.
+
+Sending a message on my [linkedin](www.linkedin.com/in/matheusvnm).
+
+
+## License
+This project is licensed under the terms of the Apache 2.0 license.
