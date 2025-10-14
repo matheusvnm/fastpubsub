@@ -8,9 +8,9 @@ from pathlib import Path
 import uvicorn
 import uvicorn.importer
 
-from fastpubsub import logger
 from fastpubsub.applications import FastPubSub
 from fastpubsub.exceptions import FastPubSubCLIException
+from fastpubsub.logger import logger, setup_logger
 
 
 @dataclass(frozen=True)
@@ -48,10 +48,11 @@ class ApplicationRunner:
         """
         self._setup_enviroment(app_config=app_config)
 
-        logger.setup_logger()
+        setup_logger()
 
         self._validate_application(app_config.app)
 
+        logger.info("FastPubSub app starting...")
         uvicorn.run(
             app_config.app,
             lifespan="on",
@@ -61,6 +62,7 @@ class ApplicationRunner:
             workers=server_config.workers,
             reload=server_config.reload,
         )
+        logger.info("FastPubSub app terminated.")
 
     def _setup_enviroment(self, app_config: AppConfiguration) -> None:
         os.environ["FASTPUBSUB_LOG_LEVEL"] = str(app_config.log_level)

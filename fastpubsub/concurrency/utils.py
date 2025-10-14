@@ -1,12 +1,22 @@
 """Concurrency utilities."""
 
+import functools
 import inspect
 from collections.abc import Callable
 from types import FunctionType
-from typing import Any
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
-from fastpubsub.middlewares.base import BaseMiddleware
+import anyio
+import anyio.to_thread
+
 from fastpubsub.types import AsyncCallable, AsyncDecoratedCallable
+
+if TYPE_CHECKING:
+    from fastpubsub.middlewares.base import BaseMiddleware
+
+
+P = ParamSpec("P")
+T = TypeVar("T")
 
 
 def ensure_async_callable_function(
@@ -24,12 +34,14 @@ def ensure_async_callable_function(
         raise TypeError(f"The function {callable_object} must be async.")
 
 
-def ensure_async_middleware(middleware: type[BaseMiddleware]) -> None:
+def ensure_async_middleware(middleware: type["BaseMiddleware"]) -> None:
     """Ensures that a middleware is an async middleware.
 
     Args:
         middleware: The middleware to check.
     """
+    from fastpubsub.middlewares.base import BaseMiddleware
+
     if not issubclass(middleware, BaseMiddleware):
         raise TypeError(f"The object {middleware} must be a {BaseMiddleware.__name__}.")
 
@@ -38,3 +50,36 @@ def ensure_async_middleware(middleware: type[BaseMiddleware]) -> None:
 
     if not inspect.iscoroutinefunction(middleware.on_publish):
         raise TypeError(f"The on_publish method must be async on {middleware}.")
+
+
+async def apply_async(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    """Transforms a blocking sync callable into a async callable.
+
+    Args:
+        func: The sync callable to be transformed.
+        cancellable: Defines if the callable can be cancel forcefully.
+        *args: The positional arguments used on the callable.
+        **kwargs: The keyword arguments used on the callable.
+
+    Returns:
+        The same return of the callable but after awaiting for
+        its computation.
+    """
+    func = functools.partial(func, *args, **kwargs)
+    return await anyio.to_thread.run_sync(func, abandon_on_cancel=False)
+
+
+async def apply_async_cancellable(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    """Transforms a blocking sync callable into a async callable that can be cancelled.
+
+    Args:
+        func: The sync callable to be transformed.
+        *args: The positional arguments used on the callable.
+        **kwargs: The keyword arguments used on the callable.
+
+    Returns:
+        The same return of the callable but after awaiting for
+        its computation.
+    """
+    func = functools.partial(func, *args, **kwargs)
+    return await anyio.to_thread.run_sync(func, abandon_on_cancel=True)

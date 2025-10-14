@@ -131,7 +131,6 @@ class Application:
 
     @asynccontextmanager
     async def _start_hooks(self) -> AsyncIterator[None]:
-        logger.info("Starting FastPubSub processes")
         for func in self._on_startup:
             await func()
 
@@ -139,8 +138,6 @@ class Application:
 
         for func in self._after_startup:
             await func()
-
-        logger.info("The FastPubSub processes started")
 
     async def _shutdown(self) -> None:
         with self.apm.start_trace(name="shutdown"):
@@ -156,7 +153,6 @@ class Application:
 
     @asynccontextmanager
     async def _shutdown_hooks(self) -> AsyncIterator[None]:
-        logger.info("Terminating FastPubSub processes")
         for func in self._on_shutdown:
             await func()
 
@@ -164,8 +160,6 @@ class Application:
 
         for func in self._after_shutdown:
             await func()
-
-        logger.info("The FastPubSub processes terminated")
 
 
 class FastPubSub(FastAPI, Application):

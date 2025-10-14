@@ -6,7 +6,6 @@ from contextlib import suppress
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from fastapi.concurrency import run_in_threadpool
 from google.api_core.exceptions import AlreadyExists, NotFound
 from google.cloud.pubsub import PublisherClient, SubscriberClient
 from google.cloud.pubsub_v1.types import PublisherOptions
@@ -15,6 +14,7 @@ from google.pubsub import DeadLetterPolicy as DLTPolicy
 from google.pubsub import ReceivedMessage, RetryPolicy, Subscription
 
 from fastpubsub import observability
+from fastpubsub.concurrency.utils import apply_async, apply_async_cancellable
 from fastpubsub.datastructures import DeadLetterPolicy, MessageDeliveryPolicy, MessageRetryPolicy
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.logger import logger
@@ -106,7 +106,7 @@ class PubSubClient:
 
             with suppress(AlreadyExists):
                 logger.debug(f"Attempting to create subscription: {subscription_request.name}")
-                await run_in_threadpool(
+                await apply_async(
                     client.create_subscription,
                     request=subscription_request,
                     timeout=DEFAULT_PUBSUB_TIMEOUT,
@@ -154,7 +154,7 @@ class PubSubClient:
 
             try:
                 logger.debug(f"Attempting to update the subscription: {subscription_request.name}")
-                response = await run_in_threadpool(
+                response = await apply_async(
                     client.update_subscription,
                     subscription=subscription_request,
                     update_mask=update_mask,
@@ -185,7 +185,7 @@ class PubSubClient:
         """
         with SubscriberClient() as client:
             subscription_path = client.subscription_path(self.project_id, subscription_name)
-            response = await run_in_threadpool(
+            response = await apply_async_cancellable(
                 client.pull,
                 subscription=subscription_path,
                 timeout=DEFAULT_PUBSUB_TIMEOUT,
@@ -204,7 +204,7 @@ class PubSubClient:
         with SubscriberClient() as client:
             subscription_path = client.subscription_path(self.project_id, subscription_name)
 
-            await run_in_threadpool(
+            await apply_async(
                 client.acknowledge,
                 subscription=subscription_path,
                 ack_ids=ack_ids,
@@ -221,7 +221,7 @@ class PubSubClient:
         with SubscriberClient() as client:
             subscription_path = client.subscription_path(self.project_id, subscription_name)
 
-            await run_in_threadpool(
+            await apply_async(
                 client.modify_ack_deadline,
                 subscription=subscription_path,
                 ack_ids=ack_ids,
@@ -242,7 +242,7 @@ class PubSubClient:
                 logger.debug(f"Creating topic '{topic_name}'.")
                 topic_path = publisher_client.topic_path(self.project_id, topic_name)
 
-                topic = await run_in_threadpool(publisher_client.create_topic, name=topic_path)
+                topic = await apply_async(publisher_client.create_topic, name=topic_path)
                 logger.debug(f"Created topic '{topic.name}' sucessfully.")
 
             if not create_default_subscription:
@@ -253,7 +253,7 @@ class PubSubClient:
                 default_subscription_path = subscriber_client.subscription_path(
                     self.project_id, topic_name
                 )
-                subscription = await run_in_threadpool(
+                subscription = await apply_async(
                     subscriber_client.create_subscription,
                     name=default_subscription_path,
                     topic=topic_path,
@@ -292,7 +292,7 @@ class PubSubClient:
             contextualized_attributes.update(new_attributes)
 
             try:
-                response: Future[str] = await run_in_threadpool(
+                response: Future[str] = await apply_async(
                     client.publish,
                     topic=topic_path,
                     data=data,
