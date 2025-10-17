@@ -5,19 +5,28 @@
 [//]: # (Aqui devem ir algumas tags)
 
 
+---
+
+
+**Documentation**: <a href="https://github.com/matheusvnm/fastpubsub/wiki" target="_blank">https://github.com/matheusvnm/fastpubsub/wiki</a>
+
+**Source Code**: <a href="https://github.com/matheusvnm/fastpubsub" target="_blank">https://github.com/matheusvnm/fastpubsub</a>
+
+---
+
 ## Features
 
 
-FastPubSub ia modern, high-performance framework for building modern applications that process event messages on Google PubSub. It combines the standard PubSub Python SDK with FastAPI, Pydantic and Uvicorn to provide a easy-to-use development experience.
+FastPubSub is a modern, high-performance framework for building modern applications that process event messages on Google PubSub. It combines the standard PubSub Python SDK with FastAPI, Pydantic and Uvicorn to provide an easy-to-use development experience.
 
 The key features are:
 
 - **Fast:** FastPubSub is (unironically) fast. It's built on top of [**FastAPI**](https://fastapi.tiangolo.com/), [**uvicorn**](https://uvicorn.dev/) and [**Google PubSub Python SDK**](https://github.com/googleapis/python-pubsub) for maximum performance.
 - **Intuitive**: It is designed to be intuitive and easy to use, even for beginners.
-- **Typed**: Providing a great editor support and less time reading docs.
-- **Robust**: Get production-ready code with sensible default values  avoiding shooting yourself in the foot.
+- **Typed**: Provides a great editor support and less time reading docs.
+- **Robust**: Get production-ready code with sensible default values helping you avoid common pitfalls.
 - **Asynchronous:** It is built on top of anyio, which allows it to run on top of either asyncio or trio.
-- **Batteries Included**: Providing its own CLI and other widely used tools such as [**pydantic**](https://docs.pydantic.dev/) for data validation, observability integrations and log contextualization.
+- **Batteries Included**: Provides its own CLI and other widely used tools such as [**pydantic**](https://docs.pydantic.dev/) for data validation, observability integrations and log contextualization.
 
 
 
@@ -80,12 +89,12 @@ async def handle_message(message: Message):
 Before running the command make sure to set one of the variables (mutually exclusive):
 
 1. **Running PubSub on Cloud**: The environment variable  `GOOGLE_APPLICATION_CREDENTIALS` with the path of the service-account on your system.
-2. **Running PubSub Emulator**: The environment variable `PUBSUB_EMULATOR_HOST` with host:port of your local PubSub emulator.
+2. **Running PubSub Emulator**: The environment variable `PUBSUB_EMULATOR_HOST` with `host:port` of your local PubSub emulator.
 
 
 ---
 
-After that, the application can be started using built-in **FastPubSub** CLI command. It is embedded in the library and its a core part of the system.
+After that, the application can be started using built-in **FastPubSub** CLI which is a core part of the framework.
 
 To run the service, use the **FastPubSub** embedded CLI. Just execute the command ``run`` and pass the module (in this case, the file where the app implementation is located) and the app symbol to the command.
 
@@ -101,7 +110,7 @@ After running the command, you should see the following output:
 2025-10-13 15:23:59,696 | INFO     | 97527:133552019097408 | tasks:start:74 | The handle_message handler is waiting for messages.
 ```
 
-Also, **FastPubSub** provides you with a great hot reload feature to improve your Development Experience
+Also, **FastPubSub** provides you with a great hot reload feature to improve your development experience
 
 ``` shell
 fastpubsub run basic:app --reload
@@ -113,38 +122,12 @@ And multiprocessing horizontal scaling feature as well:
 fastpubsub run basic:app --workers 3
 ```
 
-You can learn more about **CLI** features [here](docs/learn/tutorial/07.cli.md).
-
-
-## Further Documentation
-
-1. [Features](docs/features/00.index.md)
-2. [Getting Started](docs/getting-started/00.index.md)
-3. [Learn](docs/learn/00.index.md)
-    1. [Introduction to Google PubSub](docs/learn/01.intro-pubsub.md)
-    2. [Introduction to Async/Await](docs/learn/02.intro-async-await.md)
-    3. [Introduction to Virtual Environments](docs/learn/03.intro-venv.md)
-    4. [Tutorial: User Guide](docs/learn/tutorial/00.index.md)
-        1. [Subscription Basics](docs/learn/tutorial/01.subscription.md)
-        2. [Publishing Basics](docs/learn/tutorial/02.publishing.md)
-        3. [Lifespan and Hooks](docs/learn/tutorial/03.lifespan.md)
-        4. [Acknowledgement](docs/learn/tutorial/04.acknowledgement.md)
-        5. [Routers (and Hierarchy)](docs/learn/tutorial/05.routers.md)
-        6. [Middlewares (and Hierarchy)](docs/learn/tutorial/06.middlewares.md)
-        7. [Command line Interface (CLI)](docs/learn/tutorial/07.cli.md)
-        8. [Integrations](docs/learn/tutorial/integrations/00.index.md)
-            1. [FastAPI](docs/learn/tutorial/integrations/01.fastapi.md)
-            2. [Observability](docs/learn/tutorial/integrations/02.observability.md)
-            3. [Logging](docs/learn/tutorial/integrations/03.logger.md)
-            4. [Application Probes](docs/learn/tutorial/integrations/04.probes.md)
-    5. [Deployment Guide](docs/learn/deployment/00.index.md)
-        1. [On Virtual Machines](docs/learn/deployment/01.vm-guide.md)
-        2. [On Kubernetes](docs/learn/deployment/02.k8-guide.md)
+You can learn more about CLI's features [here](https://github.com/matheusvnm/fastpubsub/wiki/Command-Line-Interface-(CLI)).
 
 
 ## Contact
 
-Please stay in touch by:
+Feel free to get in touch by:
 
 Sending a email at sandro-matheus@hotmail.com.
 
