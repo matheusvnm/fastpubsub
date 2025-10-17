@@ -5,6 +5,15 @@
 [//]: # (Aqui devem ir algumas tags)
 
 
+---
+
+
+**Documentation**: <a href="https://github.com/matheusvnm/fastpubsub/wiki" target="_blank">https://github.com/matheusvnm/fastpubsub/wiki</a>
+
+**Source Code**: <a href="https://github.com/matheusvnm/fastpubsub" target="_blank">https://github.com/matheusvnm/fastpubsub</a>
+
+---
+
 ## Features
 
 
@@ -113,32 +122,7 @@ And multiprocessing horizontal scaling feature as well:
 fastpubsub run basic:app --workers 3
 ```
 
-You can learn more about CLI's features [here](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/07.cli.md).
-
-
-## Further Documentation
-
-1. [Features](https://github.com/matheusvnm/fastpubsub/tree/dev/docsfeatures/00.index.md)
-2. [Getting Started](https://github.com/matheusvnm/fastpubsub/tree/dev/docsgetting-started/00.index.md)
-3. [Learn](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/00.index.md)
-    1. [Introduction to Google PubSub](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/01.intro-pubsub.md)
-    2. [Introduction to Async/Await](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/02.intro-async-await.md)
-    3. [Tutorial: User Guide](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/00.index.md)
-        1. [Subscribing Basics](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/01.subscription.md)
-        2. [Publishing Basics](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/02.publishing.md)
-        3. [Lifespan and Hooks](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/03.lifespan.md)
-        4. [Acknowledgement](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/04.acknowledgement.md)
-        5. [Routers (and Hierarchy)](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/05.routers.md)
-        6. [Middlewares (and Hierarchy)](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/06.middlewares.md)
-        7. [Command line Interface (CLI)](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/07.cli.md)
-        8. [Integrations](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/integrations/00.index.md)
-            1. [FastAPI](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/integrations/01.fastapi.md)
-            2. [Observability](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/integrations/02.observability.md)
-            3. [Logging](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/integrations/03.logger.md)
-            4. [Application Probes](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/tutorial/integrations/04.probes.md)
-    5. [Deployment Guide](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/deployment/00.index.md)
-        1. [On Virtual Machines](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/deployment/01.vm-guide.md)
-        2. [On Kubernetes](https://github.com/matheusvnm/fastpubsub/tree/dev/docslearn/deployment/02.k8-guide.md)
+You can learn more about CLI's features [here](https://github.com/matheusvnm/fastpubsub/wiki/Command-Line-Interface-(CLI)).
 
 
 ## Contact
