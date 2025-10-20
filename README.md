@@ -1,8 +1,10 @@
-# FastPubSub
+<p align="center">
+  <a href="https://github.com/matheusvnm/fastpubsub"><img src="./docs/logo.png" alt="FastPubSub"></a>
+</p>
 
-*A high performance FastAPI-based message consumer framework for PubSub.*
-
-[//]: # (Aqui devem ir algumas tags)
+<p align="center">
+    <em>A high performance FastAPI-based message consumer framework for Google PubSub</em>
+</p>
 
 
 ---
