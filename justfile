@@ -23,11 +23,11 @@ coverage:
 clean: 
     @rm -rf .cov htmlcov/ dist/ fastpubsub.egg-info/
 
-test-pipeline-pr-test:
+execute-pr-test:
    @bash $SCRIPTS_DIR/test-pipeline.sh -W .github/workflows/pr_tests.yaml
 
-test-pipeline-release-github:
+execute-release-github:
    @bash $SCRIPTS_DIR/test-pipeline.sh -W .github/workflows/release_github.yaml
 
-test-pipeline-release-pypi:
+execute-release-pypi:
    @bash $SCRIPTS_DIR/test-pipeline.sh -W .github/workflows/release_pypi.yaml
