@@ -121,6 +121,7 @@ local_scheme="no-local-version"
 write_to = "fastpubsub/__about__.py"
 
 [tool.commitizen]
+tag_format="v$version"
 version_provider = "scm"
 update_changelog_on_bump = true
 
