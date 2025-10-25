@@ -1,0 +1,52 @@
+name: Create New Release (Github)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Set up Python
+        run: | 
+          uv python install 3.13
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://github-actions:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: |
+          uv sync --only-group cicd
+
+      - name: Generate new tag
+        id: tagging
+        run: |
+          uv venv --allow-existing
+          uv run cz bump --yes --changelog
+          git push --tags
+          echo "version=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+
+      - name: Create github release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ steps.tagging.outputs.version }}
+          release_name: Release ${{ steps.tagging.outputs.version }}
+          body_path: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

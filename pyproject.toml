@@ -102,6 +102,7 @@ ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100
+exclude = ["**/__about__.py"]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -115,15 +116,11 @@ per-file-ignores = { "tests/*" = ["D"], "examples/*" = ["D"] }
 convention = "google"
 
 [tool.setuptools_scm]
-write_to = "__about__.py"
+write_to = "fastpubsub/__about__.py"
 
 [tool.commitizen]
-tag_format = "v$version"
 version_provider = "scm"
 update_changelog_on_bump = true
-
-[tool.uv-dynamic-versioning]
-fallback-version = "0.0.0"
 
 [tool.uv]
 package = true

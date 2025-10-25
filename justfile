@@ -27,4 +27,4 @@ test-pipeline-release-github:
    @bash $SCRIPTS_DIR/test-pipeline.sh -W .github/workflows/release_github.yaml
 
 test-pipeline-release-pypi:
-   @bash $SCRIPTS_DIR/test-pipeline.sh -W .github/workflows/release_github.yaml
+   @bash $SCRIPTS_DIR/test-pipeline.sh -W .github/workflows/release_pypi.yaml
