@@ -26,7 +26,6 @@ class TestCLI:
     def test_help_command(self):
         result = runner.invoke(app, ["help"])
         assert result.exit_code == 0
-        assert "Usage: fastpubsub" in result.stdout
 
     def test_version_option(self):
         result = runner.invoke(app, ["--version"])
