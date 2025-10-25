@@ -27,7 +27,7 @@ jobs:
       - name: Get latest tag
         id: get_latest_tag
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0)
+          LATEST_TAG=$(git tag | tail -n 1)
           echo "::set-output name=latest_tag::$LATEST_TAG"
 
       - name: Checkout code to latest tag
