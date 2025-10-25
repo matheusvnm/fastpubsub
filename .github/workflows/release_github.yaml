@@ -49,6 +49,6 @@ jobs:
         uses: actions/create-release@v1
         with:
           tag_name: ${{ steps.tagging.outputs.version }}
-          release_name: Release ${{ steps.tagging.outputs.version }}
+          release_name: ${{ steps.tagging.outputs.version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
