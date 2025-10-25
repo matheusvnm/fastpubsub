@@ -20,6 +20,9 @@ format:
 coverage:
     @bash $SCRIPTS_DIR/test-cov.sh
 
+clean: 
+    @rm -rf .cov htmlcov/ dist/ fastpubsub.egg-info/
+
 test-pipeline-pr-test:
    @bash $SCRIPTS_DIR/test-pipeline.sh -W .github/workflows/pr_tests.yaml
 
