@@ -1,13 +1,16 @@
 [build-system]
-requires = ["uv_build>=0.8.11,<0.9.0"]
-build-backend = "uv_build"
+requires = [
+    "setuptools>=80.0.0",
+    "setuptools_scm[toml]>=9.2.0"
+]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastpubsub"
-version = "0.0.1"
 description = "A high performance FastAPI-based message consumer framework for PubSub"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
+dynamic = ["version"]
 dependencies = [
     "click>=8.2.1",
     "fastapi>=0.116.1",
@@ -28,8 +31,8 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -68,6 +71,14 @@ dev = [
     "ruff>=0.12.8",
 ]
 
+receipts = [
+   "rust-just>=1.43.0"
+]
+
+cicd = [
+    "commitizen>=4.9.1"
+]
+
 [tool.pytest.ini_options]
 pythonpath = "src"
 asyncio_mode = "auto"
@@ -91,7 +102,7 @@ ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py313"
+exclude = ["**/__about__.py"]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -103,6 +114,13 @@ per-file-ignores = { "tests/*" = ["D"], "examples/*" = ["D"] }
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.setuptools_scm]
+write_to = "fastpubsub/__about__.py"
+
+[tool.commitizen]
+version_provider = "scm"
+update_changelog_on_bump = true
 
 [tool.uv]
 package = true

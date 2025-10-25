@@ -143,3 +143,4 @@ cython_debug/
 .localstack/
 .poetry/
 .python-version/
+.secrets
