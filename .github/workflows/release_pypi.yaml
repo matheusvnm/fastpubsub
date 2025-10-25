@@ -1,0 +1,50 @@
+name: Create New Release (PyPI)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build_and_publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://github-actions:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git fetch --tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0)
+          echo "::set-output name=latest_tag::$LATEST_TAG"
+
+      - name: Checkout code to latest tag
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.get_latest_tag.outputs.latest_tag }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Build package
+        run: uv build
+      
+      - name: Publish the package
+        run: uv publish

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+set -x
+
+TARGET_DIRECTORIES="fastpubsub examples"
+EXTRA_TARGET_DIRECTORIES="$TARGET_DIRECTORIES tests" 
+
+mypy $TARGET_DIRECTORIES
+ruff check $EXTRA_TARGET_DIRECTORIES
+ruff format $EXTRA_TARGET_DIRECTORIES --check

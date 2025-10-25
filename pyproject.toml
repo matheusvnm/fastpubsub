@@ -1,0 +1,132 @@
+[build-system]
+requires = [
+    "setuptools>=80.0.0",
+    "setuptools_scm[toml]>=9.2.0"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fastpubsub"
+description = "A high performance FastAPI-based message consumer framework for PubSub"
+readme = "README.md"
+requires-python = ">=3.12"
+dynamic = ["version"]
+dependencies = [
+    "click>=8.2.1",
+    "fastapi>=0.116.1",
+    "google-api-core>=2.25.1",
+    "google-cloud-pubsub>=2.31.1",
+    "psutil>=7.0.0",
+    "pydantic-settings>=2.10.1",
+    "rich-toolkit>=0.15.0",
+    "typer>=0.16.0",
+    "uvicorn>=0.35.0",
+]
+
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development",
+    "Topic :: System :: Networking",
+    "Topic :: System :: Distributed Computing",
+    "Typing :: Typed",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Environment :: Web Environment",
+    "Framework :: AsyncIO",
+    "Framework :: Pydantic",
+    "Framework :: Pydantic :: 2",
+]
+
+
+
+[project.scripts]
+fastpubsub = "fastpubsub.cli.main:app"
+
+[project.optional-dependencies]
+newrelic = [
+    "newrelic[infinite-tracing]>=10.15.0",
+]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.10.3",
+    "mypy>=1.17.1",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-mock>=3.14.1",
+    "ruff>=0.12.8",
+]
+
+receipts = [
+   "rust-just>=1.43.0"
+]
+
+cicd = [
+    "commitizen>=4.9.1"
+]
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+python_files = ["test_*.py", "tests_*.py"]
+verbosity_test_cases = 3
+
+[tool.coverage.run]
+source = ["fastpubsub"]
+omit = ["**/__init__.py", "**/__about__.py", "**/__main__.py"]
+
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+fail_under = 80
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+exclude = ["**/__about__.py"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = ["E", "W", "D", "I", "C4", "UP", "F", "B", "ARG"]
+extend-ignore = ["B008", "B006", "ARG001", "ARG002"]
+per-file-ignores = { "tests/*" = ["D"], "examples/*" = ["D"] }
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.setuptools_scm]
+version_scheme = "only-version"
+local_scheme="no-local-version"
+write_to = "fastpubsub/__about__.py"
+
+[tool.commitizen]
+tag_format="v$version"
+version_provider = "scm"
+update_changelog_on_bump = true
+
+[tool.uv]
+package = true
+
+[tool.uv.build-backend]
+module-root = ""
