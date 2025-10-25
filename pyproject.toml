@@ -116,6 +116,8 @@ per-file-ignores = { "tests/*" = ["D"], "examples/*" = ["D"] }
 convention = "google"
 
 [tool.setuptools_scm]
+version_scheme = "only-version"
+local_scheme="no-local-version"
 write_to = "fastpubsub/__about__.py"
 
 [tool.commitizen]
