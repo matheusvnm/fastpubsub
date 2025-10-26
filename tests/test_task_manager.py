@@ -30,13 +30,11 @@ ASYNC_TASK_MANAGER_MODULE_PATH = "fastpubsub.concurrency.manager"
 
 class TestAsyncTaskManager:
     @pytest.fixture(autouse=True)
-    def create_task_group(self) -> Generator[MagicMock]:
+    def create_task(self) -> Generator[MagicMock]:
         with patch(
-            f"{ASYNC_TASK_MANAGER_MODULE_PATH}.create_task_group", spec=MagicMock
-        ) as create_task_group:
-            task_group_instance = AsyncMock(return_value=MagicMock())
-            create_task_group.return_value.__aenter__ = task_group_instance
-            yield create_task_group.return_value.__aenter__
+            f"{ASYNC_TASK_MANAGER_MODULE_PATH}.asyncio.create_task", new_callable=MagicMock
+        ) as create_task:
+            yield create_task
 
     @pytest.mark.asyncio
     async def test_create_task(self):
@@ -55,6 +53,7 @@ class TestAsyncTaskManager:
 
         task_manager = AsyncTaskManager()
         await task_manager.create_task(mock_subscriber)
+        await task_manager.start()
 
         liveness = await task_manager.alive()
 
@@ -71,6 +70,7 @@ class TestAsyncTaskManager:
 
         task_manager = AsyncTaskManager()
         await task_manager.create_task(mock_subscriber)
+        await task_manager.start()
 
         readiness = await task_manager.ready()
 
@@ -80,25 +80,22 @@ class TestAsyncTaskManager:
         assert not readiness[mock_subscriber.name]
 
     @pytest.mark.asyncio
-    async def test_start(self, create_task_group: MagicMock):
+    async def test_start(self, create_task: MagicMock):
         task_manager = AsyncTaskManager()
         await task_manager.create_task(MagicMock())
         await task_manager.start()
 
-        create_task_group.assert_called_once()
-        create_task_group.return_value.start_soon.assert_called_once()
+        create_task.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_shutdown(self):
-        task_group = AsyncMock()
-        task_group.cancel_scope.cancel = MagicMock()
-
+    async def test_shutdown(self, create_task: MagicMock):
         task_manager = AsyncTaskManager()
-        task_manager._task_group = task_group
+        await task_manager.create_task(MagicMock())
+        await task_manager.start()
         await task_manager.shutdown()
 
-        task_group.cancel_scope.cancel.assert_called_once()
-        task_group.__aexit__.assert_called_once()
+        create_task.assert_called_once()
+        create_task.return_value.cancel.assert_called_once()
 
 
 class TestPubSubPollTask:
@@ -108,16 +105,15 @@ class TestPubSubPollTask:
             yield pubsub_client.return_value
 
     @pytest.fixture(autouse=True)
-    def create_task_group(self) -> Generator[MagicMock]:
-        with patch(f"{PUBSUB_POLL_TASK_MODULE_PATH}.create_task_group") as create_task_group:
-            instance = create_task_group.return_value.__aenter__.return_value
-            instance.cancel_scope.cancel = MagicMock()
-            yield create_task_group
+    def create_task(self) -> Generator[MagicMock]:
+        with patch(
+            f"{PUBSUB_POLL_TASK_MODULE_PATH}.asyncio.create_task", new_callable=MagicMock
+        ) as create_task:
+            yield create_task
 
     @pytest.fixture
     def received_message(self) -> MagicMock:
         message = MagicMock()
-        message.ack_id = "abc"
         message.message.message_id = "123"
         message.message.data = b"some_bytes"
         message.message.attributes = {
@@ -130,12 +126,6 @@ class TestPubSubPollTask:
     def received_message_first_attempt(self, received_message: MagicMock) -> MagicMock:
         received_message.delivery_attempt = None
         return received_message
-
-    @pytest.fixture
-    def default_message(self) -> Message:
-        return Message(
-            id="123", size=3, data=b"abc", ack_id="321", attributes={}, delivery_attempt=0
-        )
 
     @pytest.mark.asyncio
     async def test_task_ready(self):
@@ -166,7 +156,6 @@ class TestPubSubPollTask:
         assert message.id == received_message.message.message_id
         assert message.data == received_message.message.data
         assert message.attributes == received_message.message.attributes
-        assert message.ack_id == received_message.ack_id
         assert message.size == len(received_message.message.data)
         assert message.delivery_attempt == received_message.delivery_attempt
 
@@ -182,7 +171,6 @@ class TestPubSubPollTask:
         assert message.id == received_message_first_attempt.message.message_id
         assert message.data == received_message_first_attempt.message.data
         assert message.attributes == received_message_first_attempt.message.attributes
-        assert message.ack_id == received_message_first_attempt.ack_id
         assert message.size == len(received_message_first_attempt.message.data)
         assert message.delivery_attempt == 0
 
@@ -220,30 +208,29 @@ class TestPubSubPollTask:
     async def test_start_task_cancelled_exception(self, pubsub_client: MagicMock):
         pubsub_client.pull.side_effect = CancelledError(None)
 
-        task = PubSubPollTask(MagicMock())
+        polltask = PubSubPollTask(MagicMock())
         with pytest.raises(CancelledError):
-            await task.start()
+            await polltask.start()
 
-        assert not task.task_alive()
+        assert not polltask.task_alive()
 
     @pytest.mark.asyncio
     async def test_start_task_on_exception(self, pubsub_client: MagicMock):
         pubsub_client.pull.side_effect = Cancelled(None)
 
-        task = PubSubPollTask(MagicMock())
-        await task.start()
-        assert not task.task_alive()
+        polltask = PubSubPollTask(MagicMock())
+        await polltask.start()
+        assert not polltask.task_alive()
 
     @pytest.mark.asyncio
-    async def test_consume_messages_empty_messages(self, pubsub_client: MagicMock):
+    async def test_consume_messages_empty_messages(
+        self, pubsub_client: MagicMock, create_task: MagicMock
+    ):
         pubsub_client.pull = AsyncMock(return_value=[])
-        task = PubSubPollTask(MagicMock())
-
-        mock_task_group = MagicMock()
-        await task._consume_messages(mock_task_group)
-
-        assert task.task_ready()
-        mock_task_group.start_soon.assert_not_called()
+        polltask = PubSubPollTask(MagicMock())
+        await polltask._consume_messages()
+        assert polltask.task_ready()
+        create_task.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_start_task_on_messages(
@@ -251,42 +238,41 @@ class TestPubSubPollTask:
         pubsub_client: MagicMock,
         received_message: MagicMock,
         received_message_first_attempt: MagicMock,
+        create_task: MagicMock,
     ):
         received_messages = [received_message, received_message_first_attempt]
         pubsub_client.pull = AsyncMock(return_value=received_messages)
-        task = PubSubPollTask(MagicMock())
+        polltask = PubSubPollTask(MagicMock())
 
-        mock_task_group = MagicMock()
-        await task._consume_messages(mock_task_group)
-        assert task.task_ready()
+        await polltask._consume_messages()
+        assert polltask.task_ready()
 
-        assert mock_task_group.start_soon.call_count == 2
+        assert create_task.call_count == 2
 
     @pytest.mark.asyncio
     async def test_consume_process_message_successfully(
-        self, pubsub_client: MagicMock, default_message: Message
+        self, pubsub_client: MagicMock, received_message: MagicMock
     ):
         pubsub_client.ack = AsyncMock()
         callstack_mock = MagicMock()
         callstack_mock.on_message = AsyncMock()
-
         build_callstack_mock = AsyncMock(return_value=callstack_mock)
 
         subscriber = MagicMock()
         subscriber._build_callstack = build_callstack_mock
 
-        task = PubSubPollTask(subscriber)
-        await task._consume(default_message)
+        polltask = PubSubPollTask(subscriber)
+        await polltask._consume(received_message)
 
         build_callstack_mock.assert_called_once()
-        callstack_mock.on_message.assert_called_once_with(default_message)
+        callstack_mock.on_message.assert_called_once()
         pubsub_client.ack.assert_called_once_with(
-            [default_message.ack_id], subscriber.subscription_name
+            [received_message.ack_id], subscriber.subscription_name
         )
         pubsub_client.nack.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_handle_drop_message(self, pubsub_client: MagicMock, default_message: Message):
+    async def test_handle_drop_message(self, pubsub_client: MagicMock, received_message: MagicMock):
         pubsub_client.ack = AsyncMock()
         callstack_mock = MagicMock()
         callstack_mock.on_message = AsyncMock(side_effect=Drop())
@@ -296,18 +282,20 @@ class TestPubSubPollTask:
         subscriber = MagicMock()
         subscriber._build_callstack = build_callstack_mock
 
-        task = PubSubPollTask(subscriber)
-        await task._consume(default_message)
+        polltask = PubSubPollTask(subscriber)
+        await polltask._consume(received_message)
 
         build_callstack_mock.assert_called_once()
-        callstack_mock.on_message.assert_called_once_with(default_message)
+        callstack_mock.on_message.assert_called_once()
         pubsub_client.ack.assert_called_once_with(
-            [default_message.ack_id], subscriber.subscription_name
+            [received_message.ack_id], subscriber.subscription_name
         )
         pubsub_client.nack.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_handle_retry_message(self, pubsub_client: MagicMock, default_message: Message):
+    async def test_handle_retry_message(
+        self, pubsub_client: MagicMock, received_message: MagicMock
+    ):
         pubsub_client.nack = AsyncMock()
         callstack_mock = MagicMock()
         callstack_mock.on_message = AsyncMock(side_effect=Retry())
@@ -317,19 +305,19 @@ class TestPubSubPollTask:
         subscriber = MagicMock()
         subscriber._build_callstack = build_callstack_mock
 
-        task = PubSubPollTask(subscriber)
-        await task._consume(default_message)
+        polltask = PubSubPollTask(subscriber)
+        await polltask._consume(received_message)
 
         build_callstack_mock.assert_called_once()
-        callstack_mock.on_message.assert_called_once_with(default_message)
+        callstack_mock.on_message.assert_called_once()
         pubsub_client.nack.assert_called_once_with(
-            [default_message.ack_id], subscriber.subscription_name
+            [received_message.ack_id], subscriber.subscription_name
         )
         pubsub_client.ack.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_handle_unhandled_exception_on_message(
-        self, pubsub_client: MagicMock, default_message: Message
+        self, pubsub_client: MagicMock, received_message: MagicMock
     ):
         pubsub_client.nack = AsyncMock()
         callstack_mock = MagicMock()
@@ -340,12 +328,12 @@ class TestPubSubPollTask:
         subscriber = MagicMock()
         subscriber._build_callstack = build_callstack_mock
 
-        task = PubSubPollTask(subscriber)
-        await task._consume(default_message)
+        polltask = PubSubPollTask(subscriber)
+        await polltask._consume(received_message)
 
         build_callstack_mock.assert_called_once()
-        callstack_mock.on_message.assert_called_once_with(default_message)
+        callstack_mock.on_message.assert_called_once()
         pubsub_client.nack.assert_called_once_with(
-            [default_message.ack_id], subscriber.subscription_name
+            [received_message.ack_id], subscriber.subscription_name
         )
         pubsub_client.ack.assert_not_called()

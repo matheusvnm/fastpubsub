@@ -27,7 +27,7 @@ The key features are:
 - **Intuitive**: It is designed to be intuitive and easy to use, even for beginners.
 - **Typed**: Provides a great editor support and less time reading docs.
 - **Robust**: Get production-ready code with sensible default values helping you avoid common pitfalls.
-- **Asynchronous:** It is built on top of anyio, which allows it to run on top of either asyncio or trio.
+- **Asynchronous:** It is built on top of asyncio, which allows it to run on fully asynchronous code.
 - **Batteries Included**: Provides its own CLI and other widely used tools such as [**pydantic**](https://docs.pydantic.dev/) for data validation, observability integrations and log contextualization.
 
 
