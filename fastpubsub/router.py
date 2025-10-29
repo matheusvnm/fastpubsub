@@ -142,15 +142,12 @@ class PubSubRouter:
 
         Args:
             alias: A unique name for the subscriber. You can use this alias to
-                select which subscription to use.
+                select which subscription to use on the CLI.
             topic_name: The name of the topic to subscribe to.
-            subscription_name: The name of the subscription.
-            subscription_name: The name of the subscription.
+            subscription_name: The name of the subscription attached to the topic.
             autocreate: Whether to automatically create the topic and
-                subscription if it does not exists.
+                subscription if they do not exists.
             autoupdate: Whether to automatically update the subscription.
-            filter_expression: A filter expression to apply to the
-                subscription to filter messages.
             filter_expression: A filter expression to apply to the
                 subscription to filter messages.
             dead_letter_topic: The name of the dead-letter topic.
@@ -162,6 +159,8 @@ class PubSubRouter:
             min_backoff_delay_secs: The minimum backoff delay in seconds.
             max_backoff_delay_secs: The maximum backoff delay in seconds.
             max_messages: The maximum number of messages to fetch from the broker.
+                          Since we also create one async task per message this
+                          also controls concurrency.
             middlewares: A sequence of middlewares to apply **only to the subscriber**.
 
         Returns:

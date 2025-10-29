@@ -57,7 +57,6 @@ async def apply_async(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -
 
     Args:
         func: The sync callable to be transformed.
-        cancellable: Defines if the callable can be cancel forcefully.
         *args: The positional arguments used on the callable.
         **kwargs: The keyword arguments used on the callable.
 
