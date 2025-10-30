@@ -38,7 +38,6 @@ class TestGZipMiddleware:
         message = Message(
             id="2123",
             size=3,
-            ack_id="acksome",
             data=mock_middleware.published_message,
             attributes=mock_middleware.published_attributes,
             delivery_attempt=0,

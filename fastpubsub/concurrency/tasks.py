@@ -1,12 +1,11 @@
 """Subscriber task for polling messages."""
 
-from collections.abc import Generator
+import asyncio
+from collections.abc import Awaitable, Callable, Generator
 from contextlib import contextmanager
 from typing import Any
+from weakref import WeakSet
 
-import anyio
-from anyio import create_task_group, get_cancelled_exc_class
-from anyio.abc import TaskGroup
 from google.api_core.exceptions import (
     Aborted,
     Cancelled,
@@ -67,40 +66,40 @@ class PubSubPollTask:
         self.subscriber = subscriber
 
         self.apm = get_apm_provider()
-        self.client = PubSubClient(self.subscriber.project_id)
+        self.tasks: WeakSet[asyncio.Task[Callable[[ReceivedMessage], Awaitable[Any]]]] = WeakSet()
 
     async def start(self) -> None:
         """Starts the message polling loop."""
         logger.info(f"The {self.subscriber.name} handler is waiting for messages.")
 
         self.running = True
-        async with create_task_group() as task_group:
-            while self.running:
-                try:
-                    await self._consume_messages(task_group)
-                except get_cancelled_exc_class():
-                    logger.info(f"The {self.subscriber.name} handler is turning off...")
-                    self.shutdown()
-                    task_group.cancel_scope.cancel()
-                    raise
-                except Exception as e:
-                    self._on_exception(e)
+        while self.running:
+            try:
+                await self._consume_messages()
+            except asyncio.CancelledError:
+                logger.info(f"The {self.subscriber.name} handler is turning off...")
+                self.shutdown()
+                raise
+            except Exception as e:
+                self._on_exception(e)
 
-    async def _consume_messages(self, task_group: TaskGroup) -> None:
-        received_messages = await self.client.pull(
-            self.subscriber.subscription_name, self.subscriber.control_flow_policy.max_messages
+    async def _consume_messages(self) -> None:
+        taskpool_size = self._get_taskpool_size()
+        if taskpool_size == 0:
+            await asyncio.sleep(1)
+            return
+
+        client = PubSubClient(self.subscriber.project_id)
+        received_messages = await client.pull(
+            subscription_name=self.subscriber.subscription_name, max_messages=taskpool_size
         )
 
         self.ready = True
-        messages_to_consume = []
+        logger.debug(f"We have got {len(received_messages)} messages to taskify")
         for received_message in received_messages:
-            message = await self._deserialize_message(received_message)
-            messages_to_consume.append(message)
-
-        for message in messages_to_consume:
-            task_group.start_soon(self._consume, message)
-
-        await anyio.sleep(0.5)
+            message_consume_coroutine = self._consume(received_message)
+            task = asyncio.create_task(message_consume_coroutine)
+            self.tasks.add(task)
 
     async def _deserialize_message(self, received_message: ReceivedMessage) -> Message:
         wrapped_message = received_message.message
@@ -109,7 +108,6 @@ class PubSubPollTask:
         if received_message.delivery_attempt is not None:
             delivery_attempt = received_message.delivery_attempt
 
-        ack_id = received_message.ack_id
         size = len(wrapped_message.data)
         attributes = dict(wrapped_message.attributes)
 
@@ -117,29 +115,30 @@ class PubSubPollTask:
             id=wrapped_message.message_id,
             data=wrapped_message.data,
             size=size,
-            ack_id=ack_id,
             attributes=attributes,
             delivery_attempt=delivery_attempt,
         )
 
-    async def _consume(self, message: Message) -> Any:
+    async def _consume(self, received_message: ReceivedMessage) -> Any:
+        message = await self._deserialize_message(received_message)
         with self._contextualize(message=message):
+            client = PubSubClient(self.subscriber.project_id)
             try:
                 callstack = await self.subscriber._build_callstack()
                 response = await callstack.on_message(message)
-                await self.client.ack([message.ack_id], self.subscriber.subscription_name)
+                await client.ack([received_message.ack_id], self.subscriber.subscription_name)
                 logger.info("Message successfully processed.")
                 return response
             except Drop:
-                await self.client.ack([message.ack_id], self.subscriber.subscription_name)
+                await client.ack([received_message.ack_id], self.subscriber.subscription_name)
                 logger.info("Message will be dropped.")
                 return
             except Retry:
-                await self.client.nack([message.ack_id], self.subscriber.subscription_name)
+                await client.nack([received_message.ack_id], self.subscriber.subscription_name)
                 logger.warning("Message processing will be retried later.")
                 return
             except Exception:
-                await self.client.nack([message.ack_id], self.subscriber.subscription_name)
+                await client.nack([received_message.ack_id], self.subscriber.subscription_name)
                 logger.exception("Unhandled exception on message", stacklevel=5)
                 return
 
@@ -216,3 +215,23 @@ class PubSubPollTask:
     def shutdown(self) -> None:
         """Shuts down the task."""
         self.running = False
+        self._cancel_tasks()
+
+    def _cancel_tasks(self) -> None:
+        """Cancel all the message consuming task alive."""
+        for task in self.tasks:
+            task.cancel()
+
+    def _get_taskpool_size(self) -> int:
+        """Get the ammount of tasks actively running.
+
+        Returns:
+            The number of tasks running.
+        """
+        max_messages = self.subscriber.control_flow_policy.max_messages
+        taskpool_size = max_messages - len(self.tasks)
+
+        logger.debug(
+            f"The maximum queue size is {max_messages} with {taskpool_size} task slots empty."
+        )
+        return taskpool_size

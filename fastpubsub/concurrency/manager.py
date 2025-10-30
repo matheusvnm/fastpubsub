@@ -1,10 +1,8 @@
 """Task manager for subscriber tasks."""
 
-from anyio import create_task_group
-from anyio.abc import TaskGroup
+import asyncio
 
 from fastpubsub.concurrency.tasks import PubSubPollTask
-from fastpubsub.logger import logger
 from fastpubsub.pubsub.subscriber import Subscriber
 
 
@@ -14,7 +12,7 @@ class AsyncTaskManager:
     def __init__(self) -> None:
         """Initializes the AsyncTaskManager."""
         self._tasks: list[PubSubPollTask] = []
-        self._task_group: TaskGroup | None = None
+        self._running_tasks: dict[PubSubPollTask, asyncio.Task[None]] = {}
 
     async def create_task(self, subscriber: Subscriber) -> None:
         """Registers a subscriber configuration to be managed."""
@@ -22,11 +20,9 @@ class AsyncTaskManager:
 
     async def start(self) -> None:
         """Starts the subscribers tasks process using a task group."""
-        self._task_group = await create_task_group().__aenter__()
-        for task in self._tasks:
-            self._task_group.start_soon(task.start)
-
-        logger.debug(f"Started tasks for subscribers {self._tasks}")
+        for polltask in self._tasks:
+            atask = asyncio.create_task(polltask.start())
+            self._running_tasks[polltask] = atask
 
     async def alive(self) -> dict[str, bool]:
         """Checks if the tasks are alive.
@@ -35,8 +31,10 @@ class AsyncTaskManager:
             A dictionary mapping task names to their liveness status.
         """
         liveness: dict[str, bool] = {}
-        for task in self._tasks:
-            liveness[task.subscriber.name] = task.task_alive()
+        for polltask, atask in self._running_tasks.items():
+            liveness[polltask.subscriber.name] = (
+                bool(atask) and not atask.done() and polltask.task_alive()
+            )
         return liveness
 
     async def ready(self) -> dict[str, bool]:
@@ -46,12 +44,16 @@ class AsyncTaskManager:
             A dictionary mapping task names to their readiness status.
         """
         readiness: dict[str, bool] = {}
-        for task in self._tasks:
-            readiness[task.subscriber.name] = task.task_ready()
+        for polltask, atask in self._running_tasks.items():
+            readiness[polltask.subscriber.name] = (
+                bool(atask) and not atask.done() and polltask.task_ready()
+            )
         return readiness
 
     async def shutdown(self) -> None:
         """Terminates the manager process and all its children gracefully."""
-        if self._task_group:
-            self._task_group.cancel_scope.cancel()
-            await self._task_group.__aexit__(None, None, None)
+        if self._running_tasks:
+            for atask in self._running_tasks.values():
+                atask.cancel()
+
+            self._running_tasks.clear()
