@@ -30,7 +30,7 @@ class TestCLI:
     def test_version_option(self):
         result = runner.invoke(app, ["--version"])
         assert result.exit_code == 0
-        assert "Running FastStream" in result.stdout
+        assert "Running FastPubSub" in result.stdout
 
     @patch("fastpubsub.cli.main.ensure_pubsub_credentials")
     @patch("fastpubsub.cli.main.ApplicationRunner")
