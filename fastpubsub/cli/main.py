@@ -82,7 +82,7 @@ def main(
         import platform
 
         typer.echo(
-            f"Running FastStream {__version__} with {platform.python_implementation()} "
+            f"Running FastPubSub {__version__} with {platform.python_implementation()} "
             f"{platform.python_version()} on {platform.system()}",
         )
 
