@@ -8,8 +8,10 @@ receipts:
 test test_target=".":
     @bash $SCRIPTS_DIR/tests.sh {{test_target}}
 
-install-python python_version="3.13":
+install python_version="3.13":
+    @bash $SCRIPTS_DIR/setup.sh
     @bash $SCRIPTS_DIR/install-python.sh {{python_version}}
+    @bash $SCRIPTS_DIR/install.sh
 
 lint:
     @bash $SCRIPTS_DIR/lint.sh
@@ -20,11 +22,11 @@ format:
 coverage:
     @bash $SCRIPTS_DIR/test-cov.sh
 
-test-pipeline-pr-test:
+clean:
+    @rm -rf .cov htmlcov/ dist/ fastpubsub.egg-info/
+
+execute-pr-test:
    @bash $SCRIPTS_DIR/test-pipeline.sh -W .github/workflows/pr_tests.yaml
 
-test-pipeline-release-github:
-   @bash $SCRIPTS_DIR/test-pipeline.sh -W .github/workflows/release_github.yaml
-
-test-pipeline-release-pypi:
+execute-release-pypi:
    @bash $SCRIPTS_DIR/test-pipeline.sh -W .github/workflows/release_pypi.yaml

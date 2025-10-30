@@ -12,7 +12,6 @@ class Message:
     id: str
     size: int
     data: bytes
-    ack_id: str
     attributes: dict[str, str]
     delivery_attempt: int
 

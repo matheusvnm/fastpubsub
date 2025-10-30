@@ -22,7 +22,6 @@ class GZipMiddleware(BaseMiddleware):
             message = Message(
                 id=message.id,
                 size=message.size,
-                ack_id=message.ack_id,
                 data=decompressed_data,
                 attributes=message.attributes,
                 delivery_attempt=message.delivery_attempt,

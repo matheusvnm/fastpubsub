@@ -1,22 +1,20 @@
 [build-system]
-requires = [
-    "setuptools>=80.0.0",
-    "setuptools_scm[toml]>=9.2.0"
-]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.9.0"]
+build-backend = "uv_build"
 
 [project]
 name = "fastpubsub"
 description = "A high performance FastAPI-based message consumer framework for PubSub"
 readme = "README.md"
+version = "0.3.0"
 requires-python = ">=3.12"
-dynamic = ["version"]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 dependencies = [
     "click>=8.2.1",
-    "fastapi>=0.116.1",
+    "fastapi[standard-no-fastapi-cloud-cli]>=0.120.2",
     "google-api-core>=2.25.1",
     "google-cloud-pubsub>=2.31.1",
-    "psutil>=7.0.0",
     "pydantic-settings>=2.10.1",
     "rich-toolkit>=0.15.0",
     "typer>=0.16.0",
@@ -26,7 +24,6 @@ dependencies = [
 
 classifiers = [
     "Development Status :: 5 - Production/Stable",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: 3",
@@ -71,12 +68,8 @@ dev = [
     "ruff>=0.12.8",
 ]
 
-receipts = [
-   "rust-just>=1.43.0"
-]
-
 cicd = [
-    "commitizen>=4.9.1"
+   "rust-just>=1.43.0"
 ]
 
 [tool.pytest.ini_options]
@@ -89,7 +82,6 @@ verbosity_test_cases = 3
 [tool.coverage.run]
 source = ["fastpubsub"]
 omit = ["**/__init__.py", "**/__about__.py", "**/__main__.py"]
-
 
 [tool.coverage.report]
 show_missing = true
@@ -114,16 +106,6 @@ per-file-ignores = { "tests/*" = ["D"], "examples/*" = ["D"] }
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
-
-[tool.setuptools_scm]
-version_scheme = "only-version"
-local_scheme="no-local-version"
-write_to = "fastpubsub/__about__.py"
-
-[tool.commitizen]
-tag_format="v$version"
-version_provider = "scm"
-update_changelog_on_bump = true
 
 [tool.uv]
 package = true

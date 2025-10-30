@@ -5,22 +5,30 @@ on:
     branches:
       - dev
       - main
+    types:
+      - opened
+      - synchronize
 
 jobs:
   quality_gate:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12", "3.13"]
+        python-version: ["3.12", "3.13", "3.14"]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Set up Python for uv install
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
       - name: Install uv
         run: pip install uv
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python ${{ matrix.python-version }} for tests
         run: |
           uv python install ${{ matrix.python-version }}
 
@@ -31,6 +39,6 @@ jobs:
       - name: Run quality checks
         run: |
           uv venv --allow-existing
-          uv run just lint 
-          uv run just test 
+          uv run just lint
+          uv run just test
           uv run just coverage
