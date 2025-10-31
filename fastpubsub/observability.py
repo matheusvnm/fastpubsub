@@ -357,8 +357,11 @@ class NewRelicProvider(ApmProvider):
             traceback: The traceback.
             attributes: A dictionary of attributes.
         """
-
-        error = (exc_type, exc_value, traceback,)
+        error = (
+            exc_type,
+            exc_value,
+            traceback,
+        )
         self._agent.notice_error(error=error, attributes=attributes)
 
     def add_custom_metric(self, metric_name: str, value: int | float | dict[str, str]) -> None:
