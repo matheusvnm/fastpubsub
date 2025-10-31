@@ -133,7 +133,7 @@ Feel free to get in touch by:
 
 Sending a email at sandro-matheus@hotmail.com.
 
-Sending a message on my [linkedin](www.linkedin.com/in/matheusvnm).
+Sending a message on my [linkedin](https://www.linkedin.com/in/matheusvnm).
 
 
 ## License
