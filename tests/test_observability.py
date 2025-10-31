@@ -165,9 +165,7 @@ class TestNewRelicAPMProvider:
             provider.report_exception(
                 exc_type=type(e), exc_value=e, traceback=None, attributes=details
             )
-            agent.notice_error.assert_called_once_with(
-                error=(type(e), e, None), attributes=details
-            )
+            agent.notice_error.assert_called_once_with(error=(type(e), e, None), attributes=details)
 
     def test_add_custom_metric(self, agent: MagicMock):
         metric_value = 123
