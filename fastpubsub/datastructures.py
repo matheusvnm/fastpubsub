@@ -29,7 +29,6 @@ class MessageDeliveryPolicy:
 
     filter_expression: str
     ack_deadline_seconds: int
-    enable_message_ordering: bool
     enable_exactly_once_delivery: bool
 
 
