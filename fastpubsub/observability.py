@@ -323,7 +323,7 @@ class NewRelicProvider(ApmProvider):
             params: The event parameters.
         """
         try:
-            self._agent.record_custom_event(event_type=event_name, param=params)
+            self._agent.record_custom_event(event_type=event_name, params=params)
         except Exception:
             logger.exception("Failed to record New Relic custom event", stacklevel=5)
 
@@ -357,7 +357,12 @@ class NewRelicProvider(ApmProvider):
             traceback: The traceback.
             attributes: A dictionary of attributes.
         """
-        self._agent.record_exception(exc=exc_type, value=exc_value, tb=traceback, params=attributes)
+        error = (
+            exc_type,
+            exc_value,
+            traceback,
+        )
+        self._agent.notice_error(error=error, attributes=attributes)
 
     def add_custom_metric(self, metric_name: str, value: int | float | dict[str, str]) -> None:
         """Adds a custom metric.

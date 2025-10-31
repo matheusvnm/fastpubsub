@@ -133,7 +133,7 @@ class TestNewRelicAPMProvider:
         provider = observability.NewRelicProvider()
         provider.report_custom_event(event_name, params)
 
-        agent.record_custom_event.assert_called_once_with(event_type=event_name, param=params)
+        agent.record_custom_event.assert_called_once_with(event_type=event_name, params=params)
 
     def test_report_custom_event_error_should_not_raise(self, agent: MagicMock):
         agent.record_custom_event.side_effect = ValueError()
@@ -165,9 +165,7 @@ class TestNewRelicAPMProvider:
             provider.report_exception(
                 exc_type=type(e), exc_value=e, traceback=None, attributes=details
             )
-            agent.record_exception.assert_called_once_with(
-                exc=type(e), value=e, tb=None, params=details
-            )
+            agent.notice_error.assert_called_once_with(error=(type(e), e, None), attributes=details)
 
     def test_add_custom_metric(self, agent: MagicMock):
         metric_value = 123

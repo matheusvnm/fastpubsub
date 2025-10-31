@@ -55,7 +55,6 @@ class PubSubBroker:
         dead_letter_topic: str = "",
         max_delivery_attempts: int = 5,
         ack_deadline_seconds: int = 60,
-        enable_message_ordering: bool = False,
         enable_exactly_once_delivery: bool = False,
         min_backoff_delay_secs: int = 10,
         max_backoff_delay_secs: int = 600,
@@ -78,7 +77,6 @@ class PubSubBroker:
             max_delivery_attempts: The maximum number of delivery attempts
                 before sending the message to the dead-letter.
             ack_deadline_seconds: The acknowledgment deadline in seconds.
-            enable_message_ordering: Whether to enable message ordering.
             enable_exactly_once_delivery: Whether to enable exactly-once delivery.
             min_backoff_delay_secs: The minimum backoff delay in seconds.
             max_backoff_delay_secs: The maximum backoff delay in seconds.
@@ -100,7 +98,6 @@ class PubSubBroker:
             dead_letter_topic=dead_letter_topic,
             max_delivery_attempts=max_delivery_attempts,
             ack_deadline_seconds=ack_deadline_seconds,
-            enable_message_ordering=enable_message_ordering,
             enable_exactly_once_delivery=enable_exactly_once_delivery,
             min_backoff_delay_secs=min_backoff_delay_secs,
             max_backoff_delay_secs=max_backoff_delay_secs,

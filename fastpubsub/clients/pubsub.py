@@ -74,7 +74,6 @@ class PubSubClient:
             retry_policy=message_retry_policy,
             filter=delivery_policy.filter_expression,
             ack_deadline_seconds=delivery_policy.ack_deadline_seconds,
-            enable_message_ordering=delivery_policy.enable_message_ordering,
             enable_exactly_once_delivery=delivery_policy.enable_exactly_once_delivery,
         )
 
