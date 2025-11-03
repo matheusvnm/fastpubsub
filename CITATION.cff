@@ -1,0 +1,51 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: FastPubSub
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Sandro Matheus
+    family-names: Marques
+    email: sandro-matheus@hotmail.com
+repository-code: 'https://github.com/matheusvnm/fastpubsub'
+abstract: >-
+  FastPubSub is a modern, high-performance framework for
+  building modern applications that process event messages
+  on Google PubSub. It combines the standard PubSub Python
+  SDK with FastAPI, Pydantic and Uvicorn to provide an
+  easy-to-use development experience.
+
+
+  The key features are:
+
+
+  - FastPubSub is (unironically) fast. It's built on top of
+  FastAPI, uvicorn and Google PubSub Python SDK for maximum
+  performance.
+
+  - It is designed to be intuitive and easy to use, even for
+  beginners.
+
+  - Provides a great editor support and less time reading
+  docs.
+
+  - Get production-ready code with sensible default values
+  helping you avoid common pitfalls.
+
+  - It is built on top of asyncio, which allows it to run on
+  fully asynchronous code.
+
+  - Provides its own CLI and other widely used tools such as
+  pydantic for data validation, observability integrations
+  and log contextualization.
+keywords:
+  - python
+  - fastapi
+  - asyncio
+  - pubsub
+  - pydantic
+  - gcp
