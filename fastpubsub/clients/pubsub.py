@@ -23,7 +23,9 @@ if TYPE_CHECKING:
     pass
 
 
-DEFAULT_PUBSUB_TIMEOUT = 10.0
+DEFAULT_PUBSUB_TIMEOUT = 20.0
+DEFAULT_PULL_TIMEOUT = 120.0
+DEFAULT_PUSH_TIMEOUT = 60.0
 
 
 class PubSubClient:
@@ -256,7 +258,7 @@ class PubSubClient:
                     subscriber_client.create_subscription,
                     name=default_subscription_path,
                     topic=topic_path,
-                    timeout=DEFAULT_PUBSUB_TIMEOUT,
+                    timeout=DEFAULT_PULL_TIMEOUT,
                 )
 
                 logger.debug(
@@ -296,7 +298,7 @@ class PubSubClient:
                     topic=topic_path,
                     data=data,
                     ordering_key=ordering_key,
-                    timeout=DEFAULT_PUBSUB_TIMEOUT,
+                    timeout=DEFAULT_PUSH_TIMEOUT,
                     **contextualized_attributes,
                 )
 
