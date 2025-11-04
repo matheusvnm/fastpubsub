@@ -14,6 +14,7 @@ from fastpubsub.datastructures import (
     MessageControlFlowPolicy,
     MessageDeliveryPolicy,
     MessageRetryPolicy,
+    PullMethod,
 )
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
@@ -134,8 +135,9 @@ class PubSubRouter:
         enable_exactly_once_delivery: bool = False,
         min_backoff_delay_secs: int = 10,
         max_backoff_delay_secs: int = 600,
-        max_messages: int = 50,
+        max_messages: int = 100,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
+        pull_method: PullMethod = PullMethod.STREAMING_PULL,
     ) -> SubscribedCallable:
         """Decorator to register a function as a subscriber.
 
@@ -160,6 +162,7 @@ class PubSubRouter:
                           Since we also create one async task per message this
                           also controls concurrency.
             middlewares: A sequence of middlewares to apply **only to the subscriber**.
+            pull_method: Defines the method in which the subscriber will get messages from PubSub.
 
         Returns:
             A decorator that registers the function as a subscriber.
@@ -196,6 +199,7 @@ class PubSubRouter:
                 filter_expression=filter_expression,
                 ack_deadline_seconds=ack_deadline_seconds,
                 enable_exactly_once_delivery=enable_exactly_once_delivery,
+                pull_method=pull_method,
             )
 
             lifecycle_policy = LifecyclePolicy(autocreate=autocreate, autoupdate=autoupdate)

@@ -1,6 +1,7 @@
 """Data structures for FastPubSub."""
 
 from dataclasses import dataclass
+from enum import IntEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -14,6 +15,13 @@ class Message:
     data: bytes
     attributes: dict[str, str]
     delivery_attempt: int
+
+
+class PullMethod(IntEnum):
+    """A Enum to represent the method for getting data from Pub/Sub."""
+
+    UNARY_PULL = 1
+    STREAMING_PULL = 2
 
 
 @dataclass(frozen=True)
@@ -30,6 +38,7 @@ class MessageDeliveryPolicy:
     filter_expression: str
     ack_deadline_seconds: int
     enable_exactly_once_delivery: bool
+    pull_method: PullMethod
 
 
 @dataclass(frozen=True)
