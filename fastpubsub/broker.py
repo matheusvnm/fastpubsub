@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, validate_call
 
 from fastpubsub.builder import PubSubSubscriptionBuilder
 from fastpubsub.concurrency.manager import AsyncTaskManager
+from fastpubsub.datastructures import PullMethod
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.logger import logger
 from fastpubsub.middlewares.base import BaseMiddleware
@@ -58,8 +59,9 @@ class PubSubBroker:
         enable_exactly_once_delivery: bool = False,
         min_backoff_delay_secs: int = 10,
         max_backoff_delay_secs: int = 600,
-        max_messages: int = 50,
+        max_messages: int = 100,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
+        pull_method: PullMethod = PullMethod.STREAMING_PULL,
     ) -> SubscribedCallable:
         """Decorator to register a function as a subscriber.
 
@@ -84,6 +86,7 @@ class PubSubBroker:
                           Since we also create one async task per message
                           this also controls concurrency.
             middlewares: A sequence of middlewares to apply **only to the subscriber**.
+            pull_method: Defines the method in which the subscriber will get messages from PubSub.
 
         Returns:
             A decorator that registers the function as a subscriber.
@@ -103,6 +106,7 @@ class PubSubBroker:
             max_backoff_delay_secs=max_backoff_delay_secs,
             max_messages=max_messages,
             middlewares=middlewares,
+            pull_method=pull_method,
         )
 
     @validate_call(config=ConfigDict(strict=True))
