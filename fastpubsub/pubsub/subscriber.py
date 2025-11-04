@@ -73,7 +73,7 @@ class Subscriber:
         ensure_async_middleware(middleware)
         self.middlewares.append(middleware)
 
-    async def _build_callstack(self) -> HandleMessageCommand | BaseMiddleware:
+    def _build_callstack(self) -> HandleMessageCommand | BaseMiddleware:
         callstack: HandleMessageCommand | BaseMiddleware = self.handler
         for middleware in reversed(self.middlewares):
             callstack = middleware(callstack)

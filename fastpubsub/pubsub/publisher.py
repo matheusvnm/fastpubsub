@@ -45,16 +45,14 @@ class Publisher:
             attributes: A dictionary of message attributes.
             autocreate: Whether to automatically create the topic.
         """
-        callstack = await self._build_callstack(autocreate=autocreate)
+        callstack = self._build_callstack(autocreate=autocreate)
         serialized_message = await self._serialize_message(data)
 
         await callstack.on_publish(
             data=serialized_message, ordering_key=ordering_key, attributes=attributes
         )
 
-    async def _build_callstack(
-        self, autocreate: bool = True
-    ) -> PublishMessageCommand | BaseMiddleware:
+    def _build_callstack(self, autocreate: bool = True) -> PublishMessageCommand | BaseMiddleware:
         callstack: PublishMessageCommand | BaseMiddleware = PublishMessageCommand(
             project_id=self.project_id, topic_name=self.topic_name, autocreate=autocreate
         )

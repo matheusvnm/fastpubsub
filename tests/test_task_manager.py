@@ -20,7 +20,7 @@ from google.api_core.exceptions import (
 )
 
 from fastpubsub.concurrency.manager import AsyncTaskManager
-from fastpubsub.concurrency.tasks import PubSubPollTask
+from fastpubsub.concurrency.tasks import PubSubPullTask
 from fastpubsub.datastructures import Message
 from fastpubsub.exceptions import Drop, Retry
 
@@ -141,7 +141,7 @@ class TestPubSubPollTask:
 
     @pytest.mark.asyncio
     async def test_task_ready(self):
-        task = PubSubPollTask(MagicMock())
+        task = PubSubPullTask(MagicMock())
         assert not task.task_ready()
 
         task.ready = True
@@ -149,7 +149,7 @@ class TestPubSubPollTask:
 
     @pytest.mark.asyncio
     async def test_task_alive(self):
-        task = PubSubPollTask(MagicMock())
+        task = PubSubPullTask(MagicMock())
         assert not task.task_alive()
 
         task.running = True
@@ -160,7 +160,7 @@ class TestPubSubPollTask:
 
     @pytest.mark.asyncio
     async def test_deserialize_message(self, received_message: MagicMock):
-        task = PubSubPollTask(MagicMock())
+        task = PubSubPullTask(MagicMock())
 
         message = await task._deserialize_message(received_message)
 
@@ -175,7 +175,7 @@ class TestPubSubPollTask:
     async def test_deserialize_message_without_delivery_attempt(
         self, received_message_first_attempt: MagicMock
     ):
-        task = PubSubPollTask(MagicMock())
+        task = PubSubPullTask(MagicMock())
 
         message = await task._deserialize_message(received_message_first_attempt)
 
@@ -207,7 +207,7 @@ class TestPubSubPollTask:
     )
     @pytest.mark.asyncio
     async def test_on_exception_handle(self, exception: Exception, expected_liveness: bool):
-        task = PubSubPollTask(MagicMock())
+        task = PubSubPullTask(MagicMock())
         task.running = True
         task.ready = True
 
@@ -220,7 +220,7 @@ class TestPubSubPollTask:
     async def test_start_task_cancelled_exception(self, pubsub_client: MagicMock):
         pubsub_client.pull.side_effect = CancelledError(None)
 
-        polltask = PubSubPollTask(MagicMock())
+        polltask = PubSubPullTask(MagicMock())
         with pytest.raises(CancelledError):
             await polltask.start()
 
@@ -230,7 +230,7 @@ class TestPubSubPollTask:
     async def test_start_task_on_exception(self, pubsub_client: MagicMock):
         pubsub_client.pull.side_effect = Cancelled(None)
 
-        polltask = PubSubPollTask(MagicMock())
+        polltask = PubSubPullTask(MagicMock())
         await polltask.start()
         assert not polltask.task_alive()
 
@@ -239,7 +239,7 @@ class TestPubSubPollTask:
         self, pubsub_client: MagicMock, create_task: MagicMock
     ):
         pubsub_client.pull = AsyncMock(return_value=[])
-        polltask = PubSubPollTask(MagicMock())
+        polltask = PubSubPullTask(MagicMock())
         polltask._consume = MagicMock()
 
         await polltask._consume_messages()
@@ -256,7 +256,7 @@ class TestPubSubPollTask:
     ):
         received_messages = [received_message, received_message_first_attempt]
         pubsub_client.pull = AsyncMock(return_value=received_messages)
-        polltask = PubSubPollTask(MagicMock())
+        polltask = PubSubPullTask(MagicMock())
         polltask._consume = MagicMock()
 
         await polltask._consume_messages()
@@ -275,7 +275,7 @@ class TestPubSubPollTask:
         subscriber = MagicMock()
         subscriber._build_callstack = build_callstack_mock
 
-        polltask = PubSubPollTask(subscriber)
+        polltask = PubSubPullTask(subscriber)
         await polltask._consume(received_message)
 
         build_callstack_mock.assert_called_once()
@@ -296,7 +296,7 @@ class TestPubSubPollTask:
         subscriber = MagicMock()
         subscriber._build_callstack = build_callstack_mock
 
-        polltask = PubSubPollTask(subscriber)
+        polltask = PubSubPullTask(subscriber)
         await polltask._consume(received_message)
 
         build_callstack_mock.assert_called_once()
@@ -319,7 +319,7 @@ class TestPubSubPollTask:
         subscriber = MagicMock()
         subscriber._build_callstack = build_callstack_mock
 
-        polltask = PubSubPollTask(subscriber)
+        polltask = PubSubPullTask(subscriber)
         await polltask._consume(received_message)
 
         build_callstack_mock.assert_called_once()
@@ -342,7 +342,7 @@ class TestPubSubPollTask:
         subscriber = MagicMock()
         subscriber._build_callstack = build_callstack_mock
 
-        polltask = PubSubPollTask(subscriber)
+        polltask = PubSubPullTask(subscriber)
         await polltask._consume(received_message)
 
         build_callstack_mock.assert_called_once()
