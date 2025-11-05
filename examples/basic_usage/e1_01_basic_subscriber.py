@@ -28,5 +28,6 @@ async def process_message_unary_pull(message: Message) -> None:
 
 @app.after_startup
 async def test_publish() -> None:
-    await broker.publish("streaming-pull-topic", {"message": "streaming"})
-    await broker.publish("unary-pull-topic", {"message": "unary"})
+    for _ in range(5):
+        await broker.publish("streaming-pull-topic", {"message": "streaming"})
+        await broker.publish("unary-pull-topic", {"message": "unary"})

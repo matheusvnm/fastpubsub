@@ -159,8 +159,6 @@ class PubSubRouter:
             min_backoff_delay_secs: The minimum backoff delay in seconds.
             max_backoff_delay_secs: The maximum backoff delay in seconds.
             max_messages: The maximum number of messages to fetch from the broker.
-                          Since we also create one async task per message this
-                          also controls concurrency.
             middlewares: A sequence of middlewares to apply **only to the subscriber**.
             pull_method: Defines the method in which the subscriber will get messages from PubSub.
 
