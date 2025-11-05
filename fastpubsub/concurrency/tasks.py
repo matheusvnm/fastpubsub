@@ -58,15 +58,15 @@ FATAL_GCP_EXCEPTIONS = (
 
 
 @contextmanager
-def _contextualize(subscriber: Subscriber, message: Message) -> Generator[None]:
+def _contextualize(name: str, topic_name: str, message: Message) -> Generator[None]:
     apm = get_apm_provider()
-    with apm.start_trace(name=subscriber.name, context=message.attributes):
+    with apm.start_trace(name=name, context=message.attributes):
         context = {
-            "name": subscriber.name,
+            "name": name,
             "span_id": apm.get_span_id(),
             "trace_id": apm.get_trace_id(),
             "message_id": message.id,
-            "topic_name": subscriber.topic_name,
+            "topic_name": topic_name,
         }
         with logger.contextualize(**context):
             yield
@@ -199,7 +199,9 @@ class PubSubPullTask(PollerTask):
     async def _consume(self, received_message: ReceivedMessage) -> Any:
         mapper = MessageMapper()
         message = mapper.convert(received_message)
-        with _contextualize(subscriber=self.subscriber, message=message):
+        with _contextualize(self.subscriber.name, 
+                            self.subscriber.topic_name, 
+                            message):
             try:
                 callstack = self.subscriber._build_callstack()
                 response = await callstack.on_message(message)
@@ -328,15 +330,18 @@ class PubSubStreamingPullTask(PollerTask):
         self.task = future
 
     def _consume(self, received_message: PubSubMessage) -> Any:
+        coroutine = self._aconsume(received_message)
+        return self.loop.create_task(coroutine)
+
+    async def _aconsume(self, received_message: PubSubMessage):
         mapper = MessageMapper()
         message = mapper.convert(received_message)
-        with _contextualize(subscriber=self.subscriber, message=message):
+        with _contextualize(self.subscriber.name, 
+                            self.subscriber.topic_name, 
+                            message):
             try:
                 callstack = self.subscriber._build_callstack()
-                coroutine = callstack.on_message(message)
-                task = asyncio.run_coroutine_threadsafe(coroutine, self.loop)
-                response = task.result()
-
+                response = await callstack.on_message(message)
                 future = received_message.ack_with_response()
                 self._wait_acknowledge_response(future=future)
                 logger.info("Message successfully processed.")
@@ -413,4 +418,3 @@ class PubSubStreamingPullTask(PollerTask):
         logger.info(f"The {self.subscriber.name} handler is turning off...")
         if self.task and self.task.running():
             self.task.cancel()
-            self.task.result()

@@ -1,16 +1,21 @@
 """A client for interacting with Google Cloud Pub/Sub."""
 
+import asyncio
 import os
 from collections.abc import Callable
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import suppress
 from datetime import timedelta
+import queue
 from typing import TYPE_CHECKING, Any
+import warnings
+from weakref import WeakKeyDictionary, WeakSet
 
 from google.api_core.exceptions import AlreadyExists, NotFound
 from google.cloud.pubsub import PublisherClient, SubscriberClient
 from google.cloud.pubsub_v1.subscriber.futures import StreamingPullFuture
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
+from google.cloud.pubsub_v1.subscriber.scheduler import Scheduler
 from google.cloud.pubsub_v1.types import FlowControl, PublisherOptions
 from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub import DeadLetterPolicy as DLTPolicy
@@ -311,7 +316,10 @@ class PubSubClient:
             raise
 
     def subscribe(
-        self, callback: Callable[[PubSubMessage], Any], subscription_name: str, max_messages: int
+        self, 
+        callback: Callable[[PubSubMessage], Any], 
+        subscription_name: str, 
+        max_messages: int,
     ) -> StreamingPullFuture:
         """Starts the subscription listening on backgroud given  a subscription.
 
@@ -327,6 +335,49 @@ class PubSubClient:
         future: StreamingPullFuture = self.subscriber_client.subscribe(
             callback=callback,
             subscription=subscription_path,
+            scheduler=AsyncScheduler(),
             flow_control=FlowControl(max_messages=max_messages),
         )
         return future
+    
+
+class AsyncScheduler(Scheduler):
+
+    def __init__(self):
+        self._queue: queue.Queue = queue.Queue()
+        self.loop = asyncio.get_running_loop()
+        self.tasks: WeakKeyDictionary[asyncio.Handle[Any], PubSubMessage] = WeakKeyDictionary()
+
+    @property
+    def queue(self):
+        """Queue: A thread-safe queue used for communication between callbacks
+        and the scheduling thread."""
+        return self._queue
+    
+    def schedule(self, callback: Callable, *args, **_) -> None:
+        """Schedule the callback to be called asynchronously in the event loop thread.
+
+        Args:
+            callback: The function to call.
+            args: Positional arguments passed to the callback.
+            kwargs: Key-word arguments passed to the callback.
+        """
+        try:
+            handle = self.loop.call_soon_threadsafe(callback, *args)
+            self.tasks[handle] = args[0]
+        except RuntimeError:
+            warnings.warn(
+                "Scheduling a callback after executor shutdown.",
+                category=RuntimeWarning,
+                stacklevel=2,
+            )
+    
+    def shutdown(
+        self, await_msg_callbacks: bool = False
+    ) -> list[PubSubMessage]:
+        dropped_messages = []
+        for handle, message in self.tasks.items():
+            if not handle.cancelled():
+                dropped_messages.append(message)
+                handle.cancel() 
+        return dropped_messages   
