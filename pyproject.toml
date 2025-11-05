@@ -6,7 +6,7 @@ build-backend = "uv_build"
 name = "fastpubsub"
 description = "A high performance FastAPI-based message consumer framework for PubSub"
 readme = "README.md"
-version = "0.4.0"
+version = "0.4.1"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
