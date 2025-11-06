@@ -104,9 +104,9 @@ class PubSubStreamingPullTask:
         self.subscriber: Subscriber = subscriber
         self.client = PubSubClient(self.subscriber.project_id)
         self.task: StreamingPullFuture | None = None
-        self.loop = asyncio.get_running_loop() 
+        self.loop = asyncio.get_running_loop()
 
-    async def start(self) -> None:
+    def start(self) -> None:
         """Starts the message polling loop."""
         logger.info(f"The {self.subscriber.name} handler is waiting for messages.")
         future = self.client.subscribe(

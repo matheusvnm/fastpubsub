@@ -1,7 +1,5 @@
 """Task manager for subscriber tasks."""
 
-import asyncio
-
 from fastpubsub.concurrency.tasks import PubSubStreamingPullTask
 from fastpubsub.pubsub.subscriber import Subscriber
 
@@ -13,17 +11,16 @@ class AsyncTaskManager:
         """Initializes the AsyncTaskManager."""
         self._tasks: list[PubSubStreamingPullTask] = []
 
-    async def create_task(self, subscriber: Subscriber) -> None:
+    def create_task(self, subscriber: Subscriber) -> None:
         """Registers a subscriber configuration to be managed."""
         self._tasks.append(PubSubStreamingPullTask(subscriber))
 
-    async def start(self) -> None:
+    def start(self) -> None:
         """Starts the subscribers tasks process using a task group."""
         for task in self._tasks:
-            coroutine = task.start()
-            asyncio.create_task(coroutine)
+            task.start()
 
-    async def alive(self) -> dict[str, bool]:
+    def alive(self) -> dict[str, bool]:
         """Checks if the tasks are alive.
 
         Returns:
@@ -34,7 +31,7 @@ class AsyncTaskManager:
             liveness[pull_task.subscriber.name] = pull_task.task_alive()
         return liveness
 
-    async def ready(self) -> dict[str, bool]:
+    def ready(self) -> dict[str, bool]:
         """Checks if the tasks are ready.
 
         Returns:
@@ -45,7 +42,7 @@ class AsyncTaskManager:
             readiness[task.subscriber.name] = task.task_ready()
         return readiness
 
-    async def shutdown(self) -> None:
+    def shutdown(self) -> None:
         """Terminates the manager process and all its children gracefully."""
         for task in self._tasks:
             task.shutdown()

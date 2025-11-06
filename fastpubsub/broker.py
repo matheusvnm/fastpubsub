@@ -173,17 +173,17 @@ class PubSubBroker:
         subscription_builder = PubSubSubscriptionBuilder(project_id=self.project_id)
         for subscriber in subscribers:
             await subscription_builder.build(subscriber)
-            await self.task_manager.create_task(subscriber)
+            self.task_manager.create_task(subscriber)
 
-        await self.task_manager.start()
+        self.task_manager.start()
 
-    async def alive(self) -> bool:
+    def alive(self) -> bool:
         """Checks if the message consumer tasks are alive.
 
         Returns:
             True if they are alive, False otherwise.
         """
-        subscribers = await self.task_manager.alive()
+        subscribers = self.task_manager.alive()
         if not subscribers:
             logger.info("The subscribers are not active. May be they are deactivated?")
             return False
@@ -195,13 +195,13 @@ class PubSubBroker:
 
         return True
 
-    async def ready(self) -> bool:
+    def ready(self) -> bool:
         """Checks if the message consumer tasks are ready.
 
         Returns:
             True if they are ready, False otherwise.
         """
-        subscribers = await self.task_manager.ready()
+        subscribers = self.task_manager.ready()
         if not subscribers:
             logger.info("The subscribers are not active. May be they are deactivated?")
             return False
@@ -246,6 +246,6 @@ class PubSubBroker:
 
         return selected_subscribers
 
-    async def shutdown(self) -> None:
+    def shutdown(self) -> None:
         """Shuts down the broker."""
-        await self.task_manager.shutdown()
+        self.task_manager.shutdown()

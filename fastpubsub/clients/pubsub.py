@@ -14,11 +14,11 @@ from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 from google.cloud.pubsub_v1.types import FlowControl, PublisherOptions
 from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub import DeadLetterPolicy as DLTPolicy
-from google.pubsub import ReceivedMessage, RetryPolicy, Subscription
+from google.pubsub import RetryPolicy, Subscription
 
 from fastpubsub import observability
 from fastpubsub.clients.scheduler import AsyncScheduler
-from fastpubsub.concurrency.utils import apply_async, apply_async_cancellable
+from fastpubsub.concurrency.utils import apply_async
 from fastpubsub.datastructures import DeadLetterPolicy, MessageDeliveryPolicy, MessageRetryPolicy
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.logger import logger
@@ -177,59 +177,6 @@ class PubSubClient:
                 "Please, setup your @subscriber with the 'autocreate=True' "
                 "option to automatically create them."
             ) from e
-
-    async def pull(self, subscription_name: str, max_messages: int) -> list[ReceivedMessage]:
-        """Pulls messages from a subscription.
-
-        Args:
-            subscription_name: The name of the subscription.
-            max_messages: The maximum number of messages to pull.
-
-        Returns:
-            A list of received messages.
-        """
-        subscription_path = SubscriberClient.subscription_path(self.project_id, subscription_name)
-        response = await apply_async_cancellable(
-            self.subscriber_client.pull,
-            subscription=subscription_path,
-            timeout=DEFAULT_PUBSUB_TIMEOUT,
-            max_messages=max_messages,
-        )
-
-        return list(response.received_messages)
-
-    async def ack(self, ack_ids: list[str], subscription_name: str) -> None:
-        """Acknowledges messages.
-
-        Args:
-            ack_ids: A list of acknowledgment IDs.
-            subscription_name: The name of the subscription.
-        """
-        subscription_path = SubscriberClient.subscription_path(self.project_id, subscription_name)
-
-        await apply_async(
-            self.subscriber_client.acknowledge,
-            subscription=subscription_path,
-            ack_ids=ack_ids,
-            timeout=DEFAULT_PUBSUB_TIMEOUT,
-        )
-
-    async def nack(self, ack_ids: list[str], subscription_name: str) -> None:
-        """Nacknowledges messages.
-
-        Args:
-            ack_ids: A list of acknowledgment IDs.
-            subscription_name: The name of the subscription.
-        """
-        subscription_path = SubscriberClient.subscription_path(self.project_id, subscription_name)
-
-        await apply_async(
-            self.subscriber_client.modify_ack_deadline,
-            subscription=subscription_path,
-            ack_ids=ack_ids,
-            ack_deadline_seconds=0,
-            timeout=DEFAULT_PUBSUB_TIMEOUT,
-        )
 
     async def create_topic(self, topic_name: str, create_default_subscription: bool = True) -> None:
         """Creates a topic.
