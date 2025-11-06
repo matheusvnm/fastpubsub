@@ -30,6 +30,7 @@ class TestSubscriptionBuilder:
         delivery_policy = MessageDeliveryPolicy(
             filter_expression="",
             ack_deadline_seconds=60,
+            enable_message_ordering=False,
             enable_exactly_once_delivery=False,
         )
 

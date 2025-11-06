@@ -16,11 +16,11 @@ class TestPubSubBroker:
     def async_task_manager(self) -> Generator[MagicMock]:
         with patch(f"{BROKER_MODULE_PATH}.AsyncTaskManager") as mock:
             instance = mock.return_value
-            instance.start = AsyncMock()
-            instance.shutdown = AsyncMock()
-            instance.alive = AsyncMock()
-            instance.ready = AsyncMock()
-            instance.create_task = AsyncMock()
+            instance.start = MagicMock()
+            instance.shutdown = MagicMock()
+            instance.alive = MagicMock()
+            instance.ready = MagicMock()
+            instance.create_task = MagicMock()
             yield instance
 
     @pytest.fixture
@@ -101,9 +101,8 @@ class TestPubSubBroker:
                     f"match the filtered ones {expected_subscribers} {found_subscribers}"
                 )
 
-    @pytest.mark.asyncio
-    async def test_shutdown_successfully(self, async_task_manager: MagicMock, broker: PubSubBroker):
-        await broker.shutdown()
+    def test_shutdown_successfully(self, async_task_manager: MagicMock, broker: PubSubBroker):
+        broker.shutdown()
         async_task_manager.shutdown.assert_called_once()
 
     @pytest.mark.asyncio
@@ -141,8 +140,7 @@ class TestPubSubBroker:
             ),
         ],
     )
-    @pytest.mark.asyncio
-    async def test_readiness_probe(
+    def test_readiness_probe(
         self,
         response: dict[str, bool],
         expected_readiness: bool,
@@ -152,7 +150,7 @@ class TestPubSubBroker:
         readiness_call = async_task_manager.ready
         readiness_call.return_value = response
 
-        response = await broker.ready()
+        response = broker.ready()
         assert response == expected_readiness
 
     @pytest.mark.parametrize(
@@ -172,8 +170,7 @@ class TestPubSubBroker:
             ),
         ],
     )
-    @pytest.mark.asyncio
-    async def test_liveness_probe(
+    def test_liveness_probe(
         self,
         response: dict[str, bool],
         expected_liveness: bool,
@@ -183,5 +180,5 @@ class TestPubSubBroker:
         liveness_call = async_task_manager.alive
         liveness_call.return_value = response
 
-        response = await broker.alive()
+        response = broker.alive()
         assert response == expected_liveness
