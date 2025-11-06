@@ -16,5 +16,4 @@ async def process_message(message: Message) -> None:
 
 @app.after_startup
 async def test_publish() -> None:
-    for _ in range(5):
-        await broker.publish("subscriber-topic", {"message": "streaming a message"})
+    await broker.publish("subscriber-topic", {"message": "streaming a message"})

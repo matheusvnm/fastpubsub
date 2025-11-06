@@ -329,6 +329,6 @@ class PubSubClient:
             subscription=subscription_path,
             scheduler=AsyncScheduler(),
             flow_control=FlowControl(max_messages=max_messages),
-            await_msg_callbacks=True,
+            await_callbacks_on_shutdown=True,
         )
         return future

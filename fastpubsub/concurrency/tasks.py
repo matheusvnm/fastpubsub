@@ -101,10 +101,10 @@ class PubSubStreamingPullTask:
         Args:
             subscriber: The subscriber to poll messages for.
         """
+        self.subscriber: Subscriber = subscriber
         self.client = PubSubClient(self.subscriber.project_id)
         self.task: StreamingPullFuture | None = None
-        self.loop = asyncio.get_running_loop()
-        self.subscriber: Subscriber = subscriber
+        self.loop = asyncio.get_running_loop() 
 
     async def start(self) -> None:
         """Starts the message polling loop."""
