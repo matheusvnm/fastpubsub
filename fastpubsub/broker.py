@@ -8,7 +8,6 @@ from pydantic import BaseModel, ConfigDict, validate_call
 
 from fastpubsub.builder import PubSubSubscriptionBuilder
 from fastpubsub.concurrency.manager import AsyncTaskManager
-from fastpubsub.datastructures import PullMethod
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.logger import logger
 from fastpubsub.middlewares.base import BaseMiddleware
@@ -56,12 +55,12 @@ class PubSubBroker:
         dead_letter_topic: str = "",
         max_delivery_attempts: int = 5,
         ack_deadline_seconds: int = 60,
+        enable_message_ordering: bool = False,
         enable_exactly_once_delivery: bool = False,
         min_backoff_delay_secs: int = 10,
         max_backoff_delay_secs: int = 600,
         max_messages: int = 100,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
-        pull_method: PullMethod = PullMethod.STREAMING_PULL,
     ) -> SubscribedCallable:
         """Decorator to register a function as a subscriber.
 
@@ -79,12 +78,12 @@ class PubSubBroker:
             max_delivery_attempts: The maximum number of delivery attempts
                 before sending the message to the dead-letter.
             ack_deadline_seconds: The acknowledgment deadline in seconds.
+            enable_message_ordering: Whether the message must be delivered in order.
             enable_exactly_once_delivery: Whether to enable exactly-once delivery.
             min_backoff_delay_secs: The minimum backoff delay in seconds.
             max_backoff_delay_secs: The maximum backoff delay in seconds.
-            max_messages: The maximum number of messages to fetch from the broker.          
+            max_messages: The maximum number of messages to fetch from the broker.
             middlewares: A sequence of middlewares to apply **only to the subscriber**.
-            pull_method: Defines the method in which the subscriber will get messages from PubSub.
 
         Returns:
             A decorator that registers the function as a subscriber.
@@ -99,12 +98,12 @@ class PubSubBroker:
             dead_letter_topic=dead_letter_topic,
             max_delivery_attempts=max_delivery_attempts,
             ack_deadline_seconds=ack_deadline_seconds,
+            enable_message_ordering=enable_message_ordering,
             enable_exactly_once_delivery=enable_exactly_once_delivery,
             min_backoff_delay_secs=min_backoff_delay_secs,
             max_backoff_delay_secs=max_backoff_delay_secs,
             max_messages=max_messages,
             middlewares=middlewares,
-            pull_method=pull_method,
         )
 
     @validate_call(config=ConfigDict(strict=True))

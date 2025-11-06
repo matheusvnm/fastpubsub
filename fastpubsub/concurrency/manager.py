@@ -2,9 +2,7 @@
 
 import asyncio
 
-from fastpubsub.concurrency.tasks import PollerTask, PubSubPullTask, PubSubStreamingPullTask
-from fastpubsub.datastructures import PullMethod
-from fastpubsub.exceptions import FastPubSubException
+from fastpubsub.concurrency.tasks import PubSubStreamingPullTask
 from fastpubsub.pubsub.subscriber import Subscriber
 
 
@@ -13,23 +11,17 @@ class AsyncTaskManager:
 
     def __init__(self) -> None:
         """Initializes the AsyncTaskManager."""
-        self._tasks: list[PollerTask] = []
+        self._tasks: list[PubSubStreamingPullTask] = []
 
     async def create_task(self, subscriber: Subscriber) -> None:
         """Registers a subscriber configuration to be managed."""
-        method = subscriber.delivery_policy.pull_method
-        match method:
-            case PullMethod.UNARY_PULL:
-                self._tasks.append(PubSubPullTask(subscriber))
-            case PullMethod.STREAMING_PULL:
-                self._tasks.append(PubSubStreamingPullTask(subscriber))
-            case _:
-                raise FastPubSubException(f"The pull method {method} is not supported.")
+        self._tasks.append(PubSubStreamingPullTask(subscriber))
 
     async def start(self) -> None:
         """Starts the subscribers tasks process using a task group."""
-        for pull_task in self._tasks:
-            asyncio.create_task(pull_task.start())
+        for task in self._tasks:
+            coroutine = task.start()
+            asyncio.create_task(coroutine)
 
     async def alive(self) -> dict[str, bool]:
         """Checks if the tasks are alive.
@@ -49,13 +41,13 @@ class AsyncTaskManager:
             A dictionary mapping task names to their readiness status.
         """
         readiness: dict[str, bool] = {}
-        for pull_task in self._tasks:
-            readiness[pull_task.subscriber.name] = pull_task.task_ready()
+        for task in self._tasks:
+            readiness[task.subscriber.name] = task.task_ready()
         return readiness
 
     async def shutdown(self) -> None:
         """Terminates the manager process and all its children gracefully."""
-        for pull_task in self._tasks:
-            pull_task.shutdown()
+        for task in self._tasks:
+            task.shutdown()
 
         self._tasks.clear()
