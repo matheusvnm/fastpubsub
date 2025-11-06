@@ -139,4 +139,3 @@ class TestPubSubClient:
                 retry_policy=subscriber.retry_policy,
                 delivery_policy=subscriber.delivery_policy,
             )
-

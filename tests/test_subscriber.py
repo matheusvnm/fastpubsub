@@ -50,7 +50,6 @@ def subscriber(broker: PubSubBroker) -> Subscriber:
 
 
 class TestSubscriber:
-
     def test_build_callstack(
         self,
         router_a: PubSubRouter,

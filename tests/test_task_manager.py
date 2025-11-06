@@ -4,8 +4,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from fastpubsub.concurrency.manager import AsyncTaskManager
-from fastpubsub.datastructures import Message
-from fastpubsub.exceptions import Drop, Retry
 
 PUBSUB_POLL_TASK_MODULE_PATH = "fastpubsub.concurrency.tasks"
 ASYNC_TASK_MANAGER_MODULE_PATH = "fastpubsub.concurrency.manager"
@@ -16,7 +14,6 @@ class TestAsyncTaskManager:
     def task(self) -> Generator[MagicMock]:
         with patch(f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubStreamingPullTask") as streaming_task:
             yield streaming_task
-
 
     def test_create_task(self, task: MagicMock):
         mock_subscriber = MagicMock()
@@ -29,7 +26,6 @@ class TestAsyncTaskManager:
         assert not task_manager._tasks
         assert created_task == task.return_value
         assert task.call_args[0][0] == mock_subscriber
-
 
     def test_alive_check(self, task: MagicMock):
         mock_subscriber = MagicMock()
@@ -45,7 +41,6 @@ class TestAsyncTaskManager:
         assert len(liveness) == 1
         assert mock_subscriber.name in liveness
         assert liveness[mock_subscriber.name]
-
 
     def test_ready_check(self, task: MagicMock):
         mock_subscriber = MagicMock()
@@ -81,6 +76,7 @@ class TestAsyncTaskManager:
 
         task.assert_called_once()
         task.return_value.start.assert_called_once()
+
 
 """
 class TestPubSubPollTask:
