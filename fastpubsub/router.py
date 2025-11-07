@@ -135,7 +135,7 @@ class PubSubRouter:
         enable_exactly_once_delivery: bool = False,
         min_backoff_delay_secs: int = 10,
         max_backoff_delay_secs: int = 600,
-        max_messages: int = 100,
+        max_messages: int = 1000,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ) -> SubscribedCallable:
         """Decorator to register a function as a subscriber.
