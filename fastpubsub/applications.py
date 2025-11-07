@@ -147,7 +147,7 @@ class Application:
             }
             with logger.contextualize(**context):
                 async with self._shutdown_hooks():
-                    await self.broker.shutdown()
+                    self.broker.shutdown()
 
         self.apm.shutdown()
 
@@ -219,7 +219,7 @@ class FastPubSub(FastAPI, Application):
                 await self._shutdown()
 
     async def _get_liveness(self, _: Request) -> JSONResponse:
-        alive = await self.broker.alive()
+        alive = self.broker.alive()
 
         status_code = HTTP_200_OK
         if not alive:
@@ -228,7 +228,7 @@ class FastPubSub(FastAPI, Application):
         return JSONResponse(content={"alive": alive}, status_code=status_code)
 
     async def _get_readiness(self, _: Request) -> JSONResponse:
-        ready = await self.broker.ready()
+        ready = self.broker.ready()
 
         status_code = HTTP_200_OK
         if not ready:

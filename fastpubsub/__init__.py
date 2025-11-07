@@ -3,9 +3,8 @@
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message, PushMessage
-from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.publisher import Publisher
-from fastpubsub.pubsub.subscriber import Subscriber
+from fastpubsub.middlewares import BaseMiddleware
+from fastpubsub.pubsub import Publisher, Subscriber
 from fastpubsub.router import PubSubRouter
 
 __all__ = [

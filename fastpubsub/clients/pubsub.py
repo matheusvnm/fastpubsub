@@ -1,35 +1,27 @@
 """A client for interacting with Google Cloud Pub/Sub."""
 
-import asyncio
 import os
 from collections.abc import Callable
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future
 from contextlib import suppress
 from datetime import timedelta
-import queue
-from typing import TYPE_CHECKING, Any
-import warnings
-from weakref import WeakKeyDictionary, WeakSet
+from typing import Any
 
 from google.api_core.exceptions import AlreadyExists, NotFound
 from google.cloud.pubsub import PublisherClient, SubscriberClient
 from google.cloud.pubsub_v1.subscriber.futures import StreamingPullFuture
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
-from google.cloud.pubsub_v1.subscriber.scheduler import Scheduler
 from google.cloud.pubsub_v1.types import FlowControl, PublisherOptions
 from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub import DeadLetterPolicy as DLTPolicy
-from google.pubsub import ReceivedMessage, RetryPolicy, Subscription
+from google.pubsub import RetryPolicy, Subscription
 
 from fastpubsub import observability
-from fastpubsub.concurrency.utils import apply_async, apply_async_cancellable
+from fastpubsub.clients.scheduler import AsyncScheduler
+from fastpubsub.concurrency.utils import apply_async
 from fastpubsub.datastructures import DeadLetterPolicy, MessageDeliveryPolicy, MessageRetryPolicy
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.logger import logger
-
-if TYPE_CHECKING:
-    pass
-
 
 DEFAULT_PUBSUB_TIMEOUT = 20.0
 DEFAULT_PULL_TIMEOUT = 120.0
@@ -186,59 +178,6 @@ class PubSubClient:
                 "option to automatically create them."
             ) from e
 
-    async def pull(self, subscription_name: str, max_messages: int) -> list[ReceivedMessage]:
-        """Pulls messages from a subscription.
-
-        Args:
-            subscription_name: The name of the subscription.
-            max_messages: The maximum number of messages to pull.
-
-        Returns:
-            A list of received messages.
-        """
-        subscription_path = SubscriberClient.subscription_path(self.project_id, subscription_name)
-        response = await apply_async_cancellable(
-            self.subscriber_client.pull,
-            subscription=subscription_path,
-            timeout=DEFAULT_PUBSUB_TIMEOUT,
-            max_messages=max_messages,
-        )
-
-        return list(response.received_messages)
-
-    async def ack(self, ack_ids: list[str], subscription_name: str) -> None:
-        """Acknowledges messages.
-
-        Args:
-            ack_ids: A list of acknowledgment IDs.
-            subscription_name: The name of the subscription.
-        """
-        subscription_path = SubscriberClient.subscription_path(self.project_id, subscription_name)
-
-        await apply_async(
-            self.subscriber_client.acknowledge,
-            subscription=subscription_path,
-            ack_ids=ack_ids,
-            timeout=DEFAULT_PUBSUB_TIMEOUT,
-        )
-
-    async def nack(self, ack_ids: list[str], subscription_name: str) -> None:
-        """Nacknowledges messages.
-
-        Args:
-            ack_ids: A list of acknowledgment IDs.
-            subscription_name: The name of the subscription.
-        """
-        subscription_path = SubscriberClient.subscription_path(self.project_id, subscription_name)
-
-        await apply_async(
-            self.subscriber_client.modify_ack_deadline,
-            subscription=subscription_path,
-            ack_ids=ack_ids,
-            ack_deadline_seconds=0,
-            timeout=DEFAULT_PUBSUB_TIMEOUT,
-        )
-
     async def create_topic(self, topic_name: str, create_default_subscription: bool = True) -> None:
         """Creates a topic.
 
@@ -316,9 +255,9 @@ class PubSubClient:
             raise
 
     def subscribe(
-        self, 
-        callback: Callable[[PubSubMessage], Any], 
-        subscription_name: str, 
+        self,
+        callback: Callable[[PubSubMessage], Any],
+        subscription_name: str,
         max_messages: int,
     ) -> StreamingPullFuture:
         """Starts the subscription listening on backgroud given  a subscription.
@@ -337,47 +276,6 @@ class PubSubClient:
             subscription=subscription_path,
             scheduler=AsyncScheduler(),
             flow_control=FlowControl(max_messages=max_messages),
+            await_callbacks_on_shutdown=True,
         )
         return future
-    
-
-class AsyncScheduler(Scheduler):
-
-    def __init__(self):
-        self._queue: queue.Queue = queue.Queue()
-        self.loop = asyncio.get_running_loop()
-        self.tasks: WeakKeyDictionary[asyncio.Handle[Any], PubSubMessage] = WeakKeyDictionary()
-
-    @property
-    def queue(self):
-        """Queue: A thread-safe queue used for communication between callbacks
-        and the scheduling thread."""
-        return self._queue
-    
-    def schedule(self, callback: Callable, *args, **_) -> None:
-        """Schedule the callback to be called asynchronously in the event loop thread.
-
-        Args:
-            callback: The function to call.
-            args: Positional arguments passed to the callback.
-            kwargs: Key-word arguments passed to the callback.
-        """
-        try:
-            handle = self.loop.call_soon_threadsafe(callback, *args)
-            self.tasks[handle] = args[0]
-        except RuntimeError:
-            warnings.warn(
-                "Scheduling a callback after executor shutdown.",
-                category=RuntimeWarning,
-                stacklevel=2,
-            )
-    
-    def shutdown(
-        self, await_msg_callbacks: bool = False
-    ) -> list[PubSubMessage]:
-        dropped_messages = []
-        for handle, message in self.tasks.items():
-            if not handle.cancelled():
-                dropped_messages.append(message)
-                handle.cancel() 
-        return dropped_messages   
