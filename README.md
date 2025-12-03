@@ -28,7 +28,7 @@ The key features are:
 - **Typed**: Provides a great editor support and less time reading docs.
 - **Robust**: Get production-ready code with sensible default values helping you avoid common pitfalls.
 - **Asynchronous:** It is built on top of asyncio, which allows it to run on fully asynchronous code.
-- **Batteries Included**: Provides its own CLI and other widely used tools such as [**pydantic**](https://docs.pydantic.dev/) for data validation, observability integrations and log contextualization.
+- **Batteries Included**: Provides its own CLI and other widely used tools such as [**pydantic**](https://docs.pydantic.dev/) for data validation and log contextualization.
 
 
 

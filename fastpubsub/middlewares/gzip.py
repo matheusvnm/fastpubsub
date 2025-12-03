@@ -19,13 +19,17 @@ class GZipMiddleware(BaseMiddleware):
         """
         if message.attributes and message.attributes.get("Content-Encoding") == "gzip":
             decompressed_data = gzip.decompress(data=message.data)
-            message = Message(
+            new_message = Message(
                 id=message.id,
                 size=message.size,
                 data=decompressed_data,
                 attributes=message.attributes,
                 delivery_attempt=message.delivery_attempt,
+                project_id=message.project_id,
+                topic_name=message.topic_name,
+                subscriber_name=message.subscriber_name,
             )
+            return await super().on_message(new_message)
 
         return await super().on_message(message)
 

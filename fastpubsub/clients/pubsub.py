@@ -16,7 +16,6 @@ from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub import DeadLetterPolicy as DLTPolicy
 from google.pubsub import RetryPolicy, Subscription
 
-from fastpubsub import observability
 from fastpubsub.clients.scheduler import AsyncScheduler
 from fastpubsub.concurrency.utils import apply_async
 from fastpubsub.datastructures import DeadLetterPolicy, MessageDeliveryPolicy, MessageRetryPolicy
@@ -232,10 +231,6 @@ class PubSubClient:
         topic_path = PublisherClient.topic_path(self.project_id, topic_name)
         new_attributes = {} if attributes is None else attributes
 
-        apm = observability.get_apm_provider()
-        contextualized_attributes = apm.get_distributed_trace_context()
-        contextualized_attributes.update(new_attributes)
-
         try:
             publisher_options = PublisherOptions(enable_message_ordering=bool(ordering_key))
             publisher = PublisherClient(publisher_options=publisher_options)
@@ -244,7 +239,7 @@ class PubSubClient:
                 data=data,
                 ordering_key=ordering_key,
                 timeout=DEFAULT_PUSH_TIMEOUT,
-                **contextualized_attributes,
+                **new_attributes,
             )
 
             message_id = await apply_async(response.result)

@@ -14,6 +14,9 @@ class Message:
     data: bytes
     attributes: dict[str, str]
     delivery_attempt: int
+    project_id: str
+    topic_name: str
+    subscriber_name: str
 
 
 @dataclass(frozen=True)

@@ -32,7 +32,6 @@ class AppConfiguration:
     log_level: int
     log_serialize: bool
     log_colorize: bool
-    apm_provider: str
     subscribers: set[str] = field(default_factory=set)
 
 
@@ -71,7 +70,6 @@ class ApplicationRunner:
         )
         os.environ["FASTPUBSUB_ENABLE_LOG_COLORS"] = str(1) if app_config.log_colorize else str(0)
         os.environ["FASTPUBSUB_SUBSCRIBERS"] = ",".join(app_config.subscribers)
-        os.environ["FASTPUBSUB_APM_PROVIDER"] = app_config.apm_provider
 
     def _validate_application(self, path: str) -> None:
         posix_path = self._translate_pypath_to_posix(pypath=path)
