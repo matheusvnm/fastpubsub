@@ -41,6 +41,9 @@ class TestGZipMiddleware:
             data=mock_middleware.published_message,
             attributes=mock_middleware.published_attributes,
             delivery_attempt=0,
+            project_id="abc",
+            topic_name="bca",
+            subscriber_name="onesub",
         )
         await middleware.on_message(message=message)
         assert mock_middleware.received_message.data == data

@@ -57,13 +57,6 @@ def get_log_level(level: LogLevels | str | int) -> int:
     )
 
 
-class APMProviders(StrEnum):
-    """A class to represent the possible APM providers."""
-
-    NOOP = "NOOP"
-    NEWRELIC = "NEWRELIC"
-
-
 def ensure_pubsub_credentials() -> None:
     """Ensures that the Pub/Sub credentials are set."""
     credentials = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")

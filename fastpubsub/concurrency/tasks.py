@@ -1,26 +1,9 @@
 """Subscriber task for polling messages."""
 
 import asyncio
-from collections.abc import Generator
 from concurrent.futures import Future
-from contextlib import contextmanager
 from typing import Any
 
-from google.api_core.exceptions import (
-    Aborted,
-    Cancelled,
-    DeadlineExceeded,
-    GatewayTimeout,
-    InternalServerError,
-    InvalidArgument,
-    NotFound,
-    PermissionDenied,
-    ResourceExhausted,
-    ServiceUnavailable,
-    Unauthenticated,
-    Unauthorized,
-    Unknown,
-)
 from google.cloud.pubsub_v1.subscriber.exceptions import AcknowledgeError, AcknowledgeStatus
 from google.cloud.pubsub_v1.subscriber.futures import StreamingPullFuture
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
@@ -29,46 +12,19 @@ from fastpubsub.clients.pubsub import PubSubClient
 from fastpubsub.datastructures import Message
 from fastpubsub.exceptions import Drop, Retry
 from fastpubsub.logger import logger
-from fastpubsub.observability import get_apm_provider
 from fastpubsub.pubsub.subscriber import Subscriber
-
-RETRYABLE_GCP_EXCEPTIONS = (
-    Aborted,
-    DeadlineExceeded,
-    GatewayTimeout,
-    InternalServerError,
-    ResourceExhausted,
-    ServiceUnavailable,
-    Unknown,
-)
-
-FATAL_GCP_EXCEPTIONS = (
-    Cancelled,
-    InvalidArgument,
-    NotFound,
-    PermissionDenied,
-    Unauthenticated,
-    Unauthorized,
-)
-
-
-@contextmanager
-def _contextualize(name: str, topic_name: str, message: Message) -> Generator[None]:
-    apm = get_apm_provider()
-    with apm.start_trace(name=name, context=message.attributes):
-        context = {
-            "name": name,
-            "span_id": apm.get_span_id(),
-            "trace_id": apm.get_trace_id(),
-            "message_id": message.id,
-            "topic_name": topic_name,
-        }
-        with logger.contextualize(**context):
-            yield
 
 
 class MessageMapper:
     """A mapper used to deserialize a Pub/Sub message into a fastpubsub.Message class."""
+
+    def __init__(self, subscriber: Subscriber):
+        """Initializes the MessageMapper.
+
+        Args:
+            subscriber: The subscriber to poll messages for.
+        """
+        self._subscriber = subscriber
 
     def convert(self, received_message: PubSubMessage) -> Message:
         """Converts a Pub/Sub message into a fastpubsub.Message.
@@ -89,6 +45,9 @@ class MessageMapper:
             size=received_message.size,
             attributes=dict(received_message.attributes),
             delivery_attempt=delivery_attempt,
+            project_id=self._subscriber.project_id,
+            topic_name=self._subscriber.topic_name,
+            subscriber_name=self._subscriber.name,
         )
 
 
@@ -102,6 +61,7 @@ class PubSubStreamingPullTask:
             subscriber: The subscriber to poll messages for.
         """
         self.subscriber: Subscriber = subscriber
+        self.mapper = MessageMapper(self.subscriber)
         self.client = PubSubClient(self.subscriber.project_id)
         self.task: StreamingPullFuture | None = None
         self.loop = asyncio.get_running_loop()
@@ -122,9 +82,12 @@ class PubSubStreamingPullTask:
         return self.loop.create_task(coroutine)
 
     async def _consume(self, received_message: PubSubMessage) -> Any:
-        mapper = MessageMapper()
-        message = mapper.convert(received_message)
-        with _contextualize(self.subscriber.name, self.subscriber.topic_name, message):
+        message = self.mapper.convert(received_message)
+        with logger.contextualize(
+            message_id=message.id,
+            topic_name=message.topic_name,
+            subscriber_name=message.subscriber_name,
+        ):
             try:
                 callstack = self.subscriber._build_callstack()
                 response = await callstack.on_message(message)

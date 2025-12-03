@@ -40,7 +40,7 @@ abstract: >-
   fully asynchronous code.
 
   - Provides its own CLI and other widely used tools such as
-  pydantic for data validation, observability integrations
+  pydantic for data validation integrations
   and log contextualization.
 keywords:
   - python

@@ -12,8 +12,6 @@ from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
 
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.concurrency.utils import ensure_async_callable_function
-from fastpubsub.logger import logger
-from fastpubsub.observability import get_apm_provider
 from fastpubsub.types import NoArgAsyncCallable
 
 
@@ -38,7 +36,6 @@ class Application:
             after_shutdown: A sequence of callables to run after shutdown.
         """
         self.broker = broker
-        self.apm = get_apm_provider()
 
         self._on_startup: list[NoArgAsyncCallable] = []
         if on_startup and isinstance(on_startup, Sequence):
@@ -116,18 +113,9 @@ class Application:
         self._after_shutdown.append(func)
         return func
 
-    # V1: Create a contextualizer
     async def _start(self) -> None:
-        self.apm.start()
-        with self.apm.start_trace(name="start"):
-            context = {
-                "span_id": self.apm.get_span_id(),
-                "trace_id": self.apm.get_trace_id(),
-            }
-
-            with logger.contextualize(**context):
-                async with self._start_hooks():
-                    await self.broker.start()
+        async with self._start_hooks():
+            await self.broker.start()
 
     @asynccontextmanager
     async def _start_hooks(self) -> AsyncIterator[None]:
@@ -140,16 +128,8 @@ class Application:
             await func()
 
     async def _shutdown(self) -> None:
-        with self.apm.start_trace(name="shutdown"):
-            context = {
-                "span_id": self.apm.get_span_id(),
-                "trace_id": self.apm.get_trace_id(),
-            }
-            with logger.contextualize(**context):
-                async with self._shutdown_hooks():
-                    self.broker.shutdown()
-
-        self.apm.shutdown()
+        async with self._shutdown_hooks():
+            self.broker.shutdown()
 
     @asynccontextmanager
     async def _shutdown_hooks(self) -> AsyncIterator[None]:

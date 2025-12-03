@@ -1,5 +1,4 @@
 import json
-import os
 from contextlib import asynccontextmanager
 from types import FunctionType
 from unittest.mock import AsyncMock, MagicMock
@@ -13,10 +12,9 @@ from fastpubsub.broker import PubSubBroker
 
 @pytest.fixture
 def mock_broker() -> MagicMock:
-    os.environ["FASTPUBSUB_APM_PROVIDER"] = "noop"
     broker = MagicMock(spec=PubSubBroker)
     broker.start = AsyncMock()
-    broker.shutdown = AsyncMock()
+    broker.shutdown = MagicMock()
     return broker
 
 
