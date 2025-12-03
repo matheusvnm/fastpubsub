@@ -76,7 +76,6 @@ class TestCLI:
             log_level=10,  # debug
             log_serialize=False,
             log_colorize=False,
-            apm_provider="NOOP",
             subscribers={"subscriber1", "subscriber2"},
         )
         expected_server_config = ServerConfiguration(
@@ -101,7 +100,6 @@ class TestApplicationRunner:
             log_level=10,
             log_serialize=False,
             log_colorize=True,
-            apm_provider="NOOP",
             subscribers=set(),
         )
         server_config = ServerConfiguration(

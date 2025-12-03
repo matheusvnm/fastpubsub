@@ -5,7 +5,6 @@ import typer
 
 from fastpubsub.__about__ import __version__
 from fastpubsub.cli.options import (
-    AppApmProvider,
     AppArgument,
     AppHostOption,
     AppHotReloadOption,
@@ -101,7 +100,6 @@ def run(
     log_serialize: AppLogSerializeOption = False,
     log_colorize: AppLogColorizeOption = False,
     server_log_level: AppServerLogLevelOption = LogLevels.WARNING,
-    apm_provider: AppApmProvider = AppApmProvider.NOOP,
 ) -> None:
     """Runs a FastPubSub application.
 
@@ -116,7 +114,6 @@ def run(
         log_serialize: Whether to serialize logs.
         log_colorize: Whether to colorize logs.
         server_log_level: The server (uvicorn) log level.
-        apm_provider: The APM provider to use.
     """
     ensure_pubsub_credentials()
     translated_log_level = get_log_level(log_level)
@@ -125,7 +122,6 @@ def run(
         log_level=translated_log_level,
         log_serialize=log_serialize,
         log_colorize=log_colorize,
-        apm_provider=apm_provider,
         subscribers=set(subscribers) if subscribers else set(),
     )
 

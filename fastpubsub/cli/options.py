@@ -4,7 +4,7 @@ from typing import Annotated
 
 import typer
 
-from fastpubsub.cli.utils import APMProviders, LogLevels
+from fastpubsub.cli.utils import LogLevels
 
 CLIContext = typer.Context
 
@@ -116,18 +116,6 @@ AppLogColorizeOption = Annotated[
     ),
 ]
 
-
-AppApmProvider = Annotated[
-    APMProviders,
-    typer.Option(
-        "--apm",
-        "--apm-provider",
-        case_sensitive=False,
-        help="The APM provider used in the project.",
-        show_default=True,
-        envvar="FASTPUBSUB_APM_PROVIDER",
-    ),
-]
 
 AppVersionOption = Annotated[
     bool,

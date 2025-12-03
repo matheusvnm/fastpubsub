@@ -48,14 +48,9 @@ classifiers = [
 ]
 
 
-
 [project.scripts]
 fastpubsub = "fastpubsub.cli.main:app"
 
-[project.optional-dependencies]
-newrelic = [
-    "newrelic[infinite-tracing]>=10.15.0",
-]
 
 [dependency-groups]
 dev = [
