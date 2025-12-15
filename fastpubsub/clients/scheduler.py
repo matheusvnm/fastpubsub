@@ -5,7 +5,7 @@ import functools
 import queue
 import warnings
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 from weakref import WeakKeyDictionary
 
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
@@ -43,8 +43,7 @@ class AsyncScheduler(Scheduler):  # type: ignore[misc]
             wrapped_callback = functools.partial(callback, *args, **kwargs)
             handle = self._loop.call_soon_threadsafe(wrapped_callback)
 
-            message = args[0]
-            self._tasks[handle] = message
+            self._tasks[handle] = cast(PubSubMessage, args[0])
         except RuntimeError:
             warnings.warn(
                 "Scheduling a callback after executor shutdown.",
