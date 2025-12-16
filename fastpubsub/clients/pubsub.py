@@ -1,5 +1,6 @@
 """A client for interacting with Google Cloud Pub/Sub."""
 
+import logging
 import os
 from collections.abc import Callable
 from concurrent.futures import Future
@@ -20,11 +21,12 @@ from fastpubsub.clients.scheduler import AsyncScheduler
 from fastpubsub.concurrency.utils import apply_async
 from fastpubsub.datastructures import DeadLetterPolicy, MessageDeliveryPolicy, MessageRetryPolicy
 from fastpubsub.exceptions import FastPubSubException
-from fastpubsub.logger import logger
 
 DEFAULT_PUBSUB_TIMEOUT = 20.0
 DEFAULT_PULL_TIMEOUT = 120.0
 DEFAULT_PUSH_TIMEOUT = 60.0
+
+logger = logging.getLogger(__name__)
 
 
 class PubSubClient:

@@ -1,5 +1,6 @@
 """Broker implementation."""
 
+import logging
 import os
 from collections.abc import Sequence
 from typing import Any
@@ -9,12 +10,13 @@ from pydantic import BaseModel, ConfigDict, validate_call
 from fastpubsub.builder import PubSubSubscriptionBuilder
 from fastpubsub.concurrency.manager import AsyncTaskManager
 from fastpubsub.exceptions import FastPubSubException
-from fastpubsub.logger import logger
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.pubsub.subscriber import Subscriber
 from fastpubsub.router import PubSubRouter
 from fastpubsub.types import SubscribedCallable
+
+logger = logging.getLogger(__name__)
 
 
 class PubSubBroker:

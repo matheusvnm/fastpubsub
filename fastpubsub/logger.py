@@ -2,12 +2,16 @@
 
 import json
 import logging
+import logging.config
 import os
 import sys
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from contextvars import ContextVar, Token
-from typing import Any, Self, cast
+from copy import copy
+from typing import Any, Literal, Self, cast
+
+import click
 
 
 class ContextStore:
@@ -88,8 +92,30 @@ class FastPubSubLogger(logging.Logger):
             _context_store.reset(token)
 
 
-class TextFormatter(logging.Formatter):
-    """Formats logs as a human-readable string."""
+class DefaultFormatter(logging.Formatter):
+    """Default formatter for a human-readable string."""
+
+    level_name_colors = {
+        logging.DEBUG: lambda level_name: click.style(str(level_name), fg="cyan"),
+        logging.INFO: lambda level_name: click.style(str(level_name), fg="green"),
+        logging.WARNING: lambda level_name: click.style(str(level_name), fg="yellow"),
+        logging.ERROR: lambda level_name: click.style(str(level_name), fg="red"),
+        logging.CRITICAL: lambda level_name: click.style(str(level_name), fg="bright_red"),
+    }
+
+    def __init__(
+        self,
+        fmt: str | None = None,
+        datefmt: str | None = None,
+        style: Literal["%", "{", "$"] = "%",
+        use_colors: bool | None = None,
+    ) -> None:
+        """Initialized the default human-readable formatter."""
+        self.use_colors = sys.stdout.isatty()
+        if use_colors in (True, False):
+            self.use_colors = use_colors
+
+        super().__init__(fmt=fmt, datefmt=datefmt, style=style)
 
     def format(self, record: logging.LogRecord) -> str:
         """Formats a log record.
@@ -100,14 +126,28 @@ class TextFormatter(logging.Formatter):
         Returns:
             The formatted log record.
         """
-        log_message = super().format(record)
+        recordcopy = copy(record)
+        levelname = recordcopy.levelname
+        separator = " " * (8 - len(recordcopy.levelname))
+        if self.use_colors:
+            levelname = self._get_colored_levelname(recordcopy.levelno, recordcopy.levelname)
+            if "color_message" in recordcopy.__dict__:
+                recordcopy.msg = recordcopy.__dict__["color_message"]
+                recordcopy.__dict__["message"] = recordcopy.getMessage()
 
-        if hasattr(record, "context") and record.context:
-            context_text = " ".join(f"{k}={v}" for k, v in record.context.items() if v)
-            if context_text:
-                log_message += f" | {context_text}"
+        recordcopy.__dict__["levelprefix"] = levelname + separator
+        formatted_message = super().format(recordcopy)
 
-        return log_message
+        context = getattr(recordcopy, "context", {})
+        for k, v in context.items():
+            formatted_message += f"| {k}={v} "
+        return formatted_message
+
+    def _get_colored_levelname(self, level_num: int, level_name: str) -> str:
+        get_colored_name: Callable[[str], str] = self.level_name_colors.get(
+            level_num, lambda x: str(x)
+        )
+        return get_colored_name(level_name)
 
 
 class JsonFormatter(logging.Formatter):
@@ -141,39 +181,57 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(log_object, indent=None, separators=(",", ":"))
 
 
-def setup_logger() -> FastPubSubLogger:
+def configure() -> FastPubSubLogger:
     """Enables and configures the FastPubSub logger."""
-    # V2: Add colorized logs
-    log_level = int(os.getenv("FASTPUBSUB_LOG_LEVEL", logging.INFO))
-    log_serialize = bool(int(os.getenv("FASTPUBSUB_ENABLE_LOG_SERIALIZE", 0)))
+    LOGGING_LEVEL = os.getenv("FASTPUBSUB_LOG_LEVEL", "INFO")
+    LOGGING_COLORIZE = bool(int(os.getenv("FASTPUBSUB_ENABLE_LOG_COLORS", 0)))
+    LOGGING_SERIALIZE = bool(int(os.getenv("FASTPUBSUB_ENABLE_LOG_SERIALIZE", 0)))
+
+    LOGGING_CONFIG: dict[str, Any] = {
+        "version": 1,
+        "formatters": {
+            "fastpubsub_default": {
+                "()": DefaultFormatter,
+                "fmt": "%(asctime)s | %(levelprefix)s | "
+                "%(process)d:%(thread)d | "
+                "%(module)s:%(funcName)s:%(lineno)d | "
+                "%(message)s ",
+                "use_colors": LOGGING_COLORIZE,
+            },
+            "fastpubsub_json": {
+                "()": JsonFormatter,
+            },
+        },
+        "filters": {
+            "fastpubsub_filter": {
+                "()": ContextFilter,
+            },
+        },
+        "handlers": {
+            "fastpubsub_default": {
+                "formatter": "fastpubsub_json" if LOGGING_SERIALIZE else "fastpubsub_default",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stderr",
+                "filters": ["fastpubsub_filter"],
+            },
+        },
+        "loggers": {
+            "fastpubsub": {
+                "handlers": ["fastpubsub_default"],
+                "level": LOGGING_LEVEL,
+                "propagate": False,
+            },
+        },
+        "disable_existing_loggers": False,
+    }
 
     logging.setLoggerClass(FastPubSubLogger)
     logger = logging.getLogger("fastpubsub")
-    logging.setLoggerClass(logging.Logger)
-
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    logger.setLevel(log_level)
-    logger.propagate = False
-
-    handler = logging.StreamHandler(sys.stdout)
-    handler.addFilter(ContextFilter())
-
-    formatter: logging.Formatter = JsonFormatter()
-    if not log_serialize:
-        fmt = (
-            "%(asctime)s | %(levelname)-8s "
-            "| %(process)d:%(thread)d "
-            "| %(module)s:%(funcName)s:%(lineno)d "
-            "| %(message)s"
-        )
-        formatter = TextFormatter(fmt)
-
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-    return cast(FastPubSubLogger, logger)
+    logging.config.dictConfig(LOGGING_CONFIG)
+    return cast(FastPubSubLogger, logging.getLogger(__name__))
 
 
-logger: FastPubSubLogger = setup_logger()
+logger: FastPubSubLogger = configure()
