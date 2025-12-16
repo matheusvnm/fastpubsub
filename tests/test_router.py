@@ -17,7 +17,7 @@ class TestPubSubRouter:
         router = PubSubRouter(prefix="api")
 
         @router.subscriber(alias="test.alias", topic_name="topic", subscription_name="sub")
-        async def handler():
+        async def handler(msg):
             pass
 
         subscribers = router._get_subscribers()
@@ -40,11 +40,11 @@ class TestPubSubRouter:
         router = PubSubRouter()
 
         @router.subscriber(alias="sub1", topic_name="topic1", subscription_name="sub1")
-        async def handler1():
+        async def handler1(msg):
             pass
 
         @router.subscriber(alias="sub2", topic_name="topic2", subscription_name="sub2")
-        async def handler2():
+        async def handler2(msg):
             pass
 
         subscribers = router._get_subscribers()
@@ -57,8 +57,38 @@ class TestPubSubRouter:
         sub_router1 = PubSubRouter(prefix="same")
         sub_router2 = PubSubRouter(prefix="same")
         router.include_router(sub_router1)
+        router.include_router(sub_router2)
+
+        @sub_router1.subscriber(alias="sub1", topic_name="topic1", subscription_name="sub1")
+        async def handler1(msg):
+            pass
+
+        @sub_router2.subscriber(alias="sub1", topic_name="topic2", subscription_name="sub2")
+        async def handler2(msg):
+            pass
+
         with pytest.raises(FastPubSubException):
-            router.include_router(sub_router2)
+            router._get_subscribers()
+
+    def test_allow_duplicate_prefix_on_different_aliases(self):
+        router = PubSubRouter()
+        sub_router1 = PubSubRouter(prefix="same")
+        sub_router2 = PubSubRouter(prefix="same")
+        router.include_router(sub_router1)
+        router.include_router(sub_router2)
+
+        @sub_router1.subscriber(alias="alias_a", topic_name="topic1", subscription_name="sub1")
+        async def handler1(msg):
+            pass
+
+        @sub_router2.subscriber(alias="alias_b", topic_name="topic2", subscription_name="sub2")
+        async def handler2(msg):
+            pass
+
+        subscribers = router._get_subscribers()
+        assert len(subscribers) == 2
+        assert "same.alias_a" in subscribers
+        assert "same.alias_b" in subscribers
 
     def test_nested_router_prefixing(self):
         level3_router = PubSubRouter(prefix="level3")
@@ -83,7 +113,7 @@ class TestPubSubRouter:
         level2_router = PubSubRouter(prefix="level2")
 
         @level2_router.subscriber(alias="alias", topic_name="topic", subscription_name="sub")
-        async def handler():
+        async def handler(msg):
             pass
 
         level1_router = PubSubRouter(prefix="level1", routers=(level2_router,))

@@ -90,3 +90,11 @@ class Subscriber:
     def _add_prefix(self, new_prefix: str) -> None:
         subscription_name = self.subscription_name.split(".")[-1]
         self.subscription_name = f"{new_prefix}.{subscription_name}"
+
+    def __str__(self) -> str:
+        """Returns a formatted str representation for the object."""
+        return (
+            f"Subcriber(name={self.name}, "
+            f"topic_name={self.topic_name}, "
+            f"subscription_name={self.subscription_name})"
+        )
