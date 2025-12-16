@@ -19,7 +19,7 @@ from fastpubsub.cli.options import (
     CLIContext,
 )
 from fastpubsub.cli.runner import AppConfiguration, ApplicationRunner, ServerConfiguration
-from fastpubsub.cli.utils import LogLevels, ensure_pubsub_credentials, get_log_level
+from fastpubsub.cli.utils import LogLevels, ensure_pubsub_credentials
 
 app = typer.Typer(
     name="fastpubsub",
@@ -116,26 +116,26 @@ def run(
         server_log_level: The server (uvicorn) log level.
     """
     ensure_pubsub_credentials()
-    translated_log_level = get_log_level(log_level)
     app_configuration = AppConfiguration(
         app=app,
-        log_level=translated_log_level,
+        log_level=log_level.upper(),
         log_serialize=log_serialize,
         log_colorize=log_colorize,
         subscribers=set(subscribers) if subscribers else set(),
     )
 
-    translated_server_log_level = get_log_level(server_log_level)
     server_configuration = ServerConfiguration(
         host=host,
         port=port,
         workers=workers,
         reload=reload,
-        log_level=translated_server_log_level,
+        log_level=server_log_level.lower(),
     )
 
-    application_runner = ApplicationRunner()
-    application_runner.run(app_configuration, server_configuration)
+    application_runner = ApplicationRunner(app_configuration, server_configuration)
+    application_runner.setup()
+    application_runner.validate()
+    application_runner.run()
 
 
 @app.command(name="help")

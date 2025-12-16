@@ -10,7 +10,6 @@ from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.cli.main import app
 from fastpubsub.cli.runner import AppConfiguration, ApplicationRunner, ServerConfiguration
-from fastpubsub.cli.utils import LogLevels, get_log_level
 from fastpubsub.exceptions import FastPubSubCLIException
 
 runner = CliRunner()
@@ -73,7 +72,7 @@ class TestCLI:
 
         expected_app_config = AppConfiguration(
             app="some_module:app",
-            log_level=10,  # debug
+            log_level="DEBUG",
             log_serialize=False,
             log_colorize=False,
             subscribers={"subscriber1", "subscriber2"},
@@ -83,21 +82,20 @@ class TestCLI:
             port=8001,
             workers=2,
             reload=True,
-            log_level=40,  # error
+            log_level="error",
         )
-
-        mock_runner_instance.run.assert_called_once_with(
-            expected_app_config, expected_server_config
-        )
+        mock_runner_class.assert_called_once_with(expected_app_config, expected_server_config)
+        mock_runner_instance.setup.assert_called_once()
+        mock_runner_instance.validate.assert_called_once()
+        mock_runner_instance.run.assert_called_once()
 
 
 class TestApplicationRunner:
     @patch("uvicorn.run")
-    @patch("fastpubsub.cli.runner.ApplicationRunner._validate_application")
-    def test_run(self, mock_validate: MagicMock, mock_uvicorn_run: MagicMock):
+    def test_run(self, mock_uvicorn_run: MagicMock):
         app_config = AppConfiguration(
             app="my_app:app",
-            log_level=10,
+            log_level="DEBUG",
             log_serialize=False,
             log_colorize=True,
             subscribers=set(),
@@ -107,13 +105,11 @@ class TestApplicationRunner:
             port=8000,
             workers=1,
             reload=False,
-            log_level=20,
+            log_level="INFO",
         )
 
-        runner_instance = ApplicationRunner()
-        runner_instance.run(app_config, server_config)
-
-        mock_validate.assert_called_once_with(app_config.app)
+        runner_instance = ApplicationRunner(app_config=app_config, server_config=server_config)
+        runner_instance.run()
         mock_uvicorn_run.assert_called_once_with(
             app_config.app, lifespan="on", **asdict(server_config)
         )
@@ -124,10 +120,14 @@ class TestApplicationRunner:
     def test_validate_application_invalid_app_instance(
         self, mock_import: MagicMock, mock_translate: MagicMock, mock_resolve: MagicMock
     ):
-        mock_import.return_value = object()
-        runner_instance = ApplicationRunner()
+        mock_import.return_value = object()  # Not a FastPubSub instance
+        app_config = MagicMock(spec=AppConfiguration)
+        app_config.app = "my_app:app"
+        runner_instance = ApplicationRunner(
+            app_config=app_config, server_config=MagicMock(spec=ServerConfiguration)
+        )
         with pytest.raises(FastPubSubCLIException):
-            runner_instance._validate_application("my_app:app")
+            runner_instance.validate()
 
     @patch("fastpubsub.cli.runner.ApplicationRunner._resolve_application_posix_path")
     @patch("fastpubsub.cli.runner.ApplicationRunner._translate_pypath_to_posix")
@@ -137,25 +137,23 @@ class TestApplicationRunner:
     ):
         mock_broker = MagicMock(spec=PubSubBroker)
         mock_import.return_value = FastPubSub(broker=mock_broker)
-        runner_instance = ApplicationRunner()
-        # should not raise
-        runner_instance._validate_application("my_app:app")
+
+        app_config = MagicMock(spec=AppConfiguration)
+        app_config.app = "my_app:app"
+        runner_instance = ApplicationRunner(
+            app_config=app_config, server_config=MagicMock(spec=ServerConfiguration)
+        )
+        runner_instance.validate()
 
     def test_translate_pypath_to_posix_invalid_format(self):
-        runner_instance = ApplicationRunner()
+        runner_instance = ApplicationRunner(
+            MagicMock(spec=AppConfiguration), MagicMock(spec=ServerConfiguration)
+        )
         with pytest.raises(uvicorn.importer.ImportFromStringError):
             runner_instance._translate_pypath_to_posix("invalid_path")
 
 
 class TestUtils:
-    def test_get_log_level(self):
-        assert get_log_level(LogLevels.CRITICAL) == 50
-        assert get_log_level("ERROR") == 40
-        assert get_log_level(30) == 30
-
-        with pytest.raises(FastPubSubCLIException):
-            get_log_level("invalid_level")
-
     def test_ensure_pubsub_credentials_set(self):
         with patch.dict(os.environ, {"GOOGLE_APPLICATION_CREDENTIALS": "fake_credentials"}):
             from fastpubsub.cli.utils import ensure_pubsub_credentials

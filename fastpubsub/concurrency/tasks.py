@@ -1,8 +1,9 @@
 """Subscriber task for polling messages."""
 
 import asyncio
+import logging
 from concurrent.futures import Future
-from typing import Any
+from typing import Any, cast
 
 from google.cloud.pubsub_v1.subscriber.exceptions import AcknowledgeError, AcknowledgeStatus
 from google.cloud.pubsub_v1.subscriber.futures import StreamingPullFuture
@@ -11,8 +12,10 @@ from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 from fastpubsub.clients.pubsub import PubSubClient
 from fastpubsub.datastructures import Message
 from fastpubsub.exceptions import Drop, Retry
-from fastpubsub.logger import logger
+from fastpubsub.logger import FastPubSubLogger
 from fastpubsub.pubsub.subscriber import Subscriber
+
+logger: FastPubSubLogger = cast(FastPubSubLogger, logging.getLogger(__name__))
 
 
 class MessageMapper:

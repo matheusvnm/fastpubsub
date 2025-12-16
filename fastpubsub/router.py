@@ -106,12 +106,6 @@ class PubSubRouter:
             raise FastPubSubException(f"There is a cyclical reference on router {self.prefix}.")
 
         router._add_prefix(self.prefix)
-        for existing_router in self.routers:
-            if existing_router.prefix == router.prefix:
-                raise FastPubSubException(
-                    f"The prefix={router.prefix} is duplicated, it must be unique."
-                )
-
         router._set_project_id(self.project_id)
         for middleware in self.middlewares:
             router.include_middleware(middleware)
@@ -292,6 +286,15 @@ class PubSubRouter:
         router: PubSubRouter
         for router in self.routers:
             router_subscribers = router._get_subscribers()
+            for alias, new_subscriber in router.subscribers.items():
+                if alias in subscribers:
+                    existing_subscriber = subscribers[alias]
+                    raise FastPubSubException(
+                        f"Conflict on subscribers {new_subscriber} and {existing_subscriber}. "
+                        f"The conflict occours on alias={alias} and router prefix={self.prefix}. "
+                        f"Maybe you should use a different alias or prefix?"
+                    )
+
             subscribers.update(router_subscribers)
 
         return subscribers
