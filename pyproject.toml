@@ -53,19 +53,27 @@ fastpubsub = "fastpubsub.cli.main:app"
 
 
 [dependency-groups]
-dev = [
-    "coverage>=7.10.3",
-    "mypy>=1.17.1",
-    "pre-commit>=4.3.0",
-    "pytest>=8.4.1",
-    "pytest-asyncio>=1.1.0",
-    "pytest-mock>=3.14.1",
-    "ruff>=0.12.8",
+lint = [
+    "ruff==0.14.10",
+    "mypy==1.19.1",
+    "bandit==1.9.2",
+    "codespell==2.4.1",
+    "zizmor==1.19.0",
 ]
 
-cicd = [
-   "rust-just>=1.43.0"
+test = [
+    "coverage==7.10.3",
+    "pytest==8.4.1",
+    "pytest-asyncio==1.1.0",
+    "pytest-mock==3.14.1",
 ]
+
+dev = [
+    {include-group = "lint"},
+    {include-group = "test"},
+    "pre-commit==4.3.0",
+]
+
 
 [tool.pytest.ini_options]
 pythonpath = "src"
@@ -85,7 +93,21 @@ fail_under = 80
 
 [tool.mypy]
 strict = true
+strict_bytes = true
+local_partial_types = true
 ignore_missing_imports = true
+
+# from https://blog.wolt.com/engineering/2021/09/30/professional-grade-mypy-configuration/
+disallow_untyped_defs = true
+no_implicit_optional = true
+check_untyped_defs = true
+warn_return_any = true
+show_error_codes = true
+warn_unused_ignores = true
+
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+disallow_any_unimported = false
 
 [tool.ruff]
 line-length = 100
