@@ -1,3 +1,8 @@
+# TODO: [ACT] We need to be able to install that no matter the system
+# TODO: [ACT] We also need to warn about needed dependencies (.secrets + .vars)
+# TODO: [LINT] We need to add new lint commands to the pipeline
+# TODO: [LINT] We need to add new lint commands to pre-commit
+
 # PROJECT SETTINGS
 project_name := "fastpubsub"
 python_version := "3.12"
@@ -26,9 +31,9 @@ run_command := "uv run --active --frozen"
 
 export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 
-[doc("Default recipe for listing the commands and receipts")]
-@default:
-    just --list
+[doc("All commands information")]
+default:
+  @just --list --unsorted --list-heading $'FastPubSub commands…\n'
 
 # ----------------------------------------------------------------------------
 # Testing Tools Commands
@@ -48,14 +53,16 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 [doc("Run CI/CD pipeline locally using act")]
 [group("tests")]
 @test-pipeline +args:
-# TODO: We need to be able to install that no matter the system
-# TODO: We also need to warn about needed dependencies (.secrets + .vars)
     just _start_msg "Executing the workflow with act"
     act --secret-file .secrets --var-file .vars {{ args }}
+
 
 # ----------------------------------------------------------------------------
 # Linting Tools Commands
 # ----------------------------------------------------------------------------
+[doc("Execute all checks (lint, security and static analysis)")]
+[group("lint")]
+@check: typo lint securitize analyze
 
 [doc("Formatting and sorting with ruff")]
 [group("lint")]
@@ -71,7 +78,7 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 
 [doc("Checks linting rules with mypy and ruff")]
 [group("lint")]
-@lint: typo
+@lint:
     just _start_msg "Checking typing rules"
     {{ run_command }} mypy {{lint_dirs}}
 
@@ -87,6 +94,19 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 @typo:
     just _start_msg "Checking misspellings on words"
     {{ run_command }} codespell fastpubsub
+
+[doc("Executes security analysis on code")]
+[group("lint")]
+@securitize:
+  just _start_msg "Checking for vulnerabilities"
+  {{ run_command }} bandit -c pyproject.toml -r {{ project_name }}
+
+
+[doc("Executes static analysis on CI/CD")]
+[group("lint")]
+@analyze:
+  just _start_msg "Performing static analysis on CI/CD pipeline"
+  {{ run_command }} zizmor .
 
 # ----------------------------------------------------------------------------
 # Infra Commands
@@ -121,6 +141,12 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 @down:
     just _start_msg "Shutting down the containers"
     docker compose down
+
+[doc("Down all containers purging the volumes")]
+[group("infra")]
+@purge:
+    just _start_msg "Shutting down the containers and removing volumes"
+    docker compose down --volumes
 
 # ----------------------------------------------------------------------------
 # Local Environment Setup Commands
