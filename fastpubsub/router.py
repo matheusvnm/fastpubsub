@@ -4,6 +4,7 @@ import re
 from collections import OrderedDict
 from collections.abc import Sequence
 from typing import Any
+from weakref import WeakSet
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
@@ -58,8 +59,8 @@ class PubSubRouter:
         self.prefix = prefix
         self.project_id = project_id
         self.routers: list[PubSubRouter] = []
-        self.publishers: dict[str, Publisher] = {}
         self.subscribers: dict[str, Subscriber] = {}
+        self.publishers: WeakSet[Publisher] = WeakSet()
         self.middlewares: list[type[BaseMiddleware]] = []
 
         if routers:
@@ -88,7 +89,7 @@ class PubSubRouter:
             router._add_prefix(self.prefix)
             router._set_project_id(self.project_id)
 
-        for publisher in self.publishers.values():
+        for publisher in self.publishers:
             publisher._set_project_id(self.project_id)
 
         for subscriber in self.subscribers.values():
@@ -241,14 +242,11 @@ class PubSubRouter:
         Returns:
             A publisher for the given topic.
         """
-        publisher = self.publishers.get(topic_name)
-        if not publisher:
-            chosen_project_id = project_id or self.project_id
-            publisher = Publisher(
-                topic_name=topic_name, project_id=chosen_project_id, middlewares=self.middlewares
-            )
-            self.publishers[topic_name] = publisher
-
+        chosen_project_id = project_id or self.project_id
+        publisher = Publisher(
+            topic_name=topic_name, project_id=chosen_project_id, middlewares=self.middlewares
+        )
+        self.publishers.add(publisher)
         return publisher
 
     @validate_call(config=ConfigDict(strict=True))
@@ -284,7 +282,7 @@ class PubSubRouter:
         Args:
             middleware: The middleware to include.
         """
-        for publisher in self.publishers.values():
+        for publisher in self.publishers:
             publisher.include_middleware(middleware)
 
         for subscriber in self.subscribers.values():
