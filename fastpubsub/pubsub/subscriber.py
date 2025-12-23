@@ -1,6 +1,6 @@
 """Subscriber logic."""
 
-from collections.abc import Sequence
+from collections.abc import MutableSequence, Sequence
 
 from pydantic import ConfigDict, validate_call
 
@@ -31,6 +31,7 @@ class Subscriber:
         control_flow_policy: MessageControlFlowPolicy,
         dead_letter_policy: DeadLetterPolicy | None = None,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
+        project_id: str = "",
     ) -> None:
         """Initializes the Subscriber.
 
@@ -44,8 +45,11 @@ class Subscriber:
             control_flow_policy: The control flow policy for the subscription.
             dead_letter_policy: The dead-letter policy for the subscription.
             middlewares: A sequence of middlewares to apply.
+            project_id: An alternative project id to create a subscription
+            and consume messages from.
+            If set the broker's project id will be ignored.
         """
-        self.project_id = ""
+        self.project_id = project_id
         self.topic_name = topic_name
         self.subscription_name = subscription_name
         self.retry_policy = retry_policy
@@ -56,7 +60,7 @@ class Subscriber:
         self.handler = HandleMessageCommand(target=func)
         self.middlewares: list[type[BaseMiddleware]] = []
 
-        if middlewares:
+        if middlewares and isinstance(middlewares, MutableSequence):
             for middleware in middlewares:
                 self.include_middleware(middleware)
 
@@ -82,10 +86,12 @@ class Subscriber:
     @property
     def name(self) -> str:
         """The name of the subscriber."""
-        return self.handler.target.__name__
+        target_callable = self.handler.target
+        return target_callable.__name__
 
     def _set_project_id(self, project_id: str) -> None:
-        self.project_id = project_id
+        if not self.project_id:
+            self.project_id = project_id
 
     def _add_prefix(self, new_prefix: str) -> None:
         subscription_name = self.subscription_name.split(".")[-1]

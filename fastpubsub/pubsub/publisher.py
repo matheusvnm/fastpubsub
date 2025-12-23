@@ -1,6 +1,7 @@
 """Publisher logic."""
 
 import json
+from collections.abc import MutableSequence
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, validate_call
@@ -14,18 +15,25 @@ from fastpubsub.pubsub.commands import PublishMessageCommand
 class Publisher:
     """A class for publishing messages to a Pub/Sub topic."""
 
-    def __init__(self, topic_name: str, middlewares: list[type[BaseMiddleware]]):
+    def __init__(
+        self,
+        topic_name: str,
+        project_id: str = "",
+        middlewares: list[type[BaseMiddleware]] | None = None,
+    ):
         """Initializes the Publisher.
 
         Args:
             topic_name: The name of the topic.
+            project_id: An alternative project id to publish messages.
+                        If set the broker's project id will be ignored.
             middlewares: A list of middlewares to apply.
         """
-        self.project_id = ""
         self.topic_name = topic_name
+        self.project_id = project_id
         self.middlewares: list[type[BaseMiddleware]] = []
 
-        if middlewares:
+        if middlewares and isinstance(middlewares, MutableSequence):
             for middleware in middlewares:
                 self.include_middleware(middleware)
 
@@ -95,4 +103,5 @@ class Publisher:
         self.middlewares.append(middleware)
 
     def _set_project_id(self, project_id: str) -> None:
-        self.project_id = project_id
+        if not self.project_id:
+            self.project_id = project_id

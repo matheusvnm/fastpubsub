@@ -116,6 +116,7 @@ class TestPubSubBroker:
         self, subscription_builder: MagicMock, async_task_manager: MagicMock, broker: PubSubBroker
     ):
         expected_subscriber = MagicMock(spec=Subscriber)
+        expected_subscriber.project_id = "some_project_id"
         broker._filter_subscribers = lambda: [expected_subscriber]
         await broker.start()
 

@@ -40,8 +40,7 @@ class PubSubBroker:
             raise FastPubSubException(f"The project id value ({project_id}) is invalid.")
 
         self.project_id = project_id
-        self.router = PubSubRouter(routers=routers, middlewares=middlewares)
-        self.router._set_project_id(self.project_id)
+        self.router = PubSubRouter(routers=routers, project_id=project_id, middlewares=middlewares)
         self.task_manager = AsyncTaskManager()
 
     @validate_call(config=ConfigDict(strict=True))
@@ -51,6 +50,7 @@ class PubSubBroker:
         *,
         topic_name: str,
         subscription_name: str,
+        project_id: str = "",
         autocreate: bool = True,
         autoupdate: bool = False,
         filter_expression: str = "",
@@ -71,6 +71,9 @@ class PubSubBroker:
                 select which subscription to use on the CLI.
             topic_name: The name of the topic to subscribe to.
             subscription_name: The name of the subscription attached to the topic.
+            project_id: An alternative project id to create a subscription
+                and consume messages from. If set the broker project id
+                will be ignored.
             autocreate: Whether to automatically create the topic and
                 subscription if they do not exists.
             autoupdate: Whether to automatically update the subscription.
@@ -94,6 +97,7 @@ class PubSubBroker:
             alias=alias,
             topic_name=topic_name,
             subscription_name=subscription_name,
+            project_id=project_id,
             autocreate=autocreate,
             autoupdate=autoupdate,
             filter_expression=filter_expression,
@@ -109,22 +113,25 @@ class PubSubBroker:
         )
 
     @validate_call(config=ConfigDict(strict=True))
-    def publisher(self, topic_name: str) -> Publisher:
+    def publisher(self, topic_name: str, project_id: str = "") -> Publisher:
         """Returns a publisher for the given topic.
 
         Args:
             topic_name: The name of the topic.
+            project_id: An alternative project id to publish messages.
+                        If set the broker's project id will be ignored.
 
         Returns:
             A publisher for the given topic.
         """
-        return self.router.publisher(topic_name=topic_name)
+        return self.router.publisher(topic_name=topic_name, project_id=project_id)
 
     @validate_call(config=ConfigDict(strict=True))
     async def publish(
         self,
         topic_name: str,
         data: dict[str, Any] | str | bytes | BaseModel,
+        project_id: str = "",
         ordering_key: str = "",
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
@@ -134,6 +141,8 @@ class PubSubBroker:
         Args:
             topic_name: The name of the topic.
             data: The message data.
+            project_id: An alternative project id to publish messages.
+                        If set the broker's project id will be ignored.
             ordering_key: The ordering key for the message.
             attributes: A dictionary of message attributes.
             autocreate: Whether to automatically create the topic if it does not exists.
@@ -141,6 +150,7 @@ class PubSubBroker:
         return await self.router.publish(
             topic_name=topic_name,
             data=data,
+            project_id=project_id,
             ordering_key=ordering_key,
             attributes=attributes,
             autocreate=autocreate,
@@ -172,8 +182,8 @@ class PubSubBroker:
                 "You must select the subscribers using --subscribers flag or run them all."
             )
 
-        subscription_builder = PubSubSubscriptionBuilder(project_id=self.project_id)
         for subscriber in subscribers:
+            subscription_builder = PubSubSubscriptionBuilder(project_id=subscriber.project_id)
             await subscription_builder.build(subscriber)
             self.task_manager.create_task(subscriber)
 
