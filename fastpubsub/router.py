@@ -4,6 +4,7 @@ import re
 from collections import OrderedDict
 from collections.abc import Sequence
 from typing import Any
+from weakref import WeakSet
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
@@ -31,6 +32,7 @@ class PubSubRouter:
         self,
         prefix: str = "",
         *,
+        project_id: str = "",
         routers: Sequence["PubSubRouter"] | None = None,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ):
@@ -41,6 +43,9 @@ class PubSubRouter:
                 router. If set, the subscriber alias will be: <prefix>.<alias>.
                 Also, it affects the subscription name. A subscription will be
                 <prefix>.<subscription_name>.
+            project_id: An alternative project id to the broker's project id.
+                All the publishers and subscriber created with this router
+                will use this attribute instead of the project id set at broker-level.
             routers: A sequence of children routers to include.
             middlewares: A sequence of middlewares to apply to all subscribers
                 in this router and its children.
@@ -52,10 +57,10 @@ class PubSubRouter:
             )
 
         self.prefix = prefix
-        self.project_id: str = ""
+        self.project_id = project_id
         self.routers: list[PubSubRouter] = []
-        self.publishers: dict[str, Publisher] = {}
         self.subscribers: dict[str, Subscriber] = {}
+        self.publishers: WeakSet[Publisher] = WeakSet()
         self.middlewares: list[type[BaseMiddleware]] = []
 
         if routers:
@@ -84,7 +89,7 @@ class PubSubRouter:
             router._add_prefix(self.prefix)
             router._set_project_id(self.project_id)
 
-        for publisher in self.publishers.values():
+        for publisher in self.publishers:
             publisher._set_project_id(self.project_id)
 
         for subscriber in self.subscribers.values():
@@ -119,6 +124,7 @@ class PubSubRouter:
         *,
         topic_name: str,
         subscription_name: str,
+        project_id: str = "",
         autocreate: bool = True,
         autoupdate: bool = False,
         filter_expression: str = "",
@@ -139,6 +145,9 @@ class PubSubRouter:
                 select which subscription to use on the CLI.
             topic_name: The name of the topic to subscribe to.
             subscription_name: The name of the subscription attached to the topic.
+            project_id: An alternative project id to create a subscription
+                and consume messages from. If set the router project id
+                will be ignored.
             autocreate: Whether to automatically create the topic and
                 subscription if they do not exists.
             autoupdate: Whether to automatically update the subscription.
@@ -203,6 +212,7 @@ class PubSubRouter:
             for middleware in self.middlewares:
                 subscriber_middlewares.append(middleware)
 
+            chosen_project_id = project_id or self.project_id
             subscriber = Subscriber(
                 func=func,
                 topic_name=topic_name,
@@ -213,29 +223,30 @@ class PubSubRouter:
                 control_flow_policy=control_flow_policy,
                 dead_letter_policy=dead_letter_policy,
                 middlewares=subscriber_middlewares,
+                project_id=chosen_project_id,
             )
-            subscriber._set_project_id(self.project_id)
             self.subscribers[prefixed_alias.lower()] = subscriber
             return func
 
         return decorator
 
     @validate_call(config=ConfigDict(strict=True))
-    def publisher(self, topic_name: str) -> Publisher:
+    def publisher(self, topic_name: str, project_id: str = "") -> Publisher:
         """Returns a publisher for the given topic.
 
         Args:
             topic_name: The name of the topic.
+            project_id: An alternative project id to publish messages.
+                        If set the router project id will be ignored.
 
         Returns:
             A publisher for the given topic.
         """
-        publisher = self.publishers.get(topic_name)
-        if not publisher:
-            publisher = Publisher(topic_name=topic_name, middlewares=self.middlewares)
-            publisher._set_project_id(self.project_id)
-            self.publishers[topic_name] = publisher
-
+        chosen_project_id = project_id or self.project_id
+        publisher = Publisher(
+            topic_name=topic_name, project_id=chosen_project_id, middlewares=self.middlewares
+        )
+        self.publishers.add(publisher)
         return publisher
 
     @validate_call(config=ConfigDict(strict=True))
@@ -243,6 +254,7 @@ class PubSubRouter:
         self,
         topic_name: str,
         data: dict[str, Any] | str | bytes | BaseModel,
+        project_id: str = "",
         ordering_key: str = "",
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
@@ -252,11 +264,13 @@ class PubSubRouter:
         Args:
             topic_name: The name of the topic.
             data: The message data.
+            project_id: An alternative project id to publish messages.
+                        If set the router project id will be ignored.
             ordering_key: The ordering key for the message.
             attributes: A dictionary of message attributes.
             autocreate: Whether to automatically create the topic if it does not exists.
         """
-        publisher = self.publisher(topic_name=topic_name)
+        publisher = self.publisher(topic_name=topic_name, project_id=project_id)
         await publisher.publish(
             data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
         )
@@ -268,7 +282,7 @@ class PubSubRouter:
         Args:
             middleware: The middleware to include.
         """
-        for publisher in self.publishers.values():
+        for publisher in self.publishers:
             publisher.include_middleware(middleware)
 
         for subscriber in self.subscribers.values():
