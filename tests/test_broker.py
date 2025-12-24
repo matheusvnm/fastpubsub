@@ -116,6 +116,7 @@ class TestPubSubBroker:
         self, subscription_builder: MagicMock, async_task_manager: MagicMock, broker: PubSubBroker
     ):
         expected_subscriber = MagicMock(spec=Subscriber)
+        expected_subscriber.project_id = "some_project_id"
         broker._filter_subscribers = lambda: [expected_subscriber]
         await broker.start()
 
@@ -150,8 +151,8 @@ class TestPubSubBroker:
         readiness_call = async_task_manager.ready
         readiness_call.return_value = response
 
-        response = broker.ready()
-        assert response == expected_readiness
+        ready = broker.ready()
+        assert ready == expected_readiness
 
     @pytest.mark.parametrize(
         ["response", "expected_liveness"],
@@ -180,5 +181,5 @@ class TestPubSubBroker:
         liveness_call = async_task_manager.alive
         liveness_call.return_value = response
 
-        response = broker.alive()
-        assert response == expected_liveness
+        alive = broker.alive()
+        assert alive == expected_liveness
