@@ -7,9 +7,17 @@ services:
     volumes:
       - pubsub_data:/data
     ports:
-      - "8085:8085"
-    extra_hosts:
-      - "localhost:host-gateway"
+      - 8085:8085
+    security_opt:
+      - no-new-privileges:true
+
+  fastpubsub:
+    build: .
+    volumes:
+      - ./:/src
+      - /src/.venv/
+    network_mode: host
+    tty: true
 
 volumes:
   pubsub_data:

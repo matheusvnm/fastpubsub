@@ -46,7 +46,7 @@ class PubSubRouter:
             project_id: An alternative project id to the broker's project id.
                 All the publishers and subscriber created with this router
                 will use this attribute instead of the project id set at broker-level.
-            routers: A sequence of childrens routers to include.
+            routers: A sequence of children routers to include.
             middlewares: A sequence of middlewares to apply to all subscribers
                 in this router and its children.
         """
@@ -305,7 +305,7 @@ class PubSubRouter:
                     existing_subscriber = subscribers[alias]
                     raise FastPubSubException(
                         f"Conflict on subscribers {new_subscriber} and {existing_subscriber}. "
-                        f"The conflict occours on alias={alias} and router prefix={self.prefix}. "
+                        f"The conflict occurs on alias={alias} and router prefix={self.prefix}. "
                         f"Maybe you should use a different alias or prefix?"
                     )
 
