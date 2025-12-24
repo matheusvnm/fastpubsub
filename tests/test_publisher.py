@@ -42,8 +42,8 @@ class TestPublisher:
         another_first_publisher = router_a.publisher("topic")
         another_second_publisher = router_b.publisher("topic")
 
-        assert first_publisher == another_first_publisher
-        assert second_publisher == another_second_publisher
+        assert first_publisher != another_first_publisher
+        assert second_publisher != another_second_publisher
 
     def test_build_callstack(
         self,
