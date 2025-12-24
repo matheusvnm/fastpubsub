@@ -62,7 +62,7 @@ default:
 # ----------------------------------------------------------------------------
 [doc("Execute all checks (lint, security and static analysis)")]
 [group("lint")]
-@check: typo lint securitize analyze
+@check: typo lint securitize
 
 [doc("Formatting and sorting with ruff")]
 [group("lint")]
@@ -101,12 +101,6 @@ default:
   just _start_msg "Checking for vulnerabilities"
   {{ run_command }} bandit -c pyproject.toml -r {{ project_name }}
 
-
-[doc("Executes static analysis on CI/CD")]
-[group("lint")]
-@analyze:
-  just _start_msg "Performing static analysis on CI/CD pipeline"
-  {{ run_command }} zizmor .
 
 # ----------------------------------------------------------------------------
 # Infra Commands
@@ -169,11 +163,11 @@ default:
 
 [doc("Initialize the environment with its dependencies")]
 [group('dev')]
-@init python=python_version: setup
+@init python=python_version:
     just _start_msg "Setting up python {{python_version}}"
     uv python install {{python}}
     uv python pin {{python}}
-    uv sync --group dev --all-extras
+    uv sync --all-groups --all-extras
 
     just _start_msg "Setting up pre-commit hooks"
     uv run pre-commit install --install-hooks

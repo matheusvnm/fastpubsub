@@ -3,7 +3,6 @@ name: Create New Release (PyPI)
 on:
   workflow_dispatch:
 
-
 jobs:
   build_and_publish:
     runs-on: ubuntu-latest
@@ -15,7 +14,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-
       - name: Set up Git
         run: |
           git config user.name "github-actions[bot]"
@@ -24,26 +22,21 @@ jobs:
           git fetch --tags
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Get latest tag
         id: get_latest_tag
         run: |
           LATEST_TAG=$(git tag | tail -n 1)
           echo "::set-output name=latest_tag::$LATEST_TAG"
-
       - name: Checkout code to latest tag
         uses: actions/checkout@v5
         with:
           ref: ${{ steps.get_latest_tag.outputs.latest_tag }}
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-
-      - name: Install uv
+      - name: Install uv command
         run: pip install uv
-
       - name: Build and publish package
         run: |
           uv build

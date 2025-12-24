@@ -94,7 +94,7 @@ def run(
     workers: AppNumWorkersOption = 1,
     subscribers: AppSelectedSubscribersOption = [],
     reload: AppHotReloadOption = False,
-    host: AppHostOption = "0.0.0.0",
+    host: AppHostOption = "127.0.0.1",
     port: AppPortOption = 8000,
     log_level: AppLogLevelOption = LogLevels.INFO,
     log_serialize: AppLogSerializeOption = False,

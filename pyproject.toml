@@ -58,7 +58,6 @@ lint = [
     "mypy==1.19.1",
     "bandit==1.9.2",
     "codespell==2.4.1",
-    "zizmor==1.19.0",
 ]
 
 test = [

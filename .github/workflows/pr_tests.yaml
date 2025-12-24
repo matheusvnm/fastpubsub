@@ -1,5 +1,4 @@
 name: Quality Checks
-
 on:
   pull_request:
     branches:
@@ -9,36 +8,46 @@ on:
       - opened
       - synchronize
 
+env:
+  UV_LINK_MODE: "copy"
+  UV_PYTHON_VERSION: "3.12"
+
 jobs:
-  quality_gate:
+  lints:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      - name: Setup just command
+        uses: extractions/setup-just@v3
+        with:
+            just-version: '1.43.0'
+      - name: Install uv command
+        uses: astral-sh/setup-uv@v7
+      - name: Install base python with dependencies
+        run: just init $UV_PYTHON_VERSION
+      - name: Run lint checks
+        run: just lint
+      - name: Run typo checks
+        run: just typo
+      - name: Run static analisys checks
+        run: just securitize
+
+  tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.12", "3.13", "3.14"]
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-
-      - name: Set up Python for uv install
-        uses: actions/setup-python@v5
+      - name: Setup just command
+        uses: extractions/setup-just@v3
         with:
-          python-version: "3.13"
-
-      - name: Install uv
-        run: pip install uv
-
-      - name: Set up Python ${{ matrix.python-version }} for tests
-        run: |
-          uv python install ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: |
-          uv sync --all-groups --all-extras
-
+            just-version: '1.43.0'
+      - name: Install uv command
+        uses: astral-sh/setup-uv@v7
+      - name: Install base python with dependencies
+        run: just init ${{ matrix.python-version }}
       - name: Run quality checks
-        run: |
-          uv venv --allow-existing
-          uv run just lint
-          uv run just test
-          uv run just coverage
+        run: just test && just coverage
