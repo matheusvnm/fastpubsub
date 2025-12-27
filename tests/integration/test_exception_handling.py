@@ -12,7 +12,6 @@ from fastpubsub.exceptions import Drop, Retry
 from tests.integration.conftest import managed_broker
 
 if TYPE_CHECKING:
-
     from fastpubsub.broker import PubSubBroker
 
 

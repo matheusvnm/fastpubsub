@@ -136,7 +136,7 @@ class PubSubTestClient:
                     delivery_attempt=1,
                     project_id=self.broker.project_id,
                     topic_name=topic_name,
-                    subscriber_name=subscriber.subscription_name,
+                    subscriber_name=subscriber.name,
                 )
 
                 # Build callstack and invoke handler

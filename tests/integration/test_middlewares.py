@@ -11,7 +11,6 @@ from fastpubsub.middlewares.base import BaseMiddleware
 from tests.integration.conftest import managed_broker
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from unittest.mock import MagicMock
 
     from fastpubsub.broker import PubSubBroker
@@ -20,8 +19,6 @@ if TYPE_CHECKING:
 
 @pytest.mark.connected
 class TestMiddlewares:
-    """Test middleware functionality with real PubSub emulator."""
-
     timeout: float = 15.0
 
     @pytest.mark.asyncio
@@ -32,8 +29,6 @@ class TestMiddlewares:
         unique_subscription: str,
         connected_broker: PubSubBroker,
     ) -> None:
-        """Test full middleware chain with real messages."""
-
         class LoggingMiddleware(BaseMiddleware):
             async def on_message(self, message: Message) -> Any:
                 mock("logging_middleware")
@@ -48,6 +43,7 @@ class TestMiddlewares:
         connected_broker.include_middleware(ValidationMiddleware)
 
         event = asyncio.Event()
+
         @connected_broker.subscriber(
             alias="test-middleware-chain",
             topic_name=unique_topic,
@@ -73,14 +69,13 @@ class TestMiddlewares:
         unique_subscription: str,
         connected_broker: PubSubBroker,
     ) -> None:
-        """Test subscriber-specific middleware only affects that subscriber."""
-
         class SubscriberMiddleware(BaseMiddleware):
             async def on_message(self, message: Message) -> Any:
                 mock("subscriber_middleware")
                 return await super().on_message(message)
 
         event = asyncio.Event()
+
         @connected_broker.subscriber(
             alias="test-sub-middleware",
             topic_name=unique_topic,
@@ -103,48 +98,40 @@ class TestMiddlewares:
     @pytest.mark.asyncio
     async def test_middleware_modifies_message(
         self,
-        broker_factory: Callable[..., PubSubBroker],
         unique_topic: str,
         unique_subscription: str,
-        cleanup_resources: None,
+        connected_broker: PubSubBroker,
     ) -> None:
-        """Test middleware can intercept and process messages."""
+        received: asyncio.Queue[dict[str, str]] = asyncio.Queue(maxsize=1)
 
-        received_delivery_attempts: list[int] = []
-        event = asyncio.Event()
-
-        class DeliveryTrackingMiddleware(BaseMiddleware):
+        class TrackingMiddleware(BaseMiddleware):
             async def on_message(self, message: Message) -> Any:
-                # Track delivery attempt
-                received_delivery_attempts.append(message.delivery_attempt)
+                await received.put(message.attributes)
                 return await super().on_message(message)
 
             async def on_publish(
                 self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
             ) -> Any:
+                if not attributes:
+                    attributes = {}
+
+                attributes["key"] = "value"
                 return await super().on_publish(data, ordering_key, attributes)
 
-        broker = broker_factory(middlewares=[DeliveryTrackingMiddleware])
+        connected_broker.include_middleware(TrackingMiddleware)
 
-        @broker.subscriber(
+        @connected_broker.subscriber(
             alias="test-track-middleware",
             topic_name=unique_topic,
             subscription_name=unique_subscription,
             autocreate=True,
         )
         async def handler(msg: str) -> None:
-            event.set()
+            pass
 
-        await broker.start()
-        try:
-            await asyncio.sleep(0.5)
+        async with managed_broker(connected_broker):
+            await connected_broker.publish(topic_name=unique_topic, data="test")
+            attributes = await asyncio.wait_for(received.get(), timeout=self.timeout)
 
-            await broker.publish(topic_name=unique_topic, data="test")
-
-            await asyncio.wait_for(event.wait(), timeout=self.timeout)
-
-            # Verify middleware tracked delivery attempt
-            assert len(received_delivery_attempts) >= 1
-            assert received_delivery_attempts[0] == 1
-        finally:
-            broker.shutdown()
+            assert isinstance(attributes, dict)
+            assert attributes.get("key") == "value"

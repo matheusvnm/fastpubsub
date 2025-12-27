@@ -35,6 +35,7 @@ services:
       - venv-cache:/src/.venv
       - cache:/root/.cache
     environment:
+      FASTPUBSUB_LOG_LEVEL: DEBUG
       PUBSUB_EMULATOR_HOST: pubsub:8085
       CLOUDSDK_CORE_PROJECT: fastpubsub-test-project
     depends_on:

@@ -11,7 +11,6 @@ from fastpubsub import Message
 from tests.integration.conftest import managed_broker
 
 if TYPE_CHECKING:
-
     from fastpubsub.broker import PubSubBroker
 
 
