@@ -56,6 +56,94 @@ default:
     just _start_msg "Executing the workflow with act"
     act --secret-file .secrets --var-file .vars {{ args }}
 
+# ----------------------------------------------------------------------------
+# Docker-Based Integration Testing Commands
+# ----------------------------------------------------------------------------
+
+[doc("Build test Docker images")]
+[group("integration")]
+@test-build *args:
+    just _start_msg "Building Docker images"
+    docker compose build {{ args }}
+
+[doc("Start test infrastructure")]
+[group("integration")]
+@test-up:
+    just _start_msg "Starting test infrastructure"
+    docker compose up -d
+    just _start_msg "Waiting for services to be healthy"
+    docker compose exec fastpubsub bash -c 'until curl -sf http://pubsub:8085; do sleep 1; done' &> /dev/null
+    just _start_msg "Infrastructure ready!"
+
+[doc("Stop test infrastructure")]
+[group("integration")]
+@test-down:
+    just _start_msg "Stopping test infrastructure"
+    docker compose down
+
+[doc("Purge test infrastructure and volumes")]
+[group("integration")]
+@test-purge:
+    just _start_msg "Purging all containers and volumes"
+    docker compose down -v --remove-orphans
+
+[doc("Run unit tests (fast, no emulator)")]
+[group("integration")]
+@test-unit *args: test-up
+    just _start_msg "Running unit tests"
+    docker compose exec fastpubsub uv run pytest \
+        -m "not connected and not slow" \
+        -n auto \
+        --tb=short \
+        {{ args }}
+
+[doc("Run integration tests (requires emulator)")]
+[group("integration")]
+@test-integration *args:
+    just _start_msg "Running integration tests"
+    docker compose exec fastpubsub uv run pytest \
+        -m "connected" \
+        -n auto \
+        --tb=short \
+        --maxfail=5 \
+        {{ args }}
+
+[doc("Run all tests in Docker")]
+[group("integration")]
+@test-all *args:
+    just _start_msg "Running all tests"
+    docker compose exec fastpubsub uv run pytest \
+        -n auto \
+        --tb=short \
+        {{ args }}
+
+[doc("Run tests with coverage in Docker")]
+[group("integration")]
+@test-cov *args:
+    just _start_msg "Running tests with coverage"
+    docker compose exec fastpubsub uv run pytest \
+        -m "not connected and not slow" \
+        -n auto \
+        --cov=fastpubsub \
+        --cov-report=term-missing:skip-covered \
+        --cov-report=html \
+        --cov-fail-under=80 \
+        {{ args }}
+
+[doc("Run tests matching a keyword in Docker")]
+[group("integration")]
+@test-k keyword *args:
+    just _start_msg "Running tests matching '{{ keyword }}'"
+    docker compose exec fastpubsub uv run pytest \
+        -k "{{ keyword }}" \
+        -v \
+        {{ args }}
+
+[doc("Open shell in test container")]
+[group("integration")]
+@test-shell:
+    docker compose exec fastpubsub bash
+
 
 # ----------------------------------------------------------------------------
 # Linting Tools Commands

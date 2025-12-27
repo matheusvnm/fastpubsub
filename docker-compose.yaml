@@ -1,23 +1,59 @@
 services:
   pubsub:
     image: google/cloud-sdk:emulators
-    command: gcloud beta emulators pubsub start --project fastpubsub-pubsub-local --host-port 0.0.0.0:8085
+    command: >
+      gcloud beta emulators pubsub start
+      --project=fastpubsub-test-project
+      --host-port=0.0.0.0:8085
     environment:
-      - CLOUDSDK_CORE_PROJECT=fastpubsub-pubsub-local
-    volumes:
-      - pubsub_data:/data
+      CLOUDSDK_CORE_PROJECT: fastpubsub-test-project
     ports:
-      - 8085:8085
+      - "8085:8085"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8085 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - pubsub-net
     security_opt:
       - no-new-privileges:true
 
   fastpubsub:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PYTHON_VERSION: "3.12"
     volumes:
-      - ./:/src
-      - /src/.venv/
-    network_mode: host
+      - ./:/src:cached
+      - venv-cache:/src/.venv
+      - cache:/root/.cache
+    environment:
+      PUBSUB_EMULATOR_HOST: pubsub:8085
+      CLOUDSDK_CORE_PROJECT: fastpubsub-test-project
+    depends_on:
+      pubsub:
+        condition: service_healthy
     tty: true
+    stdin_open: true
+    command: sleep infinity
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    networks:
+      - pubsub-net
+
+networks:
+  pubsub-net:
+    driver: bridge
 
 volumes:
-  pubsub_data:
+  venv-cache:
+  cache:

@@ -61,10 +61,13 @@ lint = [
 ]
 
 test = [
-    "coverage==7.10.3",
-    "pytest==8.4.1",
-    "pytest-asyncio==1.1.0",
-    "pytest-mock==3.14.1",
+    "coverage>=7.6.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-mock>=3.14.0",
+    "pytest-xdist>=3.8.0",
+    "pytest-timeout>=2.4.0",
+    "pytest-randomly>=3.16.0",
 ]
 
 dev = [
@@ -75,20 +78,43 @@ dev = [
 
 
 [tool.pytest.ini_options]
-pythonpath = "src"
+pythonpath = "."
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-python_files = ["test_*.py", "tests_*.py"]
-verbosity_test_cases = 3
+python_files = ["test_*.py"]
+minversion = "7.0"
+timeout = 30
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+    "-q",
+]
+testpaths = ["tests"]
+markers = [
+    "pubsub: Google PubSub specific tests",
+    "connected: Tests requiring PubSub emulator connection",
+    "slow: Long-running tests (>5 seconds)",
+]
 
 [tool.coverage.run]
+branch = true
 source = ["fastpubsub"]
-omit = ["**/__init__.py", "**/__about__.py", "**/__main__.py"]
+omit = ["**/__init__.py", "**/__about__.py", "**/__main__.py", "*/testing.py"]
 
 [tool.coverage.report]
 show_missing = true
 skip_empty = true
+skip_covered = true
 fail_under = 80
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "@abstractmethod",
+]
 
 [tool.mypy]
 strict = true
