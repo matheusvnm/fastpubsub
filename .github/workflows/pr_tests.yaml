@@ -30,7 +30,7 @@ jobs:
         run: just lint
       - name: Run typo checks
         run: just typo
-      - name: Run static analisys checks
+      - name: Run static analysis checks
         run: just securitize
 
   tests:
@@ -41,13 +41,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
       - name: Setup just command
         uses: extractions/setup-just@v3
         with:
             just-version: '1.43.0'
-      - name: Install uv command
-        uses: astral-sh/setup-uv@v7
-      - name: Install base python with dependencies
-        run: just init ${{ matrix.python-version }}
-      - name: Run quality checks
-        run: just test && just coverage
+      - name: Build Docker containers
+        run: just build --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+      - name: Run tests with coverage
+        run: just test-cov

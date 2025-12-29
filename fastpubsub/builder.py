@@ -1,7 +1,5 @@
 """Builds and configures Pub/Sub subscriptions."""
 
-from anyio import create_task_group
-
 from fastpubsub.clients.pubsub import PubSubClient
 from fastpubsub.pubsub.subscriber import Subscriber
 
@@ -33,13 +31,12 @@ class PubSubSubscriptionBuilder:
             await self._update_subscription()
 
     async def _create_topics(self) -> None:
-        async with create_task_group() as tg:
-            target_topic = self.subscriber.topic_name
-            tg.start_soon(self._new_topic, target_topic, False)
+        target_topic = self.subscriber.topic_name
+        await self._new_topic(topic_name=target_topic, create_default_subscription=False)
 
-            if self.subscriber.dead_letter_policy:
-                target_topic = self.subscriber.dead_letter_policy.topic_name
-                tg.start_soon(self._new_topic, target_topic)
+        if self.subscriber.dead_letter_policy:
+            target_topic = self.subscriber.dead_letter_policy.topic_name
+            await self._new_topic(topic_name=target_topic, create_default_subscription=True)
 
     async def _new_topic(self, topic_name: str, create_default_subscription: bool = True) -> None:
         if topic_name in self.created_topics:

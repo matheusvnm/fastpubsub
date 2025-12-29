@@ -1,8 +1,3 @@
-# TODO: [ACT] We need to be able to install that no matter the system
-# TODO: [ACT] We also need to warn about needed dependencies (.secrets + .vars)
-# TODO: [LINT] We need to add new lint commands to the pipeline
-# TODO: [LINT] We need to add new lint commands to pre-commit
-
 # PROJECT SETTINGS
 project_name := "fastpubsub"
 python_version := "3.12"
@@ -26,35 +21,63 @@ white   := `tput -Txterm setaf 7`
 bold    := `tput -Txterm bold`
 reset   := `tput -Txterm sgr0`
 
+# COMMAND ALIASES
 run_command := "uv run --active --frozen"
+run_test_command := "docker compose exec fastpubsub python -m"
 
 
+# ENVIRONMENT VAR EXPORTS
 export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 
 [doc("All commands information")]
-default:
-  @just --list --unsorted --list-heading $'FastPubSub commands…\n'
+@default:
+  just --list --unsorted --list-heading $'FastPubSub commands…\n'
 
 # ----------------------------------------------------------------------------
-# Testing Tools Commands
+# Testing Commands
 # ----------------------------------------------------------------------------
-
-[doc("Run tests")]
-[group("tests")]
-@test +args=".":
-    {{ run_command }} coverage run -m pytest {{ args }}
-
-[doc("Run coverage report")]
-[group("tests")]
-@coverage: test
-    {{ run_command }} coverage report
-    {{ run_command }} coverage html
 
 [doc("Run CI/CD pipeline locally using act")]
 [group("tests")]
 @test-pipeline +args:
     just _start_msg "Executing the workflow with act"
     act --secret-file .secrets --var-file .vars {{ args }}
+
+[doc("Run unit tests (fast, no emulator)")]
+[group("tests")]
+@test-unit *args: up && down
+    just _start_msg "Running unit tests"
+    {{ run_test_command }} pytest -m "not connected and not slow" -n auto --tb=short {{ args }}
+
+[doc("Run integration tests (requires emulator)")]
+[group("tests")]
+@test-integration *args: up && down
+    just _start_msg "Running integration tests"
+    {{ run_test_command }} pytest -m "connected" -n auto --tb=short --maxfail=5 {{ args }}
+
+[doc("Run all tests in Docker")]
+[group("tests")]
+@test-all *args: up && down
+    just _start_msg "Running all tests"
+    {{ run_test_command }} pytest -n auto --tb=short {{ args }}
+
+[doc("Run tests with coverage in Docker")]
+[group("tests")]
+@test-cov *args: up && down
+    just _start_msg "Running coverage report"
+    {{ run_test_command }} pytest \
+        -n auto \
+        --cov=fastpubsub \
+        --cov-report=term-missing:skip-covered \
+        --cov-report=html \
+        --cov-fail-under=80 \
+        {{ args }}
+
+[doc("Run tests matching a keyword in Docker")]
+[group("tests")]
+@test-k keyword *args: up && down
+    just _start_msg "Running tests matching '{{ keyword }}'"
+    {{ run_test_command }} pytest -k "{{ keyword }}" -v {{ args }}
 
 
 # ----------------------------------------------------------------------------
@@ -88,7 +111,6 @@ default:
     just _start_msg "Checking formatting rules"
     {{ run_command }} ruff format {{ lint_extra_dirs }} --check
 
-
 [doc("Checks misspellings with codespell")]
 [group("lint")]
 @typo:
@@ -101,21 +123,27 @@ default:
   just _start_msg "Checking for vulnerabilities"
   {{ run_command }} bandit -c pyproject.toml -r {{ project_name }}
 
-
 # ----------------------------------------------------------------------------
 # Infra Commands
 # ----------------------------------------------------------------------------
 
+[doc("Build test Docker images")]
+[group("infra")]
+@build *args:
+    just _start_msg "Building containers images"
+    docker compose build {{ args }}
+
 [doc("Run all containers")]
 [group("infra")]
 @up:
-    just _start_msg "Starting the containers"
-    docker compose up -d
+    just _start_msg "Starting containers infrastructure"
+    docker compose up -d --wait 2> /dev/null
+    just _start_msg "Infrastructure ready!"
 
 [doc("Execute top command on executing containers")]
 [group("infra")]
 @top:
-    just _start_msg "Checking the containers resource"
+    just _start_msg "Checking the containers resources."
     docker compose top
 
 [doc("Execute ps command on executing containers")]
@@ -133,14 +161,20 @@ default:
 [doc("Down all containers")]
 [group("infra")]
 @down:
-    just _start_msg "Shutting down the containers"
+    just _start_msg "Stopping containers infrastructure"
     docker compose down
 
-[doc("Down all containers purging the volumes")]
+[doc("Purge containers infrastructure and volumes")]
 [group("infra")]
 @purge:
-    just _start_msg "Shutting down the containers and removing volumes"
-    docker compose down --volumes
+    just _start_msg "Purging all containers and volumes"
+    docker compose down --volumes --remove-orphans
+
+[doc("Open shell in container")]
+[group("infra")]
+@shell: up
+    docker compose exec fastpubsub bash
+
 
 # ----------------------------------------------------------------------------
 # Local Environment Setup Commands
@@ -164,7 +198,7 @@ default:
 [doc("Initialize the environment with its dependencies")]
 [group('dev')]
 @init python=python_version:
-    just _start_msg "Setting up python {{python_version}}"
+    just _start_msg "Setting up python {{python}}"
     uv python install {{python}}
     uv python pin {{python}}
     uv sync --all-groups --all-extras

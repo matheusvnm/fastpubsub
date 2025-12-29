@@ -87,19 +87,21 @@ class TestPubSubBroker:
         broker: PubSubBroker,
     ):
         os.environ["FASTPUBSUB_SUBSCRIBERS"] = selected_subscribers
+        try:
+            mock_router = MagicMock()
+            mock_router._get_subscribers = MagicMock(return_value={"a": "a", "b": "b"})
+            broker.router = mock_router
 
-        mock_router = MagicMock()
-        mock_router._get_subscribers = MagicMock(return_value={"a": "a", "b": "b"})
-        broker.router = mock_router
-
-        found_subscribers = broker._filter_subscribers()
-        assert len(found_subscribers) == len(expected_subscribers)
-        for expected_sub in expected_subscribers:
-            if expected_sub not in found_subscribers:
-                pytest.fail(
-                    reason="The expected subscribers do not "
-                    f"match the filtered ones {expected_subscribers} {found_subscribers}"
-                )
+            found_subscribers = broker._filter_subscribers()
+            assert len(found_subscribers) == len(expected_subscribers)
+            for expected_sub in expected_subscribers:
+                if expected_sub not in found_subscribers:
+                    pytest.fail(
+                        reason="The expected subscribers do not "
+                        f"match the filtered ones {expected_subscribers} {found_subscribers}"
+                    )
+        finally:
+            os.environ["FASTPUBSUB_SUBSCRIBERS"] = ""
 
     def test_shutdown_successfully(self, async_task_manager: MagicMock, broker: PubSubBroker):
         broker.shutdown()

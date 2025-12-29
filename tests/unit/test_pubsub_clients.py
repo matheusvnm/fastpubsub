@@ -73,7 +73,7 @@ class TestPubSubClient:
         sub_client.return_value.create_subscription.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_publish(self, pub_client: MagicMock):
+    async def test_publish(self, pub_client: MagicMock, sub_client: MagicMock):
         project_id = "some_proj"
         topic_name = "some_topic"
         topic_path = "some_topic_path_mock"
@@ -89,7 +89,7 @@ class TestPubSubClient:
         )
 
     @pytest.mark.asyncio
-    async def test_publish_failure(self, pub_client: MagicMock):
+    async def test_publish_failure(self, pub_client: MagicMock, sub_client: MagicMock):
         result = Future()
         result.set_exception(ValueError)
         pub_client.return_value.publish.return_value = result
