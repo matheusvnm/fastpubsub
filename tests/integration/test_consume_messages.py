@@ -16,8 +16,6 @@ if TYPE_CHECKING:
 
 @pytest.mark.connected
 class TestMessageConsumption:
-    """Test message consumption with real PubSub emulator."""
-
     timeout: float = 15.0
 
     @pytest.mark.asyncio
@@ -27,7 +25,6 @@ class TestMessageConsumption:
         unique_subscription: str,
         connected_broker: PubSubBroker,
     ) -> None:
-        """Test consuming a single message end-to-end."""
         received: asyncio.Queue[Message] = asyncio.Queue(maxsize=1)
 
         @connected_broker.subscriber(
@@ -62,7 +59,6 @@ class TestMessageConsumption:
         unique_subscription: str,
         connected_broker: PubSubBroker,
     ) -> None:
-        """Test consuming multiple messages."""
         received: list[str] = []
         event = asyncio.Event()
 

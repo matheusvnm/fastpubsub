@@ -198,7 +198,7 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 [doc("Initialize the environment with its dependencies")]
 [group('dev')]
 @init python=python_version:
-    just _start_msg "Setting up python {{python_version}}"
+    just _start_msg "Setting up python {{python}}"
     uv python install {{python}}
     uv python pin {{python}}
     uv sync --all-groups --all-extras

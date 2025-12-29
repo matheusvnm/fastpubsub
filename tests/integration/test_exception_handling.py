@@ -17,8 +17,6 @@ if TYPE_CHECKING:
 
 @pytest.mark.connected
 class TestExceptionHandling:
-    """Test Drop and Retry exception handling with real PubSub."""
-
     timeout: float = 30.0
 
     @pytest.mark.asyncio
@@ -29,7 +27,6 @@ class TestExceptionHandling:
         unique_subscription: str,
         connected_broker: PubSubBroker,
     ) -> None:
-        """Test Drop exception results in message NACK and redelivery."""
         max_attempts = 3
         received: asyncio.Queue[int] = asyncio.Queue(maxsize=1)
 
@@ -99,7 +96,6 @@ class TestExceptionHandling:
         unique_subscription: str,
         connected_broker: PubSubBroker,
     ) -> None:
-        """Test unhandled exceptions are caught and message is NACKed."""
         completed = asyncio.Event()
 
         @connected_broker.subscriber(
