@@ -193,7 +193,7 @@ class PubSubClient:
             topic_path = PublisherClient.topic_path(self.project_id, topic_name)
 
             topic = await apply_async(publisher.create_topic, name=topic_path)
-            logger.debug(f"Created topic '{topic.name}' sucessfully.")
+            logger.debug(f"Created topic '{topic.name}' successfully.")
 
             if not create_default_subscription:
                 return
@@ -257,7 +257,7 @@ class PubSubClient:
         subscription_name: str,
         max_messages: int,
     ) -> StreamingPullFuture:
-        """Starts the subscription listening on backgroud given  a subscription.
+        """Starts the subscription listening on background given a subscription.
 
         Args:
             callback: The function called when a message is received.

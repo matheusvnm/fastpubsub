@@ -100,7 +100,7 @@ class Subscriber:
     def __str__(self) -> str:
         """Returns a formatted str representation for the object."""
         return (
-            f"Subcriber(name={self.name}, "
+            f"Subscriber(name={self.name}, "
             f"topic_name={self.topic_name}, "
             f"subscription_name={self.subscription_name})"
         )
