@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from fastpubsub.broker import PubSubBroker
-from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.commands import HandleMessageCommand, PublishMessageCommand
+from fastpubsub.middlewares import BaseMiddleware
 from fastpubsub.router import PubSubRouter
 
 if TYPE_CHECKING:
@@ -65,8 +64,8 @@ def router_factory() -> Callable[..., PubSubRouter]:
 
 
 def callstack_matches(
-    callstack: BaseMiddleware | PublishMessageCommand | HandleMessageCommand,
-    expected_output: list[type[BaseMiddleware] | type[PublishMessageCommand]],
+    callstack: BaseMiddleware,
+    expected_output: list[type[BaseMiddleware]],
 ) -> bool:
     """Verify that the callstack matches the expected order of middlewares/commands.
 

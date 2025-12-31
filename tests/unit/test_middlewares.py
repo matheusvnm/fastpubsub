@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from fastpubsub.datastructures import Message
+from fastpubsub.datastructures import PullMessage
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.middlewares.gzip import GZipMiddleware
 
@@ -14,7 +14,7 @@ class MockMiddleware(BaseMiddleware):
         self.received_message = None
         self.next_call = None
 
-    async def on_message(self, message: Message) -> Any:
+    async def on_message(self, message: PullMessage) -> Any:
         self.received_message = message
         return await super().on_message(message)
 
@@ -35,7 +35,7 @@ class TestGZipMiddleware:
         await middleware.on_publish(data, "", None)
         assert gzip.decompress(mock_middleware.published_message) == data
 
-        message = Message(
+        message = PullMessage(
             id="2123",
             size=3,
             data=mock_middleware.published_message,

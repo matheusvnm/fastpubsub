@@ -1,8 +1,17 @@
-from fastpubsub.applications import FastPubSub
-from fastpubsub.broker import PubSubBroker
-from fastpubsub.datastructures import Message
-from fastpubsub.logger import logger
-from fastpubsub.router import PubSubRouter
+"""Example: Prefix resolution failure - duplicate aliases in unnamed routers.
+
+This example demonstrates a conflict that occurs when two routers with
+empty prefixes (prefix="") have subscribers with the same alias. Since
+there's no prefix to differentiate them, both resolve to "test-alias-abc",
+causing a conflict.
+
+This will raise an error at startup, showing the importance of unique
+aliases when not using prefixes.
+
+Run with: fastpubsub run examples.routers.e2_03_prefix_resolution_fails:app
+"""
+
+from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
 
 first_unnamed_router = PubSubRouter(prefix="")
 second_unnamed_router = PubSubRouter(prefix="")
@@ -21,7 +30,7 @@ app = FastPubSub(broker)
     subscription_name="test-basic-router-subscription",
 )
 async def handle_on_first_unnamed_router(message: Message) -> None:
-    logger.info(f"Processed message on first unnamed router: {message}")
+    pass
 
 
 # Should fail since the two subscriber are resolved as "test-alias-abc"
@@ -31,4 +40,4 @@ async def handle_on_first_unnamed_router(message: Message) -> None:
     subscription_name="test-basic-router-subscription",
 )
 async def handle_on_second_unnamed_router(message: Message) -> None:
-    logger.info(f"Processed message on second unnamed router: {message}")
+    pass

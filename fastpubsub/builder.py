@@ -1,7 +1,7 @@
 """Builds and configures Pub/Sub subscriptions."""
 
 from fastpubsub.clients.pubsub import PubSubClient
-from fastpubsub.pubsub.subscriber import Subscriber
+from fastpubsub.subscriber import Subscriber
 
 
 class PubSubSubscriptionBuilder:

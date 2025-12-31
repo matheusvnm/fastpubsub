@@ -1,11 +1,23 @@
+"""Shared middleware classes for middleware examples.
+
+This module defines reusable middleware classes that demonstrate
+the middleware pattern in FastPubSub. Middlewares can intercept
+messages before and after handler execution for both subscribers
+and publishers.
+
+Each middleware extends BaseMiddleware and implements:
+- on_message(): Called when a message is received by a subscriber
+- on_publish(): Called when a message is about to be published
+"""
+
 from typing import Any
 
-from fastpubsub import BaseMiddleware, Message
+from fastpubsub import BaseMiddleware, PullMessage
 from fastpubsub.logger import logger
 
 
 class BrokerMiddleware(BaseMiddleware):
-    async def on_message(self, message: Message) -> Any:
+    async def on_message(self, message: PullMessage) -> Any:
         logger.info(
             "I'm the broker subscriber middleware! "
             "I will only be executed at broker handlers and its children"
@@ -23,7 +35,7 @@ class BrokerMiddleware(BaseMiddleware):
 
 
 class RouterMiddleware(BaseMiddleware):
-    async def on_message(self, message: Message) -> Any:
+    async def on_message(self, message: PullMessage) -> Any:
         logger.info(
             "I'm the router subscriber middleware! "
             "I will only be executed at the router handlers and its children"
@@ -41,7 +53,7 @@ class RouterMiddleware(BaseMiddleware):
 
 
 class SubRouterMiddleware(BaseMiddleware):
-    async def on_message(self, message: Message) -> Any:
+    async def on_message(self, message: PullMessage) -> Any:
         logger.info(
             "I'm the sub-router subscriber middleware! "
             "I will only be executed at the sub-child router handlers"
@@ -59,7 +71,7 @@ class SubRouterMiddleware(BaseMiddleware):
 
 
 class SubcriberMiddleware(BaseMiddleware):
-    async def on_message(self, message: Message) -> Any:
+    async def on_message(self, message: PullMessage) -> Any:
         logger.info("I'm the subscriber middleware! I will only be executed at subscriber level")
         return await super().on_message(message)
 
@@ -76,5 +88,5 @@ class PublisherMiddleware(BaseMiddleware):
         logger.info("I'm the publisher middleware! I will only be executed at publisher level")
         return await super().on_publish(data, ordering_key, attributes)
 
-    async def on_message(self, message: Message) -> Any:
+    async def on_message(self, message: PullMessage) -> Any:
         pass

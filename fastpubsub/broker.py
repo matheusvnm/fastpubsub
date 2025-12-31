@@ -8,12 +8,14 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, validate_call
 
 from fastpubsub.builder import PubSubSubscriptionBuilder
+from fastpubsub.clients.factory import PubSubClientFactory
 from fastpubsub.concurrency.manager import AsyncTaskManager
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.publisher import Publisher
-from fastpubsub.pubsub.subscriber import Subscriber
+from fastpubsub.publisher import Publisher
 from fastpubsub.router import PubSubRouter
+from fastpubsub.serialization import DefaultSerializer, Serializer
+from fastpubsub.subscriber import Subscriber
 from fastpubsub.types import SubscribedCallable
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,7 @@ class PubSubBroker:
         project_id: str,
         routers: Sequence[PubSubRouter] | None = None,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
+        serializer: Serializer = DefaultSerializer(),
     ):
         """Initializes the PubSubBroker.
 
@@ -35,12 +38,21 @@ class PubSubBroker:
             routers: A sequence of routers to include.
             middlewares: A sequence of middlewares to apply to all messages
                 incoming to subscribers and publishers.
+            serializer: The serializer for encoding/decoding messages.
+                Propagates to all routers, publishers, and subscribers
+                if they do not have their own.
         """
         if not (project_id and isinstance(project_id, str) and len(project_id.strip()) > 0):
             raise FastPubSubException(f"The project id value ({project_id}) is invalid.")
 
-        self.project_id = project_id
-        self.router = PubSubRouter(routers=routers, project_id=project_id, middlewares=middlewares)
+        if not serializer or not isinstance(serializer, Serializer):
+            raise FastPubSubException(
+                f"The serializer must be a subclass of {Serializer.__name__}."
+            )
+
+        self.router = PubSubRouter(
+            routers=routers, project_id=project_id, middlewares=middlewares, serializer=serializer
+        )
         self.task_manager = AsyncTaskManager()
 
     @validate_call(config=ConfigDict(strict=True))
@@ -135,6 +147,7 @@ class PubSubBroker:
         ordering_key: str = "",
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
+        serializer: Serializer | None = None,
     ) -> None:
         """Publishes a message to the given topic.
 
@@ -146,6 +159,8 @@ class PubSubBroker:
             ordering_key: The ordering key for the message.
             attributes: A dictionary of message attributes.
             autocreate: Whether to automatically create the topic if it does not exists.
+            serializer: The serializer for encoding messages. If None,
+                inherits from parent router or broker.
         """
         return await self.router.publish(
             topic_name=topic_name,
@@ -154,6 +169,7 @@ class PubSubBroker:
             ordering_key=ordering_key,
             attributes=attributes,
             autocreate=autocreate,
+            serializer=serializer,
         )
 
     def include_router(self, router: PubSubRouter) -> None:
@@ -173,6 +189,17 @@ class PubSubBroker:
         """
         return self.router.include_middleware(middleware)
 
+    def include_serializer(self, serializer: Serializer) -> None:
+        """Includes a serializer in the broker (propagates via router).
+
+        The serializer will be propagated to all routers, publishers, and subscribers
+        that don't have an explicit serializer set. Lower level has precedence.
+
+        Args:
+            serializer: The SerializerRegistry to propagate.
+        """
+        self.router.include_serializer(serializer)
+
     async def start(self) -> None:
         """Starts the broker."""
         subscribers = self._filter_subscribers()
@@ -187,7 +214,7 @@ class PubSubBroker:
             await subscription_builder.build(subscriber)
             self.task_manager.create_task(subscriber)
 
-        self.task_manager.start()
+        await self.task_manager.start()
 
     def alive(self) -> bool:
         """Checks if the message consumer tasks are alive.
@@ -258,6 +285,7 @@ class PubSubBroker:
 
         return selected_subscribers
 
-    def shutdown(self) -> None:
+    async def shutdown(self) -> None:
         """Shuts down the broker."""
-        self.task_manager.shutdown()
+        await self.task_manager.shutdown()
+        await PubSubClientFactory.close_all()

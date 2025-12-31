@@ -1,8 +1,17 @@
-from fastpubsub.applications import FastPubSub
-from fastpubsub.broker import PubSubBroker
-from fastpubsub.datastructures import Message
+"""Example: Basic router usage.
+
+This example demonstrates how to organize subscribers using routers.
+Routers provide a way to group related subscribers and apply common
+configuration (like prefixes) to them.
+
+The prefix allows multiple subscribers to use the same alias without
+conflict, as the final identifier becomes "prefix-alias".
+
+Run with: fastpubsub run examples.routers.e1_01_basic_router:app
+"""
+
+from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
-from fastpubsub.router import PubSubRouter
 
 router = PubSubRouter(prefix="core")
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")

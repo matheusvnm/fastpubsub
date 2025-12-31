@@ -1,8 +1,18 @@
-from fastpubsub.applications import FastPubSub
-from fastpubsub.broker import PubSubBroker
-from fastpubsub.datastructures import Message
+"""Example: Cross-project router.
+
+This example demonstrates how to configure a router to use a different
+Google Cloud project than the broker's default. All subscribers and
+publishers created by this router will use the router's project_id
+unless explicitly overridden.
+
+This enables a single FastPubSub application to work with multiple
+GCP projects simultaneously.
+
+Run with: fastpubsub run examples.routers.e1_02_cross_project_router:app
+"""
+
+from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
-from fastpubsub.router import PubSubRouter
 
 PROJECT_ID = "fastpubsub-pubsub-local"
 ALTERNATIVE_PROJECT_ID = "fastpubsub-pubsub-alternative"

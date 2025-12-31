@@ -1,3 +1,14 @@
+"""Example: Linked pub/sub (chaining topics).
+
+This example demonstrates a common pattern where a subscriber processes
+a message and then publishes to another topic, creating a processing
+pipeline. This is useful for building event-driven architectures.
+
+Flow: first-topic -> handle() -> second-topic -> handle_from_another_topic()
+
+Run with: fastpubsub run examples.basic_usage.e3_01_linked_pubsub:app
+"""
+
 from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
 

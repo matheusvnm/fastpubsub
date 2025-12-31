@@ -6,11 +6,12 @@ import pytest
 from pydantic import BaseModel
 
 from fastpubsub.broker import PubSubBroker
-from fastpubsub.exceptions import FastPubSubException
+from fastpubsub.middlewares import _PublishMessageEncoderMiddleware
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.commands import PublishMessageCommand
-from fastpubsub.pubsub.publisher import Publisher
+from fastpubsub.publisher import Publisher
 from fastpubsub.router import PubSubRouter
+from fastpubsub.serialization import DefaultSerializer
+from fastpubsub.serialization.exceptions import EncodingError
 from tests.conftest import callstack_matches
 
 
@@ -63,17 +64,22 @@ class TestPublisher:
         message_publisher_b = router_b.publisher(topic_name="somerandomtopic")
         message_publisher_c = broker.publisher(topic_name="somerandomtopic")
 
+        # Set serializers for testing
+        message_publisher_a.set_serializer(DefaultSerializer())
+        message_publisher_b.set_serializer(DefaultSerializer())
+        message_publisher_c.set_serializer(DefaultSerializer())
+
         callstack_a = message_publisher_a._build_callstack()
         callstack_b = message_publisher_b._build_callstack()
         callstack_c = message_publisher_c._build_callstack()
 
-        expected_output_a = [first_middleware, PublishMessageCommand]
+        expected_output_a = [first_middleware, _PublishMessageEncoderMiddleware]
         assert callstack_matches(callstack_a, expected_output_a)
 
-        expected_output_b = [second_middleware, first_middleware, PublishMessageCommand]
+        expected_output_b = [second_middleware, first_middleware, _PublishMessageEncoderMiddleware]
         assert callstack_matches(callstack_b, expected_output_b)
 
-        expected_output_c = [first_middleware, PublishMessageCommand]
+        expected_output_c = [first_middleware, _PublishMessageEncoderMiddleware]
         assert callstack_matches(callstack_c, expected_output_c)
 
     @pytest.mark.parametrize(
@@ -102,55 +108,69 @@ class TestPublisher:
         assert publisher.middlewares[1] == second_middleware
 
 
-class TestPublisherSerialization:
-    @pytest.mark.asyncio
-    async def test_serialize_pydantic_model(self, publisher: Publisher):
-        message = UserSchema(username="Sandro", age=26)
-        serialized_message = await publisher._serialize_message(message)
-        deserialized_message = json.loads(serialized_message.decode())
-        assert message.model_dump() == deserialized_message
+class TestDefaultSerializerEncoding:
+    """Tests for DefaultSerializer encoding."""
 
-    @pytest.mark.asyncio
-    async def test_serialize_complex_pydantic_model(self, publisher: Publisher):
+    @pytest.fixture
+    def serializer(self) -> DefaultSerializer:
+        return DefaultSerializer()
+
+    def test_encode_pydantic_model(self, serializer: DefaultSerializer):
+        message = UserSchema(username="Sandro", age=26)
+        encoded_data, content_type = serializer.encode(message)
+        deserialized_message = json.loads(encoded_data.decode())
+        assert message.model_dump() == deserialized_message
+        assert content_type == "application/json"
+
+    def test_encode_complex_pydantic_model(self, serializer: DefaultSerializer):
         message = ComplexMessageSchema(
             event_id=uuid4(),
             timestamp=datetime.now(),
             user=UserSchema(username="Test", age=100),
         )
-        serialized_message = await publisher._serialize_message(message)
-        deserialized_message = json.loads(serialized_message.decode())
+        encoded_data, content_type = serializer.encode(message)
+        deserialized_message = json.loads(encoded_data.decode())
         assert deserialized_message["user"]["username"] == "Test"
         assert UUID(deserialized_message["event_id"]) == message.event_id
+        assert content_type == "application/json"
 
-    @pytest.mark.asyncio
-    async def test_serialize_text(self, publisher: Publisher):
+    def test_encode_text(self, serializer: DefaultSerializer):
         message = "some_text_string"
-        serialized_message = await publisher._serialize_message("some_text_string")
-        deserialized_message = serialized_message.decode()
+        encoded_data, content_type = serializer.encode(message)
+        deserialized_message = encoded_data.decode()
         assert message == deserialized_message
+        assert content_type == "text/plain"
 
-    @pytest.mark.asyncio
-    async def test_serialize_dictionary(self, publisher: Publisher):
+    def test_encode_dictionary(self, serializer: DefaultSerializer):
         message = {"message": "how are you?"}
-        serialized_message = await publisher._serialize_message(message)
-        deserialized_message = json.loads(serialized_message.decode())
+        encoded_data, content_type = serializer.encode(message)
+        deserialized_message = json.loads(encoded_data.decode())
         assert message == deserialized_message
+        assert content_type == "application/json"
 
-    @pytest.mark.asyncio
-    async def test_serialize_dictionary_with_unserializable_data_raises_exception(
-        self, publisher: Publisher
+    def test_encode_dictionary_with_unserializable_data_raises_exception(
+        self, serializer: DefaultSerializer
     ):
         message = {"time": datetime.now()}
-        with pytest.raises(TypeError):
-            await publisher._serialize_message(message)
+        with pytest.raises((EncodingError, TypeError)):
+            serializer.encode(message)
 
-    @pytest.mark.asyncio
-    async def test_serialize_bytes(self, publisher: Publisher):
+    def test_encode_bytes(self, serializer: DefaultSerializer):
         message = b"some_byte_message"
-        serialized_message = await publisher._serialize_message(message)
-        assert message == serialized_message
+        encoded_data, content_type = serializer.encode(message)
+        assert message == encoded_data
+        assert content_type == "application/octet-stream"
 
-    @pytest.mark.asyncio
-    async def test_serialize_invalid_type_raises_exception(self, publisher: Publisher):
-        with pytest.raises(FastPubSubException):
-            await publisher._serialize_message(2112)
+    def test_encode_integer_as_json(self, serializer: DefaultSerializer):
+        # Integers are valid JSON, so they get encoded as JSON
+        encoded_data, content_type = serializer.encode(2112)
+        assert encoded_data == b"2112"
+        assert content_type == "application/json"
+
+    def test_encode_unsupported_type_raises_exception(self, serializer: DefaultSerializer):
+        # Objects that can't be JSON serialized should raise EncodingError
+        class CustomObject:
+            pass
+
+        with pytest.raises(EncodingError):
+            serializer.encode(CustomObject())

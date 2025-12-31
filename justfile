@@ -137,7 +137,7 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 [group("infra")]
 @up:
     just _start_msg "Starting containers infrastructure"
-    docker compose up -d --wait 2> /dev/null
+    docker compose up -d --wait
     just _start_msg "Infrastructure ready!"
 
 [doc("Execute top command on executing containers")]

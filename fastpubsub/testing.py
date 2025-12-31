@@ -6,7 +6,7 @@ import json
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from fastpubsub.datastructures import Message
+from fastpubsub.datastructures import PullMessage
 
 if TYPE_CHECKING:
     from fastpubsub.broker import PubSubBroker
@@ -128,13 +128,13 @@ class PubSubTestClient:
         for subscriber in subscribers.values():
             if subscriber.topic_name == topic_name:
                 # Create message
-                message = Message(
+                message = PullMessage(
                     id=f"test-msg-{len(self._published_messages)}",
                     size=len(data),
                     data=data,
                     attributes=attributes or {},
                     delivery_attempt=1,
-                    project_id=self.broker.project_id,
+                    project_id=self.broker.router.project_id,
                     topic_name=topic_name,
                     subscriber_name=subscriber.name,
                 )

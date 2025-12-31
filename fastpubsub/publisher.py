@@ -1,15 +1,14 @@
 """Publisher logic."""
 
-import json
 from collections.abc import MutableSequence
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
-from fastpubsub.concurrency.utils import ensure_async_middleware
+from fastpubsub.concurrency import ensure_async_middleware
 from fastpubsub.exceptions import FastPubSubException
-from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.commands import PublishMessageCommand
+from fastpubsub.middlewares import BaseMiddleware, _PublishMessageEncoderMiddleware
+from fastpubsub.serialization import Serializer
 
 
 class Publisher:
@@ -20,6 +19,7 @@ class Publisher:
         topic_name: str,
         project_id: str = "",
         middlewares: list[type[BaseMiddleware]] | None = None,
+        serializer: Serializer | None = None,
     ):
         """Initializes the Publisher.
 
@@ -28,9 +28,12 @@ class Publisher:
             project_id: An alternative project id to publish messages.
                         If set the broker's project id will be ignored.
             middlewares: A list of middlewares to apply.
+            serializer: The serializer for encoding messages.
+                If None, inherits from router or broker.
         """
         self.topic_name = topic_name
         self.project_id = project_id
+        self.serializer = serializer
         self.middlewares: list[type[BaseMiddleware]] = []
 
         if middlewares and isinstance(middlewares, MutableSequence):
@@ -54,40 +57,22 @@ class Publisher:
             autocreate: Whether to automatically create the topic.
         """
         callstack = self._build_callstack(autocreate=autocreate)
-        serialized_message = await self._serialize_message(data)
+        await callstack.on_publish(data=data, ordering_key=ordering_key, attributes=attributes)
 
-        await callstack.on_publish(
-            data=serialized_message, ordering_key=ordering_key, attributes=attributes
-        )
+    def _build_callstack(self, autocreate: bool = True) -> BaseMiddleware:
+        if not self.serializer:
+            raise FastPubSubException("The serializer was not found. Maybe you set as None?")
 
-    def _build_callstack(self, autocreate: bool = True) -> PublishMessageCommand | BaseMiddleware:
-        callstack: PublishMessageCommand | BaseMiddleware = PublishMessageCommand(
-            project_id=self.project_id, topic_name=self.topic_name, autocreate=autocreate
+        callstack: BaseMiddleware = _PublishMessageEncoderMiddleware(
+            project_id=self.project_id,
+            topic_name=self.topic_name,
+            serializer=self.serializer,
+            autocreate=autocreate,
         )
 
         for middleware in reversed(self.middlewares):
             callstack = middleware(next_call=callstack)
         return callstack
-
-    async def _serialize_message(self, data: BaseModel | dict[str, Any] | str | bytes) -> bytes:
-        if isinstance(data, bytes):
-            return data
-
-        if isinstance(data, str):
-            return data.encode(encoding="utf-8")
-
-        if isinstance(data, dict):
-            json_data = json.dumps(data, indent=None, separators=(",", ":"))
-            return json_data.encode(encoding="utf-8")
-
-        if isinstance(data, BaseModel):
-            json_data = data.model_dump_json(indent=None)
-            return json_data.encode(encoding="utf-8")
-
-        raise FastPubSubException(
-            f"The message {data} is not serializable. "
-            "Please send as one of the following formats: BaseModel, dict, str or bytes."
-        )
 
     @validate_call(config=ConfigDict(strict=True))
     def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
@@ -101,6 +86,15 @@ class Publisher:
 
         ensure_async_middleware(middleware)
         self.middlewares.append(middleware)
+
+    def set_serializer(self, serializer: Serializer) -> None:
+        """Set the serializer (used during propagation).
+
+        Args:
+            serializer: The MessageCodec to use for encoding.
+        """
+        if not self.serializer:
+            self.serializer = serializer
 
     def _set_project_id(self, project_id: str) -> None:
         if not self.project_id:

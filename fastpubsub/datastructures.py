@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 @dataclass(frozen=True)
-class Message:
+class PullMessage:
     """A class to represent a Pub/Sub message sent via Pull."""
 
     id: str

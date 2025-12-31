@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from fastpubsub.broker import PubSubBroker
-from fastpubsub.pubsub.publisher import Publisher
+from fastpubsub.publisher import Publisher
 from fastpubsub.router import PubSubRouter
 
 

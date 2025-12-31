@@ -1,3 +1,16 @@
+"""Example: Publisher middlewares.
+
+This example demonstrates how to apply middlewares to publishers,
+allowing you to intercept and modify messages before they are sent.
+Publisher middlewares can be added using publisher.include_middleware().
+
+The example shows:
+- Router-level middleware affecting router.publish()
+- Publisher-specific middleware via include_middleware()
+
+Run with: fastpubsub run examples.middlewares.e1_02_publisher_middlewares:app
+"""
+
 from examples.middlewares.middlewares import PublisherMiddleware, RouterMiddleware
 from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger

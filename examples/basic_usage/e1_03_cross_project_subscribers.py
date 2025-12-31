@@ -1,3 +1,12 @@
+"""Example: Cross-project subscribers.
+
+This example demonstrates how to subscribe to topics in different
+Google Cloud projects. Each subscriber can specify its own project_id,
+overriding the broker's default project.
+
+Run with: fastpubsub run examples.basic_usage.e1_03_cross_project_subscribers:app
+"""
+
 from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
 

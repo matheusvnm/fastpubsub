@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from fastpubsub.clients.factory import PubSubClientFactory
 from fastpubsub.clients.pubsub import DEFAULT_PUSH_TIMEOUT, PubSubClient
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
@@ -13,9 +14,10 @@ from fastpubsub.datastructures import (
     MessageRetryPolicy,
 )
 from fastpubsub.exceptions import FastPubSubException
-from fastpubsub.pubsub.subscriber import Subscriber
+from fastpubsub.subscriber import Subscriber
 
 PUBSUB_CLIENT_MODULE_PATH = "fastpubsub.clients.pubsub"
+FACTORY_MODULE_PATH = "fastpubsub.clients.factory"
 
 
 @pytest.fixture
@@ -44,14 +46,26 @@ def subscriber():
 
 
 class TestPubSubClient:
+    @pytest.fixture(autouse=True)
+    def clear_factory_cache(self) -> Generator[None]:
+        """Clear the factory cache before and after each test."""
+        PubSubClientFactory.clear_cache()
+        yield
+        PubSubClientFactory.clear_cache()
+
     @pytest.fixture
     def pub_client(self) -> Generator[MagicMock]:
-        with patch(f"{PUBSUB_CLIENT_MODULE_PATH}.PublisherClient") as pub_client:
+        """Patch PublisherClient where it's imported (factory.py)."""
+        with patch(f"{FACTORY_MODULE_PATH}.PublisherClient") as pub_client:
             yield pub_client
 
     @pytest.fixture
     def sub_client(self) -> Generator[MagicMock]:
-        with patch(f"{PUBSUB_CLIENT_MODULE_PATH}.SubscriberClient") as sub_client:
+        """Patch SubscriberClient where it's imported (pubsub.py and factory.py)."""
+        with (
+            patch(f"{PUBSUB_CLIENT_MODULE_PATH}.SubscriberClient") as sub_client,
+            patch(f"{FACTORY_MODULE_PATH}.SubscriberClient", sub_client),
+        ):
             sub_client.subscription_path.return_value = "some_sub_path"
             sub_client.topic_path.return_value = "some_topic_path"
             yield sub_client
@@ -79,11 +93,11 @@ class TestPubSubClient:
         topic_path = "some_topic_path_mock"
         data = b"some_data"
 
-        pub_client.topic_path.return_value = topic_path
+        pub_client.return_value.topic_path.return_value = topic_path
         client = PubSubClient(project_id=project_id)
         await client.publish(topic_name, data=data, ordering_key="", attributes=None)
 
-        pub_client.topic_path.assert_called_once_with(project_id, topic_name)
+        pub_client.return_value.topic_path.assert_called_once_with(project_id, topic_name)
         pub_client.return_value.publish.assert_called_once_with(
             topic=topic_path, data=data, ordering_key="", timeout=DEFAULT_PUSH_TIMEOUT
         )

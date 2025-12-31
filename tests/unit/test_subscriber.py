@@ -4,10 +4,10 @@ import pytest
 from pydantic import ValidationError
 
 from fastpubsub.broker import PubSubBroker
+from fastpubsub.middlewares import _ConsumeMessageDecoderMiddleware
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.commands import HandleMessageCommand
-from fastpubsub.pubsub.subscriber import Subscriber
 from fastpubsub.router import PubSubRouter
+from fastpubsub.subscriber import Subscriber
 from tests.conftest import callstack_matches
 
 
@@ -72,19 +72,24 @@ class TestSubscriber:
         broker.subscriber("sub_c", topic_name="tn", subscription_name="sn")(handler_broker)
         subscribers = broker.router._get_subscribers()
 
+        from fastpubsub.serialization import DefaultSerializer
+
         subscriber_a = subscribers["a.sub_a"]
+        subscriber_a.set_serializer(DefaultSerializer())
         callstack_a = subscriber_a._build_callstack()
-        expected_output = [first_middleware, HandleMessageCommand]
+        expected_output = [first_middleware, _ConsumeMessageDecoderMiddleware]
         assert callstack_matches(callstack_a, expected_output)
 
         subscriber_b = subscribers["a.b.sub_b"]
+        subscriber_b.set_serializer(DefaultSerializer())
         callstack_b = subscriber_b._build_callstack()
-        expected_output = [second_middleware, first_middleware, HandleMessageCommand]
+        expected_output = [second_middleware, first_middleware, _ConsumeMessageDecoderMiddleware]
         assert callstack_matches(callstack_b, expected_output)
 
         subscriber_c = subscribers["sub_c"]
+        subscriber_c.set_serializer(DefaultSerializer())
         callstack_c = subscriber_c._build_callstack()
-        expected_output = [HandleMessageCommand]
+        expected_output = [_ConsumeMessageDecoderMiddleware]
         assert callstack_matches(callstack_c, expected_output)
 
     def test_subscriber_name(self, subscriber: Subscriber):

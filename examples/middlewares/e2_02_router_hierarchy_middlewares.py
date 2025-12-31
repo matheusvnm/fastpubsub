@@ -1,3 +1,16 @@
+"""Example: Middleware ordering with include_middleware().
+
+This example shows the same router hierarchy as e2_01, but uses
+the include_middleware() and include_router() methods instead of
+constructor parameters. This demonstrates that the registration
+order doesn't affect the middleware execution order.
+
+The middleware stack is determined by the router hierarchy,
+not by the order of include_middleware() calls.
+
+Run with: fastpubsub run examples.middlewares.e2_02_router_hierarchy_middlewares:app
+"""
+
 from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubRouterMiddleware
 from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger

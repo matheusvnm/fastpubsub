@@ -6,12 +6,13 @@ build-backend = "uv_build"
 name = "fastpubsub"
 description = "A high performance FastAPI-based message consumer framework for PubSub"
 readme = "README.md"
-version = "0.7.1"
+version = "0.8.0"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 dependencies = [
     "click>=8.2.1",
+    "fast-depends>=3.0.0",
     "fastapi[standard-no-fastapi-cloud-cli]>=0.120.2",
     "google-api-core>=2.25.1",
     "google-cloud-pubsub>=2.31.1",
@@ -149,6 +150,9 @@ per-file-ignores = { "tests/*" = ["D"], "examples/*" = ["D"] }
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.codespell]
+ignore-words-list = ["dependant"]
 
 [tool.uv]
 package = true

@@ -1,3 +1,12 @@
+"""Example: Multiple subscribers on different topics.
+
+This example shows how to define multiple subscribers within the same
+application, each listening to different topics or with different
+subscriptions. FastPubSub manages all subscribers concurrently.
+
+Run with: fastpubsub run examples.basic_usage.e1_02_multiple_subscribers:app
+"""
+
 from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
 

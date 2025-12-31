@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import pytest
 from pydantic import BaseModel
 
-from fastpubsub import Message
+from fastpubsub import Message, PullMessage
 from tests.integration.conftest import managed_broker
 
 if TYPE_CHECKING:
@@ -137,9 +137,11 @@ class TestMessagePublishing:
 
             result = await asyncio.wait_for(received.get(), timeout=self.timeout)
 
-            assert isinstance(result, Message)
+            assert isinstance(result, PullMessage)
             assert result.data == sent_data
-            assert result.attributes == sent_attributes
+            # content-type is now automatically added by the serializer if not present
+            expected_attrs = {**sent_attributes, "content-type": "application/octet-stream"}
+            assert result.attributes == expected_attrs
 
     @pytest.mark.asyncio
     async def test_publish_pydantic_message(
