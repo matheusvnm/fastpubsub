@@ -1,8 +1,17 @@
-from fastpubsub.applications import FastPubSub
-from fastpubsub.broker import PubSubBroker
-from fastpubsub.datastructures import Message
+"""Example: Nested routers.
+
+This example shows how to nest routers within other routers,
+creating a hierarchy for organizing complex applications. Each
+router has its own prefix, allowing the same alias to be used
+across different routers without conflicts.
+
+Structure: broker -> core -> (sales, logistics)
+
+Run with: fastpubsub run examples.routers.e1_02_nested_routers:app
+"""
+
+from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
-from fastpubsub.router import PubSubRouter
 
 # The aliases/subscription name can be the same.
 # That is because each PubSubRouter has prefix.

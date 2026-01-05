@@ -1,3 +1,12 @@
+"""Example: Basic message publishing.
+
+This example shows how to publish messages to a Pub/Sub topic using
+the broker's publish method. Messages can be dictionaries, strings,
+or bytes.
+
+Run with: fastpubsub run examples.basic_usage.e2_01_basic_publisher:app
+"""
+
 from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
 

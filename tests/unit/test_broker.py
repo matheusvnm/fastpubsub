@@ -6,7 +6,7 @@ import pytest
 
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.exceptions import FastPubSubException
-from fastpubsub.pubsub.subscriber import Subscriber
+from fastpubsub.subscriber import Subscriber
 
 BROKER_MODULE_PATH = "fastpubsub.broker"
 
@@ -103,8 +103,10 @@ class TestPubSubBroker:
         finally:
             os.environ["FASTPUBSUB_SUBSCRIBERS"] = ""
 
-    def test_shutdown_successfully(self, async_task_manager: MagicMock, broker: PubSubBroker):
-        broker.shutdown()
+    @pytest.mark.asyncio
+    async def test_shutdown_successfully(self, async_task_manager: MagicMock, broker: PubSubBroker):
+        async_task_manager.shutdown = AsyncMock()
+        await broker.shutdown()
         async_task_manager.shutdown.assert_called_once()
 
     @pytest.mark.asyncio
@@ -117,6 +119,7 @@ class TestPubSubBroker:
     async def test_start_broker(
         self, subscription_builder: MagicMock, async_task_manager: MagicMock, broker: PubSubBroker
     ):
+        async_task_manager.start = AsyncMock()
         expected_subscriber = MagicMock(spec=Subscriber)
         expected_subscriber.project_id = "some_project_id"
         broker._filter_subscribers = lambda: [expected_subscriber]

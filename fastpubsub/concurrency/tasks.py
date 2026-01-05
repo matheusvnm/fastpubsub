@@ -9,11 +9,11 @@ from google.cloud.pubsub_v1.subscriber.exceptions import AcknowledgeError, Ackno
 from google.cloud.pubsub_v1.subscriber.futures import StreamingPullFuture
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 
-from fastpubsub.clients.pubsub import PubSubClient
-from fastpubsub.datastructures import Message
+from fastpubsub.concurrency.utils import apply_async
+from fastpubsub.datastructures import PullMessage
 from fastpubsub.exceptions import Drop, Retry
 from fastpubsub.logger import FastPubSubLogger
-from fastpubsub.pubsub.subscriber import Subscriber
+from fastpubsub.subscriber import Subscriber
 
 logger: FastPubSubLogger = cast(FastPubSubLogger, logging.getLogger(__name__))
 
@@ -29,7 +29,7 @@ class MessageMapper:
         """
         self._subscriber = subscriber
 
-    def convert(self, received_message: PubSubMessage) -> Message:
+    def convert(self, received_message: PubSubMessage) -> PullMessage:
         """Converts a Pub/Sub message into a fastpubsub.Message.
 
         Args:
@@ -42,7 +42,7 @@ class MessageMapper:
         if received_message.delivery_attempt is not None:
             delivery_attempt = received_message.delivery_attempt
 
-        return Message(
+        return PullMessage(
             id=received_message.message_id,
             data=received_message.data,
             size=received_message.size,
@@ -63,22 +63,23 @@ class PubSubStreamingPullTask:
         Args:
             subscriber: The subscriber to poll messages for.
         """
-        self.subscriber: Subscriber = subscriber
-        self.mapper = MessageMapper(self.subscriber)
-        self.client = PubSubClient(self.subscriber.project_id)
-        self.task: StreamingPullFuture | None = None
-        self.loop = asyncio.get_running_loop()
+        from fastpubsub.clients.pubsub import PubSubClient
 
-    def start(self) -> None:
+        self.subscriber: Subscriber = subscriber
+        self.client = PubSubClient(self.subscriber.project_id)
+        self.mapper = MessageMapper(self.subscriber)
+        self.loop = asyncio.get_running_loop()
+        self.polling: StreamingPullFuture | None = None
+        self.processing_messages: set[str] = set()
+
+    async def start(self) -> None:
         """Starts the message polling loop."""
         logger.info(f"The {self.subscriber.name} handler is waiting for messages.")
-        future = self.client.subscribe(
+        self.polling = await self.client.subscribe(
             callback=self._on_message,
             subscription_name=self.subscriber.subscription_name,
             max_messages=self.subscriber.control_flow_policy.max_messages,
         )
-
-        self.task = future
 
     def _on_message(self, received_message: PubSubMessage) -> Any:
         coroutine = self._consume(received_message)
@@ -86,37 +87,41 @@ class PubSubStreamingPullTask:
 
     async def _consume(self, received_message: PubSubMessage) -> Any:
         message = self.mapper.convert(received_message)
-        with logger.contextualize(
-            message_id=message.id,
-            topic_name=message.topic_name,
-            subscriber_name=message.subscriber_name,
-        ):
-            try:
-                callstack = self.subscriber._build_callstack()
-                response = await callstack.on_message(message)
-                future = received_message.ack_with_response()
-                self._wait_acknowledge_response(future=future)
-                logger.info("The message successfully processed.")
-                return response
-            except Drop:
-                future = received_message.ack_with_response()
-                self._wait_acknowledge_response(future=future)
-                logger.info("The message will be dropped.")
-                return
-            except Retry:
-                future = received_message.nack_with_response()
-                self._wait_acknowledge_response(future=future)
-                logger.warning("The message will be retried later.")
-                return
-            except Exception:
-                future = received_message.nack_with_response()
-                self._wait_acknowledge_response(future=future)
-                logger.exception("Unhandled exception on message", stacklevel=5)
-                return
-
-    def _wait_acknowledge_response(self, future: Future[Any]) -> None:
+        self.processing_messages.add(message.id)
         try:
-            future.result(timeout=60)
+            with logger.contextualize(
+                message_id=message.id,
+                topic_name=message.topic_name,
+                subscriber_name=message.subscriber_name,
+            ):
+                try:
+                    callstack = self.subscriber._build_callstack()
+                    response = await callstack.on_message(message)
+                    future = received_message.ack_with_response()
+                    await self._wait_acknowledge_response(future=future)
+                    logger.info("The message successfully processed.")
+                    return response
+                except Drop:
+                    future = received_message.ack_with_response()
+                    await self._wait_acknowledge_response(future=future)
+                    logger.info("The message will be dropped.")
+                    return
+                except Retry:
+                    future = received_message.nack_with_response()
+                    await self._wait_acknowledge_response(future=future)
+                    logger.warning("The message will be retried later.")
+                    return
+                except Exception:
+                    future = received_message.nack_with_response()
+                    await self._wait_acknowledge_response(future=future)
+                    logger.exception("Unhandled exception on message", stacklevel=5)
+                    return
+        finally:
+            self.processing_messages.discard(message.id)
+
+    async def _wait_acknowledge_response(self, future: Future[Any]) -> None:
+        try:
+            await apply_async(future.result, timeout=60)
         except AcknowledgeError as e:
             self._on_acknowledge_failed(e)
         except TimeoutError:
@@ -149,10 +154,10 @@ class PubSubStreamingPullTask:
         Returns:
             True if the task is ready, False otherwise.
         """
-        if not self.task or not isinstance(self.task, StreamingPullFuture):
+        if not self.polling or not isinstance(self.polling, StreamingPullFuture):
             return False
 
-        return bool(self.task.running())
+        return bool(self.polling.running())
 
     def task_alive(self) -> bool:
         """Checks if the task is alive.
@@ -160,13 +165,23 @@ class PubSubStreamingPullTask:
         Returns:
             True if the task is alive, False otherwise.
         """
-        if not self.task or not isinstance(self.task, StreamingPullFuture):
+        if not self.polling or not isinstance(self.polling, StreamingPullFuture):
             return False
 
-        return not bool(self.task.done())
+        return not bool(self.polling.done())
 
-    def shutdown(self) -> None:
+    async def shutdown(self) -> None:
         """Shuts down the task."""
+        SHUTDOWN_TIMEOUT = 60
+        CYCLES_TICKS = 1
+
+        if self.polling and self.polling.running():
+            self.polling.cancel()
+
+        elapsed_time = 0
+        while self.processing_messages and elapsed_time < SHUTDOWN_TIMEOUT:
+            logger.info(f"Waiting {self.subscriber.name} messages finish processing...")
+            await asyncio.sleep(CYCLES_TICKS)
+            elapsed_time += CYCLES_TICKS
+
         logger.info(f"The {self.subscriber.name} handler is turning off...")
-        if self.task and self.task.running():
-            self.task.cancel()

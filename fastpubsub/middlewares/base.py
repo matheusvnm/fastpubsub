@@ -1,10 +1,8 @@
 """Base classes for middlewares."""
 
-from abc import abstractmethod
 from typing import Any, Union
 
-from fastpubsub.datastructures import Message
-from fastpubsub.pubsub.commands import HandleMessageCommand, PublishMessageCommand
+from fastpubsub.datastructures import PullMessage
 
 
 class BaseMiddleware:
@@ -14,9 +12,7 @@ class BaseMiddleware:
     implement your own middleware.
     """
 
-    def __init__(
-        self, next_call: Union["BaseMiddleware", "PublishMessageCommand", "HandleMessageCommand"]
-    ):
+    def __init__(self, next_call: Union["BaseMiddleware", None]):
         """Initializes the BaseMiddleware.
 
         Args:
@@ -24,8 +20,7 @@ class BaseMiddleware:
         """
         self.next_call = next_call
 
-    @abstractmethod
-    async def on_message(self, message: Message) -> Any:
+    async def on_message(self, message: PullMessage) -> Any:
         """Handles a message.
 
         When extending this methods, you should always call
@@ -34,17 +29,13 @@ class BaseMiddleware:
         Args:
             message: The message to handle.
         """
-        if isinstance(self.next_call, PublishMessageCommand):
-            raise TypeError(f"Incorrect middleware stack build for {self.__class__.__name__}")
-
         if not self.next_call:
             return
 
         return await self.next_call.on_message(message)
 
-    @abstractmethod
     async def on_publish(
-        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
+        self, data: Any, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
         """Handles a publish event.
 
@@ -52,13 +43,10 @@ class BaseMiddleware:
         `await super().on_publish(...)` to continue the chain.
 
         Args:
-            data: The message data.
+            data: The message data (any serializable type, encoding happens in command).
             ordering_key: The ordering key for the message.
             attributes: A dictionary of message attributes.
         """
-        if isinstance(self.next_call, HandleMessageCommand):
-            raise TypeError(f"Incorrect middleware stack build for {self.__class__.__name__}")
-
         if not self.next_call:
             return
 

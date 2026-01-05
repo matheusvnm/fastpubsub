@@ -3,9 +3,9 @@ from pydantic import ValidationError
 
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.publisher import Publisher
-from fastpubsub.pubsub.subscriber import Subscriber
+from fastpubsub.publisher import Publisher
 from fastpubsub.router import PubSubRouter
+from fastpubsub.subscriber import Subscriber
 
 
 class TestMiddlewareHierarchy:

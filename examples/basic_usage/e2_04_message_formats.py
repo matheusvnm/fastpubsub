@@ -1,3 +1,17 @@
+"""Example: Different message formats.
+
+This example shows the various data formats you can publish:
+- Pydantic models (automatically serialized via model_dump)
+- Dictionaries (JSON-serialized)
+- Strings (UTF-8 encoded)
+- Raw bytes (sent as-is)
+
+FastPubSub's serialization system automatically handles encoding
+based on the data type provided.
+
+Run with: fastpubsub run examples.basic_usage.e2_04_message_formats:app
+"""
+
 from pydantic import BaseModel
 
 from fastpubsub import FastPubSub, Message, Publisher, PubSubBroker

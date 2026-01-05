@@ -1,3 +1,15 @@
+"""Example: Subscriber-level middlewares.
+
+This example shows how middlewares are applied at different levels:
+- Broker middlewares: Applied to all subscribers in the broker
+- Router middlewares: Applied to subscribers in that router
+- Subscriber middlewares: Applied to a specific subscriber only
+
+The middleware execution order is: Broker -> Router -> Subscriber -> Handler
+
+Run with: fastpubsub run examples.middlewares.e1_01_subscriber_middlewares:app
+"""
+
 from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubcriberMiddleware
 from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger

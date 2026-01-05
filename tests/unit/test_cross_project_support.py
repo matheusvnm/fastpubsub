@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import ANY, AsyncMock, patch
 
 import pytest
 
@@ -66,12 +66,12 @@ class TestCrossProjectSupport:
 
         await broker.publish("topic_b", {"data": "test"}, project_id="ProjectB")
         MockPublisher.assert_called_with(
-            topic_name="topic_b", project_id="ProjectB", middlewares=[]
+            topic_name="topic_b", project_id="ProjectB", middlewares=[], serializer=ANY
         )
 
         await broker.publish("topic_a", {"data": "test"})
         MockPublisher.assert_called_with(
-            topic_name="topic_a", project_id="ProjectA", middlewares=[]
+            topic_name="topic_a", project_id="ProjectA", middlewares=[], serializer=ANY
         )
 
     def test_nested_routers_overrides_project_id_on_composition(self):

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from fastpubsub import Message, PullMessage
 from fastpubsub.middlewares.base import BaseMiddleware
 from tests.integration.conftest import managed_broker
 
@@ -14,7 +15,6 @@ if TYPE_CHECKING:
     from unittest.mock import MagicMock
 
     from fastpubsub.broker import PubSubBroker
-    from fastpubsub.datastructures import Message
 
 
 @pytest.mark.connected
@@ -30,12 +30,12 @@ class TestMiddlewares:
         connected_broker: PubSubBroker,
     ) -> None:
         class LoggingMiddleware(BaseMiddleware):
-            async def on_message(self, message: Message) -> Any:
+            async def on_message(self, message: PullMessage) -> Any:
                 mock("logging_middleware")
                 return await super().on_message(message)
 
         class ValidationMiddleware(BaseMiddleware):
-            async def on_message(self, message: Message) -> Any:
+            async def on_message(self, message: PullMessage) -> Any:
                 mock("validation_middleware")
                 return await super().on_message(message)
 

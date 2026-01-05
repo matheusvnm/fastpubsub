@@ -1,8 +1,17 @@
-from fastpubsub.applications import FastPubSub
-from fastpubsub.broker import PubSubBroker
-from fastpubsub.datastructures import Message
+"""Example: Router prefix resolution with empty prefixes.
+
+This example shows how routers with empty prefixes work. When routers
+have empty prefixes (prefix=""), the subscriber aliases must be unique
+across all such routers to avoid conflicts.
+
+Here, two unnamed routers can coexist because their subscribers use
+different aliases: "test-alias-abc" and "test-alias-cba".
+
+Run with: fastpubsub run examples.routers.e1_03_prefix_resolution:app
+"""
+
+from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
-from fastpubsub.router import PubSubRouter
 
 first_unnamed_router = PubSubRouter(prefix="")
 second_unnamed_router = PubSubRouter(prefix="")

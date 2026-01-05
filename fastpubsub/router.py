@@ -18,8 +18,9 @@ from fastpubsub.datastructures import (
 )
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.publisher import Publisher
-from fastpubsub.pubsub.subscriber import Subscriber
+from fastpubsub.publisher import Publisher
+from fastpubsub.serialization import Serializer
+from fastpubsub.subscriber import Subscriber
 from fastpubsub.types import AsyncDecoratedCallable, SubscribedCallable
 
 _PREFIX_REGEX = re.compile(r"^[a-zA-Z0-9]+([_./][a-zA-Z0-9]+)*$")
@@ -35,6 +36,7 @@ class PubSubRouter:
         project_id: str = "",
         routers: Sequence["PubSubRouter"] | None = None,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
+        serializer: Serializer | None = None,
     ):
         """Initializes the PubSubRouter.
 
@@ -49,6 +51,8 @@ class PubSubRouter:
             routers: A sequence of children routers to include.
             middlewares: A sequence of middlewares to apply to all subscribers
                 in this router and its children.
+            serializer: The serializer for encoding/decoding messages. If None,
+                inherits from parent router or broker.
         """
         if prefix and not _PREFIX_REGEX.match(prefix):
             raise FastPubSubException(
@@ -58,6 +62,7 @@ class PubSubRouter:
 
         self.prefix = prefix
         self.project_id = project_id
+        self.serializer = serializer
         self.routers: list[PubSubRouter] = []
         self.subscribers: dict[str, Subscriber] = {}
         self.publishers: WeakSet[Publisher] = WeakSet()
@@ -115,7 +120,31 @@ class PubSubRouter:
         for middleware in self.middlewares:
             router.include_middleware(middleware)
 
+        if self.serializer:
+            self.include_serializer(serializer=self.serializer)
+
         self.routers.append(router)
+
+    def include_serializer(self, serializer: Serializer) -> None:
+        """Includes a serializer in the router (propagates to children without overriding).
+
+        Only sets serializer on publishers/subscribers that don't have an explicit serializer.
+        Lower level (subscriber/publisher) has precedence over higher level (router).
+
+        Args:
+            serializer: The SerializerRegistry to propagate.
+        """
+        if self.serializer is None:
+            self.serializer = serializer
+
+        for publisher in self.publishers:
+            publisher.set_serializer(serializer)
+
+        for subscriber in self.subscribers.values():
+            subscriber.set_serializer(serializer)
+
+        for router in self.routers:
+            router.include_serializer(serializer)
 
     @validate_call(config=ConfigDict(strict=True))
     def subscriber(
@@ -137,6 +166,7 @@ class PubSubRouter:
         max_backoff_delay_secs: int = 600,
         max_messages: int = 1000,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
+        serializer: Serializer | None = None,
     ) -> SubscribedCallable:
         """Decorator to register a function as a subscriber.
 
@@ -163,6 +193,8 @@ class PubSubRouter:
             max_backoff_delay_secs: The maximum backoff delay in seconds.
             max_messages: The maximum number of messages to fetch from the broker.
             middlewares: A sequence of middlewares to apply **only to the subscriber**.
+            serializer: The serializer for decoding messages. If None,
+                inherits from parent router or broker.
 
         Returns:
             A decorator that registers the function as a subscriber.
@@ -224,6 +256,7 @@ class PubSubRouter:
                 dead_letter_policy=dead_letter_policy,
                 middlewares=subscriber_middlewares,
                 project_id=chosen_project_id,
+                serializer=serializer or self.serializer,
             )
             self.subscribers[prefixed_alias.lower()] = subscriber
             return func
@@ -231,20 +264,29 @@ class PubSubRouter:
         return decorator
 
     @validate_call(config=ConfigDict(strict=True))
-    def publisher(self, topic_name: str, project_id: str = "") -> Publisher:
+    def publisher(
+        self, topic_name: str, project_id: str = "", serializer: Serializer | None = None
+    ) -> Publisher:
         """Returns a publisher for the given topic.
 
         Args:
             topic_name: The name of the topic.
             project_id: An alternative project id to publish messages.
                         If set the router project id will be ignored.
+            serializer: The serializer for encoding messages. If None,
+                inherits from parent router or broker.
 
         Returns:
             A publisher for the given topic.
         """
         chosen_project_id = project_id or self.project_id
+        chosen_serializer = serializer or self.serializer
+
         publisher = Publisher(
-            topic_name=topic_name, project_id=chosen_project_id, middlewares=self.middlewares
+            topic_name=topic_name,
+            project_id=chosen_project_id,
+            middlewares=self.middlewares,
+            serializer=chosen_serializer,
         )
         self.publishers.add(publisher)
         return publisher
@@ -258,6 +300,7 @@ class PubSubRouter:
         ordering_key: str = "",
         attributes: dict[str, str] | None = None,
         autocreate: bool = True,
+        serializer: Serializer | None = None,
     ) -> None:
         """Publishes a message to the given topic.
 
@@ -269,10 +312,17 @@ class PubSubRouter:
             ordering_key: The ordering key for the message.
             attributes: A dictionary of message attributes.
             autocreate: Whether to automatically create the topic if it does not exists.
+            serializer: The serializer for encoding messages. If None,
+                inherits from parent router or broker.
         """
-        publisher = self.publisher(topic_name=topic_name, project_id=project_id)
+        publisher = self.publisher(
+            topic_name=topic_name, project_id=project_id, serializer=serializer
+        )
         await publisher.publish(
-            data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
+            data=data,
+            ordering_key=ordering_key,
+            attributes=attributes,
+            autocreate=autocreate,
         )
 
     @validate_call(config=ConfigDict(strict=True))

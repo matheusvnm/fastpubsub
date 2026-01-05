@@ -1,6 +1,20 @@
-from fastpubsub import FastPubSub, Message, PubSubBroker
+"""Example: Cross-project publishing.
+
+This example demonstrates publishing messages to topics in different
+Google Cloud projects. Each publisher can specify its own project_id,
+overriding the broker's default project. This enables communication
+across multiple GCP projects from a single application.
+
+Flow:
+1. Message arrives at first project's topic
+2. Handler publishes to second project's topic
+3. Handler publishes to third project's topic via explicit Publisher
+
+Run with: fastpubsub run examples.basic_usage.e2_04_cross_project_publisher:app
+"""
+
+from fastpubsub import FastPubSub, Message, Publisher, PubSubBroker
 from fastpubsub.logger import logger
-from fastpubsub.pubsub import Publisher
 
 DEFAULT_PROJECT_ID = "fastpubsub-pubsub-first-project"
 SECOND_PROJECT_ID = "fastpubsub-pubsub-second-project"

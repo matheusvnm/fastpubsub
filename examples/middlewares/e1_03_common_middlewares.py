@@ -1,8 +1,19 @@
-from fastpubsub.applications import FastPubSub
-from fastpubsub.broker import PubSubBroker
-from fastpubsub.datastructures import Message
+"""Example: Built-in GZip middleware.
+
+This example demonstrates using FastPubSub's built-in GZipMiddleware
+to automatically compress messages before publishing and decompress
+them when received. This is useful for reducing network bandwidth
+when dealing with large messages.
+
+The Content-Encoding attribute is automatically set to 'gzip' when
+the middleware compresses a message.
+
+Run with: fastpubsub run examples.middlewares.e1_03_common_middlewares:app
+"""
+
+from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
-from fastpubsub.middlewares.gzip import GZipMiddleware
+from fastpubsub.middlewares import GZipMiddleware
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 broker.include_middleware(GZipMiddleware)

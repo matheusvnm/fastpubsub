@@ -3,7 +3,7 @@
 import gzip
 from typing import Any
 
-from fastpubsub.datastructures import Message
+from fastpubsub.datastructures import PullMessage
 from fastpubsub.middlewares.base import BaseMiddleware
 
 
@@ -11,7 +11,7 @@ from fastpubsub.middlewares.base import BaseMiddleware
 class GZipMiddleware(BaseMiddleware):
     """A middleware for compressing and decompressing messages using gzip."""
 
-    async def on_message(self, message: Message) -> Any:
+    async def on_message(self, message: PullMessage) -> Any:
         """Decompresses a message.
 
         Args:
@@ -19,7 +19,7 @@ class GZipMiddleware(BaseMiddleware):
         """
         if message.attributes and message.attributes.get("Content-Encoding") == "gzip":
             decompressed_data = gzip.decompress(data=message.data)
-            new_message = Message(
+            new_message = PullMessage(
                 id=message.id,
                 size=message.size,
                 data=decompressed_data,

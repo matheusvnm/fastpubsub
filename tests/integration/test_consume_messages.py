@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from fastpubsub import Message
+from fastpubsub import Message, PullMessage
 from tests.integration.conftest import managed_broker
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ class TestMessageConsumption:
         unique_subscription: str,
         connected_broker: PubSubBroker,
     ) -> None:
-        received: asyncio.Queue[Message] = asyncio.Queue(maxsize=1)
+        received: asyncio.Queue[PullMessage] = asyncio.Queue(maxsize=1)
 
         @connected_broker.subscriber(
             alias="test-consumer",
@@ -45,12 +45,13 @@ class TestMessageConsumption:
                 received.get(),
                 timeout=self.timeout,
             )
-            assert isinstance(result, Message)
+            assert isinstance(result, PullMessage)
             assert result.data == b"Hello, PubSub!"
             assert result.subscriber_name == "handler"
             assert result.delivery_attempt == 1
             assert result.topic_name == unique_topic
-            assert not result.attributes
+            # content-type is now automatically added by the serializer
+            assert result.attributes.get("content-type") == "text/plain"
 
     @pytest.mark.asyncio
     async def test_consume_multiple_messages(

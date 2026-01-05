@@ -1,3 +1,15 @@
+"""Example: Router hierarchy middleware inheritance.
+
+This example demonstrates how middlewares are inherited through
+the router hierarchy. Child routers inherit parent middlewares,
+creating a layered middleware stack.
+
+Hierarchy: Broker -> Parent Router -> Child Router
+Middleware order for child: BrokerMiddleware -> RouterMiddleware -> SubRouterMiddleware
+
+Run with: fastpubsub run examples.middlewares.e2_01_router_hierarchy_middlewares:app
+"""
+
 from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubRouterMiddleware
 from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
