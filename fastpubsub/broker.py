@@ -25,6 +25,7 @@ class PubSubBroker:
     def __init__(
         self,
         project_id: str,
+        shutdown_timeout: float = 30.0,
         routers: Sequence[PubSubRouter] | None = None,
         middlewares: Sequence[type[BaseMiddleware]] | None = None,
     ):
@@ -32,6 +33,8 @@ class PubSubBroker:
 
         Args:
             project_id: The Google Cloud project ID.
+            shutdown_timeout: Maximum time to wait for in-flight messages per
+                subscription during shutdown (seconds). Defaults to 30 seconds.
             routers: A sequence of routers to include.
             middlewares: A sequence of middlewares to apply to all messages
                 incoming to subscribers and publishers.
@@ -40,6 +43,7 @@ class PubSubBroker:
             raise FastPubSubException(f"The project id value ({project_id}) is invalid.")
 
         self.project_id = project_id
+        self.shutdown_timeout = shutdown_timeout
         self.router = PubSubRouter(routers=routers, project_id=project_id, middlewares=middlewares)
         self.task_manager = AsyncTaskManager()
 
@@ -258,6 +262,6 @@ class PubSubBroker:
 
         return selected_subscribers
 
-    def shutdown(self) -> None:
-        """Shuts down the broker."""
-        self.task_manager.shutdown()
+    async def shutdown(self) -> None:
+        """Gracefully shuts down the broker using the configured timeout."""
+        await self.task_manager.shutdown(timeout=self.shutdown_timeout)

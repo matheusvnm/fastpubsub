@@ -1,7 +1,13 @@
 """Task manager for subscriber tasks."""
 
+import logging
+from typing import cast
+
 from fastpubsub.concurrency.tasks import PubSubStreamingPullTask
+from fastpubsub.logger import FastPubSubLogger
 from fastpubsub.pubsub.subscriber import Subscriber
+
+logger: FastPubSubLogger = cast(FastPubSubLogger, logging.getLogger(__name__))
 
 
 class AsyncTaskManager:
@@ -42,9 +48,19 @@ class AsyncTaskManager:
             readiness[task.subscriber.name] = task.task_ready()
         return readiness
 
-    def shutdown(self) -> None:
-        """Terminates the manager process and all its children gracefully."""
+    async def shutdown(self, timeout: float = 30.0) -> None:
+        """Gracefully shuts down all tasks, waiting for message completion.
+
+        Two-step process:
+        1. Cancel all StreamingPullFutures to stop NEW messages from arriving
+        2. Wait for IN-FLIGHT messages to complete (or timeout)
+
+        Args:
+            timeout: Maximum time to wait for in-flight messages per subscription (seconds).
+        """
+        logger.info(f"Starting graceful shutdown with {timeout}s timeout per subscription...")
         for task in self._tasks:
-            task.shutdown()
+            if task.task_alive():
+                await task.shutdown(timeout=timeout)
 
         self._tasks.clear()

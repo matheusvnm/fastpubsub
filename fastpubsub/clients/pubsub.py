@@ -256,6 +256,7 @@ class PubSubClient:
         callback: Callable[[PubSubMessage], Any],
         subscription_name: str,
         max_messages: int,
+        scheduler: AsyncScheduler,
     ) -> StreamingPullFuture:
         """Starts the subscription listening on background given a subscription.
 
@@ -263,16 +264,19 @@ class PubSubClient:
             callback: The function called when a message is received.
             subscription_name: The name of the subscription.
             max_messages: The maximum number of messages to pull.
+            scheduler: The scheduler used to receive messages from GCP and send to callback.
 
         Returns:
             A future that can be used to check the progress and get the result.
         """
         subscription_path = SubscriberClient.subscription_path(self.project_id, subscription_name)
+
         future: StreamingPullFuture = self.subscriber_client.subscribe(
             callback=callback,
             subscription=subscription_path,
-            scheduler=AsyncScheduler(),
+            scheduler=scheduler,
             flow_control=FlowControl(max_messages=max_messages),
             await_callbacks_on_shutdown=True,
         )
+
         return future
