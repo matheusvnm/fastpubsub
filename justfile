@@ -4,9 +4,9 @@ python_version := "3.12"
 pubsub_emulator_host := "localhost:8085"
 
 # DIRECTORIES
-target_dirs := "fastpubsub tests examples"
-lint_dirs := "fastpubsub examples"
-lint_extra_dirs := "fastpubsub examples tests"
+target_dirs := "fastpubsub tests examples benchmarks"
+lint_dirs := "fastpubsub examples benchmarks"
+lint_extra_dirs := "fastpubsub examples tests benchmarks"
 pre_commit_hook_path := ".git/hooks/pre-commit"
 
 # COLORS
@@ -137,7 +137,7 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 [group("infra")]
 @up:
     just _start_msg "Starting containers infrastructure"
-    docker compose up -d --wait 2> /dev/null
+    docker compose up -d --wait
     just _start_msg "Infrastructure ready!"
 
 [doc("Execute top command on executing containers")]
@@ -174,6 +174,53 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 [group("infra")]
 @shell: up
     docker compose exec fastpubsub bash
+
+
+# ----------------------------------------------------------------------------
+# Benchmark Commands
+# ----------------------------------------------------------------------------
+
+
+[doc("Run all benchmarks and compare results")]
+[group("bench")]
+@bench duration="60": up && down
+    just _start_msg "Running all benchmarks for {{ duration }}s each"
+    {{ run_test_command }} benchmarks.bench --all --duration {{ duration }}
+
+
+[doc("Run FastPubSub benchmark (basic case)")]
+[group("bench")]
+@bench-basic duration="60": up && down
+    just _start_msg "Running FastPubSub benchmark for {{ duration }}s"
+    {{ run_test_command }} benchmarks.bench --case basic --duration {{ duration }}
+
+[doc("Run baseline benchmark (raw google-cloud-pubsub)")]
+[group("bench")]
+@bench-raw duration="60": up && down
+    just _start_msg "Running baseline benchmark for {{ duration }}s"
+    {{ run_test_command }} benchmarks.bench --case raw_pubsub --duration {{ duration }}
+
+[doc("Run quick benchmark (10s duration)")]
+[group("bench")]
+@bench-quick case="basic": up && down
+    just _start_msg "Running quick {{ case }} benchmark (10s)"
+    {{ run_test_command }} benchmarks.bench --case {{ case }} --duration 10
+
+[doc("Show benchmark results")]
+[group("bench")]
+@bench-results:
+    just _start_msg "Benchmark Results"
+    @if [ -f benchmarks/results/benches.csv ]; then \
+        {{ run_command }} python -c "import csv; print('\\n'.join([';'.join(row) for row in csv.reader(open('benchmarks/results/benches.csv'), delimiter=';')]))"; \
+    else \
+        just _warn_msg "No benchmark results found. Run 'just bench' first"; \
+    fi
+
+[doc("Clear benchmark results")]
+[group("bench")]
+@bench-clean:
+    just _start_msg "Clearing benchmark results"
+    rm -f benchmarks/results/benches.csv
 
 
 # ----------------------------------------------------------------------------
