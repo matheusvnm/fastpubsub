@@ -1,0 +1,2 @@
+0.7.2;raw_pubsub;1127;60.19;18.72;2026-01-08T14:01:34.200525+00:00;3.12.12;Pure google-cloud-pubsub (baseline);3.83 GB
+0.7.2;basic;1147;60.15;19.07;2026-01-08T14:02:34.377837+00:00;3.12.12;FastPubSub Message processing;3.83 GB

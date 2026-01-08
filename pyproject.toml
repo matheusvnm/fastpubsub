@@ -6,7 +6,7 @@ build-backend = "uv_build"
 name = "fastpubsub"
 description = "A high performance FastAPI-based message consumer framework for PubSub"
 readme = "README.md"
-version = "0.7.1"
+version = "0.7.2"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
@@ -71,9 +71,14 @@ test = [
     "pytest-randomly>=4.0.0",
 ]
 
+bench = [
+    "psutil>=6.0.0",
+]
+
 dev = [
     {include-group = "lint"},
     {include-group = "test"},
+    {include-group = "bench"},
     "pre-commit==4.3.0",
 ]
 
@@ -145,7 +150,7 @@ docstring-code-format = true
 [tool.ruff.lint]
 select = ["E", "W", "D", "I", "C4", "UP", "F", "B", "ARG"]
 extend-ignore = ["B008", "B006", "ARG001", "ARG002"]
-per-file-ignores = { "tests/*" = ["D"], "examples/*" = ["D"] }
+per-file-ignores = { "tests/*" = ["D"], "examples/*" = ["D"], "benchmarks/*" = ["D"] }
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
