@@ -1,37 +1,41 @@
 # PROJECT SETTINGS
+
 project_name := "fastpubsub"
 python_version := "3.12"
 pubsub_emulator_host := "localhost:8085"
 
 # DIRECTORIES
-target_dirs := "fastpubsub tests examples"
-lint_dirs := "fastpubsub examples"
-lint_extra_dirs := "fastpubsub examples tests"
+
+target_dirs := "fastpubsub tests examples benchmarks"
+lint_dirs := "fastpubsub examples benchmarks"
+lint_extra_dirs := "fastpubsub examples tests benchmarks"
 pre_commit_hook_path := ".git/hooks/pre-commit"
 
 # COLORS
-black   := `tput -Txterm setaf 0`
-red     := `tput -Txterm setaf 1`
-green   := `tput -Txterm setaf 2`
-yellow  := `tput -Txterm setaf 3`
-blue    := `tput -Txterm setaf 4`
+
+black := `tput -Txterm setaf 0`
+red := `tput -Txterm setaf 1`
+green := `tput -Txterm setaf 2`
+yellow := `tput -Txterm setaf 3`
+blue := `tput -Txterm setaf 4`
 magenta := `tput -Txterm setaf 5`
-cyan    := `tput -Txterm setaf 6`
-white   := `tput -Txterm setaf 7`
-bold    := `tput -Txterm bold`
-reset   := `tput -Txterm sgr0`
+cyan := `tput -Txterm setaf 6`
+white := `tput -Txterm setaf 7`
+bold := `tput -Txterm bold`
+reset := `tput -Txterm sgr0`
 
 # COMMAND ALIASES
+
 run_command := "uv run --active --frozen"
 run_test_command := "docker compose exec fastpubsub python -m"
 
-
 # ENVIRONMENT VAR EXPORTS
+
 export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 
 [doc("All commands information")]
 @default:
-  just --list --unsorted --list-heading $'FastPubSub commands…\n'
+    just --list --unsorted --list-heading $'FastPubSub commands…\n'
 
 # ----------------------------------------------------------------------------
 # Testing Commands
@@ -79,10 +83,9 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
     just _start_msg "Running tests matching '{{ keyword }}'"
     {{ run_test_command }} pytest -k "{{ keyword }}" -v {{ args }}
 
-
 # ----------------------------------------------------------------------------
 # Linting Tools Commands
-# ----------------------------------------------------------------------------
+
 [doc("Execute all checks (lint, security and static analysis)")]
 [group("lint")]
 @check: typo lint securitize
@@ -103,7 +106,7 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 [group("lint")]
 @lint:
     just _start_msg "Checking typing rules"
-    {{ run_command }} mypy {{lint_dirs}}
+    {{ run_command }} mypy {{ lint_dirs }}
 
     just _start_msg "Checking linting rules"
     {{ run_command }} ruff check {{ lint_extra_dirs }}
@@ -120,8 +123,8 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 [doc("Executes security analysis on code")]
 [group("lint")]
 @securitize:
-  just _start_msg "Checking for vulnerabilities"
-  {{ run_command }} bandit -c pyproject.toml -r {{ project_name }}
+    just _start_msg "Checking for vulnerabilities"
+    {{ run_command }} bandit -c pyproject.toml -r {{ project_name }}
 
 # ----------------------------------------------------------------------------
 # Infra Commands
@@ -137,7 +140,7 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 [group("infra")]
 @up:
     just _start_msg "Starting containers infrastructure"
-    docker compose up -d --wait 2> /dev/null
+    docker compose up -d --wait
     just _start_msg "Infrastructure ready!"
 
 [doc("Execute top command on executing containers")]
@@ -175,51 +178,92 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 @shell: up
     docker compose exec fastpubsub bash
 
+# ----------------------------------------------------------------------------
+# Benchmark Commands
+# ----------------------------------------------------------------------------
+
+[doc("Run all benchmarks and compare results")]
+[group("bench")]
+@bench duration="60": up && down
+    just _start_msg "Running all benchmarks for {{ duration }}s each"
+    {{ run_test_command }} benchmarks.bench --all --duration {{ duration }}
+
+[doc("Run FastPubSub benchmark (basic case)")]
+[group("bench")]
+@bench-basic duration="60": up && down
+    just _start_msg "Running FastPubSub benchmark for {{ duration }}s"
+    {{ run_test_command }} benchmarks.bench --case basic --duration {{ duration }}
+
+[doc("Run baseline benchmark (raw google-cloud-pubsub)")]
+[group("bench")]
+@bench-raw duration="60": up && down
+    just _start_msg "Running baseline benchmark for {{ duration }}s"
+    {{ run_test_command }} benchmarks.bench --case raw_pubsub --duration {{ duration }}
+
+[doc("Run quick benchmark (10s duration)")]
+[group("bench")]
+@bench-quick case="basic": up && down
+    just _start_msg "Running quick {{ case }} benchmark (10s)"
+    {{ run_test_command }} benchmarks.bench --case {{ case }} --duration 10
+
+[doc("Show benchmark results")]
+[group("bench")]
+@bench-results:
+    just _start_msg "Benchmark Results"
+    @if [ -f benchmarks/results/benches.csv ]; then \
+        {{ run_command }} python -c "import csv; print('\\n'.join([';'.join(row) for row in csv.reader(open('benchmarks/results/benches.csv'), delimiter=';')]))"; \
+    else \
+        just _warn_msg "No benchmark results found. Run 'just bench' first"; \
+    fi
+
+[doc("Clear benchmark results")]
+[group("bench")]
+@bench-clean:
+    just _start_msg "Clearing benchmark results"
+    rm -f benchmarks/results/benches.csv
 
 # ----------------------------------------------------------------------------
 # Local Environment Setup Commands
 # ----------------------------------------------------------------------------
 
 [doc("Install uv package manager")]
-[windows]
 [group('dev')]
+[windows]
 @setup:
     just _start_msg "Installing uv package manager"
     powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
 [doc("Install uv package manager")]
-[unix]
 [group('dev')]
+[unix]
 @setup:
     just _start_msg "Installing uv package manager"
     curl -LsSf https://astral.sh/uv/install.sh | sh
 
-
 [doc("Initialize the environment with its dependencies")]
 [group('dev')]
 @init python=python_version:
-    just _start_msg "Setting up python {{python}}"
-    uv python install {{python}}
-    uv python pin {{python}}
+    just _start_msg "Setting up python {{ python }}"
+    uv python install {{ python }}
+    uv python pin {{ python }}
     uv sync --all-groups --all-extras
 
     just _start_msg "Setting up pre-commit hooks"
     uv run pre-commit install --install-hooks
 
 [doc("Cleans the environment from temporary files")]
-[windows]
 [group('dev')]
+[windows]
 @clean:
     just _start_msg "Removing temporary files"
     powershell -c "Remove-Item -Recurse -Force .cov, htmlcov, dist, fastpubsub.egg-info -ErrorAction SilentlyContinue"
 
 [doc("Cleans the environment from temporary files")]
-[unix]
 [group('dev')]
+[unix]
 @clean:
     just _start_msg "Removing temporary files"
     rm -rf .cov htmlcov/ dist/ fastpubsub.egg-info/
-
 
 # ----------------------------------------------------------------------------
 # Private Commands
