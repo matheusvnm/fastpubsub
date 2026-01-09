@@ -45,9 +45,10 @@ class BasicTestCase:
     case_name = "basic"
     description = "FastPubSub Message processing"
 
-    def __init__(self) -> None:
+    def __init__(self, num_msgs: int) -> None:
         """Initialize the benchmark case."""
-        self.EVENTS_PROCESSED = 0
+        self.EVENTS_QUEUE = asyncio.Queue()
+        self._num_msgs = num_msgs - 1
         self._broker: PubSubBroker | None = None
         self._shutdown_event: asyncio.Event | None = None
 
@@ -63,9 +64,6 @@ class BasicTestCase:
         # Get publisher for echo responses
         publisher = broker.publisher(TOPIC_NAME)
 
-        # Reference to self for closure
-        test_case = self
-
         @broker.subscriber(
             alias="benchmark",
             topic_name=TOPIC_NAME,
@@ -76,9 +74,9 @@ class BasicTestCase:
         )
         async def handle(message: Message) -> None:
             """Handle incoming message and echo it back."""
-            test_case.EVENTS_PROCESSED += 1
-            # Echo message back to create infinite loop
-            await publisher.publish(message.data)
+            self.EVENTS_QUEUE.put_nowait(1)
+            # Echo message back to create infinite loop (Do not create topic)
+            await publisher.publish(message.data, autocreate=False)
 
         return broker
 
@@ -92,7 +90,6 @@ class BasicTestCase:
         Yields:
             float: Timestamp when the benchmark started.
         """
-        self.EVENTS_PROCESSED = 0
         self._shutdown_event = asyncio.Event()
         self._broker = self._setup_broker()
 
@@ -107,9 +104,13 @@ class BasicTestCase:
             publisher = self._broker.publisher(TOPIC_NAME)
             await publisher.publish(TEST_MESSAGE)
 
+            # Publish the next 9 without trying to create the topic
+            for _ in range(self._num_msgs):
+                await publisher.publish(TEST_MESSAGE, autocreate=False)
+
             yield start_time
 
         finally:
             # Shutdown the broker
             if self._broker:
-                self._broker.shutdown()
+                await self._broker.shutdown()

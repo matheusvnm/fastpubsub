@@ -9,6 +9,7 @@ The echo pattern is the same as the basic case:
 2. When a message is received, publish it back to the same topic
 3. Count each message processed
 """
+import queue
 
 import asyncio
 import json
@@ -51,9 +52,11 @@ class RawPubSubTestCase:
     case_name = "raw_pubsub"
     description = "Pure google-cloud-pubsub (baseline)"
 
-    def __init__(self) -> None:
+    def __init__(self, num_msgs: int) -> None:
         """Initialize the benchmark case."""
-        self.EVENTS_PROCESSED = 0
+        # TODO: Investigate if this does not cause contention
+        self.EVENTS_QUEUE = queue.Queue()
+        self._num_msgs = num_msgs
         self._subscriber_client: SubscriberClient | None = None
         self._publisher_client: PublisherClient | None = None
         self._streaming_pull_future: StreamingPullFuture | None = None
@@ -96,12 +99,12 @@ class RawPubSubTestCase:
         Args:
             message: The received PubSub message.
         """
-        self.EVENTS_PROCESSED += 1
+        self.EVENTS_QUEUE.put_nowait(1)
 
         # Acknowledge the message just like FastPubSub
         message.ack_with_response()
 
-        # Echo message back to create infinite loop
+        # Echo message back to create infinite loop (Do not create topic)
         topic_path = PublisherClient.topic_path(PROJECT_ID, TOPIC_NAME)
         future: Future[str] = self._publisher_client.publish(  # type: ignore[union-attr]
             topic=topic_path,
@@ -121,7 +124,6 @@ class RawPubSubTestCase:
         Yields:
             float: Timestamp when the benchmark started.
         """
-        self.EVENTS_PROCESSED = 0
 
         # Create clients
         self._publisher_client = PublisherClient()
@@ -145,13 +147,15 @@ class RawPubSubTestCase:
             # Record start time
             start_time = time.time()
 
-            # Publish initial message to start the echo loop
-            initial_message = json.dumps(TEST_MESSAGE).encode()
-            future: Future[str] = self._publisher_client.publish(
-                topic=topic_path,
-                data=initial_message,
-            )
-            future.result(timeout=10)  # Wait for initial publish
+            # Publish initial messages to start the echo loop
+
+            for _ in range(self._num_msgs):
+                initial_message = json.dumps(TEST_MESSAGE).encode()
+                future: Future[str] = self._publisher_client.publish(
+                    topic=topic_path,
+                    data=initial_message,
+                )
+                future.result(timeout=10)  # Wait for initial publish
 
             yield start_time
 

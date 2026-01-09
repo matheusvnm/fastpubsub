@@ -8,6 +8,8 @@ Usage:
     python -m benchmarks.bench --case raw_pubsub --duration 60
     python -m benchmarks.bench --all --duration 60
 """
+from asyncio.queues import QueueEmpty
+from queue import Queue, Empty
 
 import argparse
 import asyncio
@@ -31,13 +33,15 @@ class BenchmarkCase(Protocol):
     """Protocol defining the interface for all benchmark test cases.
 
     All benchmark cases must implement:
-        - EVENTS_PROCESSED: Counter for processed messages
+        - EVENTS_QUEUE: Queue with its size being processed messages
+        - num_msgs: The number of messages to be sent
         - case_name: Identifier for the test case
         - description: Human-readable description
         - start(): Async context manager that runs the benchmark
     """
 
-    EVENTS_PROCESSED: int
+    EVENTS_QUEUE: Queue
+    num_msgs: int
     case_name: str
     description: str
 
@@ -86,10 +90,17 @@ async def measure(case: BenchmarkCase, measure_time: int) -> AsyncGenerator[Meas
     """
     async with case.start() as start_time:
         while (elapsed_time := (time.time() - start_time)) < measure_time:
-            yield MeasureResult(case.EVENTS_PROCESSED, elapsed_time)
+            yield MeasureResult(-1, elapsed_time)
             await asyncio.sleep(1.0)
 
-    yield MeasureResult(case.EVENTS_PROCESSED, time.time() - start_time)
+    processed_messages = 0
+    while True:
+        try:
+            processed_messages += case.EVENTS_QUEUE.get_nowait()
+        except (Empty, QueueEmpty):
+            break
+
+    yield MeasureResult(processed_messages, time.time() - start_time)
 
 
 async def run_benchmark(case: BenchmarkCase, measure_time: int) -> MeasureResult:
@@ -239,11 +250,12 @@ Examples:
 
     cases: list[Any]
     if args.all:
-        cases = [RawPubSubTestCase(), BasicTestCase()]
+        # TODO: Parametrize the size and put on the results
+        cases = [RawPubSubTestCase(100), BasicTestCase(100)]
     elif args.case == "basic":
-        cases = [BasicTestCase()]
+        cases = [BasicTestCase(100)]
     else:
-        cases = [RawPubSubTestCase()]
+        cases = [RawPubSubTestCase(100)]
 
     print(f"\nFastPubSub Benchmark Suite v{__version__}")
     print(f"Duration: {args.duration}s per case")
