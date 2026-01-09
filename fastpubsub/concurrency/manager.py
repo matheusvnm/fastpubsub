@@ -3,6 +3,7 @@
 import logging
 from typing import cast
 
+from fastpubsub.clients.factory import PubSubClientFactory
 from fastpubsub.concurrency.tasks import PubSubStreamingPullTask
 from fastpubsub.logger import FastPubSubLogger
 from fastpubsub.pubsub.subscriber import Subscriber
@@ -21,10 +22,10 @@ class AsyncTaskManager:
         """Registers a subscriber configuration to be managed."""
         self._tasks.append(PubSubStreamingPullTask(subscriber))
 
-    def start(self) -> None:
+    async def start(self) -> None:
         """Starts the subscribers tasks process using a task group."""
         for task in self._tasks:
-            task.start()
+            await task.start()
 
     def alive(self) -> dict[str, bool]:
         """Checks if the tasks are alive.
@@ -64,3 +65,4 @@ class AsyncTaskManager:
                 await task.shutdown(timeout=timeout)
 
         self._tasks.clear()
+        await PubSubClientFactory.close_all()

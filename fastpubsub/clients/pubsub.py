@@ -9,14 +9,14 @@ from datetime import timedelta
 from typing import Any
 
 from google.api_core.exceptions import AlreadyExists, NotFound
-from google.cloud.pubsub import PublisherClient, SubscriberClient
 from google.cloud.pubsub_v1.subscriber.futures import StreamingPullFuture
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
-from google.cloud.pubsub_v1.types import FlowControl, PublisherOptions
+from google.cloud.pubsub_v1.types import FlowControl
 from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub import DeadLetterPolicy as DLTPolicy
 from google.pubsub import RetryPolicy, Subscription
 
+from fastpubsub.clients.factory import PubSubClientFactory
 from fastpubsub.clients.scheduler import AsyncScheduler
 from fastpubsub.concurrency.utils import apply_async
 from fastpubsub.datastructures import DeadLetterPolicy, MessageDeliveryPolicy, MessageRetryPolicy
@@ -40,14 +40,8 @@ class PubSubClient:
         """
         self.project_id = project_id
         self.is_emulator = True if os.getenv("PUBSUB_EMULATOR_HOST") else False
-        self.subscriber_client: SubscriberClient = SubscriberClient()
 
-    def __del__(self) -> None:
-        """Frees the objects used in PubSubClient."""
-        if self.subscriber_client and not self.subscriber_client.closed:
-            self.subscriber_client.transport.close()
-
-    def _create_subscription_request(
+    async def _create_subscription_request(
         self,
         topic_name: str,
         subscription_name: str,
@@ -55,12 +49,13 @@ class PubSubClient:
         delivery_policy: MessageDeliveryPolicy,
         dead_letter_policy: DeadLetterPolicy | None = None,
     ) -> Subscription:
-        name = SubscriberClient.subscription_path(self.project_id, subscription_name)
-        topic = SubscriberClient.topic_path(self.project_id, topic_name)
+        subscriber_client = await PubSubClientFactory.get_subscriber(self.project_id)
+        name = subscriber_client.subscription_path(self.project_id, subscription_name)
+        topic = subscriber_client.topic_path(self.project_id, topic_name)
 
         dlt_policy = None
         if dead_letter_policy:
-            dlt_topic = SubscriberClient.topic_path(
+            dlt_topic = subscriber_client.topic_path(
                 self.project_id,
                 dead_letter_policy.topic_name,
             )
@@ -103,7 +98,7 @@ class PubSubClient:
             delivery_policy: The delivery policy for the subscription.
             dead_letter_policy: The dead-letter policy for the subscription.
         """
-        subscription_request = self._create_subscription_request(
+        subscription_request = await self._create_subscription_request(
             topic_name=topic_name,
             subscription_name=subscription_name,
             retry_policy=retry_policy,
@@ -111,10 +106,11 @@ class PubSubClient:
             dead_letter_policy=dead_letter_policy,
         )
 
+        subscriber_client = await PubSubClientFactory.get_subscriber(self.project_id)
         with suppress(AlreadyExists):
             logger.debug(f"Attempting to create subscription: {subscription_request.name}")
             await apply_async(
-                self.subscriber_client.create_subscription,
+                subscriber_client.create_subscription,
                 request=subscription_request,
                 timeout=DEFAULT_PUBSUB_TIMEOUT,
             )
@@ -138,7 +134,7 @@ class PubSubClient:
             delivery_policy: The delivery policy for the subscription.
             dead_letter_policy: The dead-letter policy for the subscription.
         """
-        subscription_request = self._create_subscription_request(
+        subscription_request = await self._create_subscription_request(
             topic_name=topic_name,
             subscription_name=subscription_name,
             retry_policy=retry_policy,
@@ -159,9 +155,10 @@ class PubSubClient:
         update_mask = FieldMask(paths=update_fields)
 
         try:
+            subscriber_client = await PubSubClientFactory.get_subscriber(self.project_id)
             logger.debug(f"Attempting to update the subscription: {subscription_request.name}")
             response = await apply_async(
-                self.subscriber_client.update_subscription,
+                subscriber_client.update_subscription,
                 subscription=subscription_request,
                 update_mask=update_mask,
                 timeout=DEFAULT_PUBSUB_TIMEOUT,
@@ -187,23 +184,25 @@ class PubSubClient:
             create_default_subscription: Whether to create a default
                 subscription for the topic.
         """
-        publisher = PublisherClient()
+        subscriber_client = await PubSubClientFactory.get_subscriber(self.project_id)
+        publisher_client = await PubSubClientFactory.get_publisher(self.project_id)
+
         with suppress(AlreadyExists):
             logger.debug(f"Creating topic '{topic_name}'.")
-            topic_path = PublisherClient.topic_path(self.project_id, topic_name)
+            topic_path = publisher_client.topic_path(self.project_id, topic_name)
 
-            topic = await apply_async(publisher.create_topic, name=topic_path)
+            topic = await apply_async(publisher_client.create_topic, name=topic_path)
             logger.debug(f"Created topic '{topic.name}' successfully.")
 
             if not create_default_subscription:
                 return
 
             logger.debug(f"Creating default subscription for '{topic_path}'.")
-            default_subscription_path = SubscriberClient.subscription_path(
+            default_subscription_path = subscriber_client.subscription_path(
                 self.project_id, topic_name
             )
             subscription = await apply_async(
-                self.subscriber_client.create_subscription,
+                subscriber_client.create_subscription,
                 name=default_subscription_path,
                 topic=topic_path,
                 timeout=DEFAULT_PULL_TIMEOUT,
@@ -230,13 +229,14 @@ class PubSubClient:
             ordering_key: The ordering key for the message.
             attributes: A dictionary of message attributes.
         """
-        topic_path = PublisherClient.topic_path(self.project_id, topic_name)
+        publisher_client = await PubSubClientFactory.get_publisher(
+            self.project_id, bool(ordering_key)
+        )
+        topic_path = publisher_client.topic_path(self.project_id, topic_name)
         new_attributes = {} if attributes is None else attributes
 
         try:
-            publisher_options = PublisherOptions(enable_message_ordering=bool(ordering_key))
-            publisher = PublisherClient(publisher_options=publisher_options)
-            response: Future[str] = publisher.publish(
+            response: Future[str] = publisher_client.publish(
                 topic=topic_path,
                 data=data,
                 ordering_key=ordering_key,
@@ -251,7 +251,7 @@ class PubSubClient:
             logger.exception("Publisher failure", stacklevel=5)
             raise
 
-    def subscribe(
+    async def subscribe(
         self,
         callback: Callable[[PubSubMessage], Any],
         subscription_name: str,
@@ -269,9 +269,10 @@ class PubSubClient:
         Returns:
             A future that can be used to check the progress and get the result.
         """
-        subscription_path = SubscriberClient.subscription_path(self.project_id, subscription_name)
+        subscriber_client = await PubSubClientFactory.get_subscriber(self.project_id)
+        subscription_path = subscriber_client.subscription_path(self.project_id, subscription_name)
 
-        future: StreamingPullFuture = self.subscriber_client.subscribe(
+        future: StreamingPullFuture = subscriber_client.subscribe(
             callback=callback,
             subscription=subscription_path,
             scheduler=scheduler,

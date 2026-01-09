@@ -73,10 +73,10 @@ class PubSubStreamingPullTask:
         self.client = PubSubClient(self.subscriber.project_id)
         self.task: StreamingPullFuture | None = None
 
-    def start(self) -> None:
+    async def start(self) -> None:
         """Starts the message polling loop."""
         logger.info(f"The {self.subscriber.name} handler is waiting for messages.")
-        self.task = self.client.subscribe(
+        self.task = await self.client.subscribe(
             callback=self._on_message,
             subscription_name=self.subscriber.subscription_name,
             scheduler=self.scheduler,

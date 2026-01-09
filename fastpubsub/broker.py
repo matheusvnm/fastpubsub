@@ -191,7 +191,7 @@ class PubSubBroker:
             await subscription_builder.build(subscriber)
             self.task_manager.create_task(subscriber)
 
-        self.task_manager.start()
+        await self.task_manager.start()
 
     def alive(self) -> bool:
         """Checks if the message consumer tasks are alive.
