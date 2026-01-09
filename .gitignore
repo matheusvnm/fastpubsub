@@ -144,3 +144,4 @@ cython_debug/
 .poetry/
 .python-version/
 .secrets
+*.DS_Store
