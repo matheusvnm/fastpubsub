@@ -8,8 +8,6 @@ Usage:
     python -m benchmarks.bench --case raw_pubsub --duration 60
     python -m benchmarks.bench --all --duration 60
 """
-from asyncio.queues import QueueEmpty
-from queue import Queue, Empty
 
 import argparse
 import asyncio
@@ -17,11 +15,13 @@ import csv
 import platform
 import sys
 import time
+from asyncio.queues import QueueEmpty
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from queue import Empty, Queue
 from typing import Any, Protocol
 
 import psutil

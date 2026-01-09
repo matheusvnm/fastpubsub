@@ -9,11 +9,11 @@ The echo pattern is the same as the basic case:
 2. When a message is received, publish it back to the same topic
 3. Count each message processed
 """
-import queue
 
 import asyncio
 import json
 import logging
+import queue
 import time
 from collections.abc import AsyncIterator
 from concurrent.futures import Future
