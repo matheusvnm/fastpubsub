@@ -1,4 +1,4 @@
-"""Raw google-cloud-pubsub benchmark case (baseline).
+"""Baseline google-cloud-pubsub benchmark case.
 
 This case measures the performance of using the google-cloud-pubsub
 library directly, without FastPubSub. It serves as a baseline to
@@ -30,8 +30,8 @@ logging.getLogger("google").setLevel(logging.CRITICAL)
 
 # Benchmark configuration (same as basic case)
 PROJECT_ID = "fastpubsub-benchmark"
-TOPIC_NAME = "bench-raw-topic"
-SUBSCRIPTION_NAME = "bench-raw-subscription"
+TOPIC_NAME = "bench-baseline-topic"
+SUBSCRIPTION_NAME = "bench-baseline-subscription"
 
 # Test message payload (consistent with FastStream benchmarks)
 TEST_MESSAGE = {
@@ -42,21 +42,20 @@ TEST_MESSAGE = {
 }
 
 
-class RawPubSubTestCase:
+class BaselinePubSubTestCase:
     """Baseline benchmark using pure google-cloud-pubsub library.
 
-    This measures the raw performance of the google-cloud-pubsub
+    This measures the baseline performance of the google-cloud-pubsub
     library without any FastPubSub overhead.
     """
 
-    case_name = "raw_pubsub"
+    case_name = "baseline"
     description = "Pure google-cloud-pubsub (baseline)"
 
     def __init__(self, num_msgs: int) -> None:
         """Initialize the benchmark case."""
-        # TODO: Investigate if this does not cause contention
-        self.EVENTS_QUEUE = queue.Queue()
-        self._num_msgs = num_msgs
+        self.num_msgs = num_msgs
+        self._EVENTS_QUEUE: queue.Queue[int] = queue.Queue()
         self._subscriber_client: SubscriberClient | None = None
         self._publisher_client: PublisherClient | None = None
         self._streaming_pull_future: StreamingPullFuture | None = None
@@ -99,7 +98,7 @@ class RawPubSubTestCase:
         Args:
             message: The received PubSub message.
         """
-        self.EVENTS_QUEUE.put_nowait(1)
+        self._EVENTS_QUEUE.put_nowait(1)
 
         # Acknowledge the message just like FastPubSub
         message.ack_with_response()
@@ -149,7 +148,7 @@ class RawPubSubTestCase:
 
             # Publish initial messages to start the echo loop
 
-            for _ in range(self._num_msgs):
+            for _ in range(self.num_msgs):
                 initial_message = json.dumps(TEST_MESSAGE).encode()
                 future: Future[str] = self._publisher_client.publish(
                     topic=topic_path,
@@ -172,3 +171,18 @@ class RawPubSubTestCase:
 
             if self._publisher_client:
                 self._publisher_client = None
+
+    def get_total_processed_msgs(self) -> int:
+        """Get the sum of processed messages.
+
+        Returns:
+            The total number of processed messages.
+        """
+
+        processed_messages = 0
+        while True:
+            try:
+                processed_messages += self._EVENTS_QUEUE.get_nowait()
+            except queue.Empty:
+                break
+        return processed_messages

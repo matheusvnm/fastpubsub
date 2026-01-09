@@ -47,8 +47,8 @@ class BasicTestCase:
 
     def __init__(self, num_msgs: int) -> None:
         """Initialize the benchmark case."""
-        self.EVENTS_QUEUE = asyncio.Queue()
-        self._num_msgs = num_msgs - 1
+        self.num_msgs = num_msgs
+        self._EVENTS_QUEUE: asyncio.Queue[int] = asyncio.Queue()
         self._broker: PubSubBroker | None = None
         self._shutdown_event: asyncio.Event | None = None
 
@@ -74,7 +74,7 @@ class BasicTestCase:
         )
         async def handle(message: Message) -> None:
             """Handle incoming message and echo it back."""
-            self.EVENTS_QUEUE.put_nowait(1)
+            self._EVENTS_QUEUE.put_nowait(1)
             # Echo message back to create infinite loop (Do not create topic)
             await publisher.publish(message.data, autocreate=False)
 
@@ -105,7 +105,7 @@ class BasicTestCase:
             await publisher.publish(TEST_MESSAGE)
 
             # Publish the next 9 without trying to create the topic
-            for _ in range(self._num_msgs):
+            for _ in range(self.num_msgs - 1):
                 await publisher.publish(TEST_MESSAGE, autocreate=False)
 
             yield start_time
@@ -114,3 +114,18 @@ class BasicTestCase:
             # Shutdown the broker
             if self._broker:
                 await self._broker.shutdown()
+
+    def get_total_processed_msgs(self) -> int:
+        """Get the sum of processed messages.
+
+        Returns:
+            The total number of processed messages.
+        """
+
+        processed_messages = 0
+        while True:
+            try:
+                processed_messages += self._EVENTS_QUEUE.get_nowait()
+            except asyncio.queues.QueueEmpty:
+                break
+        return processed_messages
