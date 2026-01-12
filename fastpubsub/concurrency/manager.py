@@ -1,5 +1,6 @@
 """Task manager for subscriber tasks."""
 
+import asyncio
 import logging
 from typing import cast
 
@@ -59,10 +60,16 @@ class AsyncTaskManager:
         Args:
             timeout: Maximum time to wait for in-flight messages per subscription (seconds).
         """
-        logger.info(f"Starting graceful shutdown with {timeout}s timeout per subscription...")
-        for task in self._tasks:
-            if task.task_alive():
-                await task.shutdown(timeout=timeout)
+        logger.info(f"Starting graceful shutdown with {timeout}s timeout...")
 
-        self._tasks.clear()
-        await PubSubClientFactory.close_all()
+        try:
+            async with asyncio.timeout(delay=timeout):
+                async with asyncio.TaskGroup() as tg:
+                    for task in self._tasks:
+                        if task.task_alive():
+                            tg.create_task(task.shutdown(timeout=timeout))
+        except TimeoutError as e:
+            logger.warning(f"A timeout happened while turning of a subscriber {e}")
+        finally:
+            self._tasks.clear()
+            await PubSubClientFactory.close_all()
