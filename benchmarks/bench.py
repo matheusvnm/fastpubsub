@@ -2,11 +2,6 @@
 
 This module provides the infrastructure to measure Events Per Second (EPS)
 for different test cases, comparing FastPubSub performance against baseline.
-
-Usage:
-    python -m benchmarks.bench --case basic --duration 60
-    python -m benchmarks.bench --case raw_pubsub --duration 60
-    python -m benchmarks.bench --all --duration 60
 """
 
 import argparse
@@ -20,24 +15,31 @@ from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 import psutil
 
+from benchmarks.cases import BaselinePubSubTestCase, BasicTestCase
 from fastpubsub.__about__ import __version__
+
+BENCH_CASE_IMPLEMENTATIONS = {
+    "all": [BaselinePubSubTestCase, BasicTestCase],
+    "baseline": [BaselinePubSubTestCase],
+    "basic": [BasicTestCase],
+}
 
 
 class BenchmarkCase(Protocol):
     """Protocol defining the interface for all benchmark test cases.
 
     All benchmark cases must implement:
-        - EVENTS_PROCESSED: Counter for processed messages
+        - num_msgs: The number of messages to be sent
         - case_name: Identifier for the test case
         - description: Human-readable description
-        - start(): Async context manager that runs the benchmark
+        - all the methods included in this protocol
     """
 
-    EVENTS_PROCESSED: int
+    num_msgs: int
     case_name: str
     description: str
 
@@ -48,6 +50,13 @@ class BenchmarkCase(Protocol):
             Async context manager yielding the start timestamp.
         """
         ...
+
+    def get_total_processed_msgs(self) -> int:
+        """Get the sum of processed messages.
+
+        Returns:
+            The total number of processed messages.
+        """
 
 
 @dataclass
@@ -86,10 +95,10 @@ async def measure(case: BenchmarkCase, measure_time: int) -> AsyncGenerator[Meas
     """
     async with case.start() as start_time:
         while (elapsed_time := (time.time() - start_time)) < measure_time:
-            yield MeasureResult(case.EVENTS_PROCESSED, elapsed_time)
+            yield MeasureResult(-1, elapsed_time)
             await asyncio.sleep(1.0)
 
-    yield MeasureResult(case.EVENTS_PROCESSED, time.time() - start_time)
+    yield MeasureResult(case.get_total_processed_msgs(), time.time() - start_time)
 
 
 async def run_benchmark(case: BenchmarkCase, measure_time: int) -> MeasureResult:
@@ -107,13 +116,20 @@ async def run_benchmark(case: BenchmarkCase, measure_time: int) -> MeasureResult
     async for result in measure(case, measure_time):
         # Clear line and print progress
         sys.stdout.write(
-            f"\r[{case.case_name}] Events: {result.total_events:,}, "
-            f"Time: {result.elapsed_time:.1f}s ({(measure_time - result.elapsed_time):.1f}s left), "
-            f"EPS: {result.eps:,.2f}    "
+            f"\r[{case.case_name}] Time: {result.elapsed_time:.1f}s "
+            f"({(measure_time - result.elapsed_time):.1f}s left)"
         )
         sys.stdout.flush()
 
-    # Print newline after progress
+    # Prints the final result and the final line
+    sys.stdout.write(
+        f"\r[{case.case_name}] Events: {result.total_events:,}, "
+        f"Time: {result.elapsed_time:.1f}s "
+        "({(measure_time - result.elapsed_time):.1f}s left), "
+        f"EPS: {result.eps:,.2f}    "
+    )
+    sys.stdout.flush()
+
     print()
     return result
 
@@ -149,6 +165,7 @@ def save_results(
                     "Python Version",
                     "Description",
                     "Host Memory",
+                    "Number of Initial Messages",
                 ]
             )
 
@@ -163,6 +180,7 @@ def save_results(
                 platform.python_version(),
                 case.description,
                 f"{mem.total / (1024**3):.2f} GB",
+                case.num_msgs,
             ]
         )
 
@@ -187,15 +205,18 @@ def print_results(cases_results: list[tuple[BenchmarkCase, MeasureResult]]) -> N
 
     print("-" * 60)
 
-    # Calculate overhead if we have both cases
-    if len(cases_results) == 2:
-        raw_result = next((r for c, r in cases_results if c.case_name == "raw_pubsub"), None)
-        basic_result = next((r for c, r in cases_results if c.case_name == "basic"), None)
+    # Calculate overhead for each test case against baseline.
+    baseline_result = next((r for c, r in cases_results if c.case_name == "baseline"), None)
+    if not baseline_result or baseline_result.eps <= 0:
+        return
 
-        if raw_result and basic_result and raw_result.eps > 0:
-            overhead = ((raw_result.eps - basic_result.eps) / raw_result.eps) * 100
-            print(f"FastPubSub overhead: {overhead:.1f}%")
-            print("=" * 60)
+    for c, r in cases_results:
+        if c.case_name == "baseline":
+            continue
+
+        overhead = ((baseline_result.eps - r.eps) / baseline_result.eps) * 100
+        print(f"FastPubSub ({c.case_name}) overhead: {overhead:.1f}%")
+        print("=" * 60)
 
 
 async def main() -> None:
@@ -205,16 +226,21 @@ async def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    python -m benchmarks.bench --case basic --duration 60
-    python -m benchmarks.bench --case raw_pubsub --duration 60
-    python -m benchmarks.bench --all --duration 60
+    python -m benchmarks.bench --case basic --duration 60 --num-msgs 10
+    python -m benchmarks.bench --case baseline --duration 60 --num-msgs 10
+    python -m benchmarks.bench --case all --duration 60 --num-msgs 10
         """,
     )
     parser.add_argument(
         "--case",
-        choices=["basic", "raw_pubsub"],
-        default="basic",
-        help="Benchmark case to run (default: basic)",
+        choices=list(BENCH_CASE_IMPLEMENTATIONS.keys()),
+        default="all",
+        help="Benchmark case to run (default: all)",
+    )
+    parser.add_argument(
+        "--num-msgs",
+        default=100,
+        help="The number of messages to process (default: 100)",
     )
     parser.add_argument(
         "--duration",
@@ -222,28 +248,19 @@ Examples:
         default=60,
         help="Duration in seconds (default: 60)",
     )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Run all benchmark cases",
-    )
 
     args = parser.parse_args()
 
-    # Import cases here to avoid circular imports
-    from benchmarks.cases.basic import BasicTestCase
-    from benchmarks.cases.raw_pubsub import RawPubSubTestCase
+    cases_cls: list[Any] = cast(list[Any], BENCH_CASE_IMPLEMENTATIONS.get(args.case, []))
+    if not cases_cls:
+        raise ValueError(f"No benchmark found for --case {args.case}")
+
+    cases = []
+    for case_cls in cases_cls:
+        cases.append(case_cls(int(args.num_msgs)))
 
     results_file = Path(__file__).resolve().parent / "results" / "benches.csv"
     cases_results: list[tuple[Any, MeasureResult]] = []
-
-    cases: list[Any]
-    if args.all:
-        cases = [RawPubSubTestCase(), BasicTestCase()]
-    elif args.case == "basic":
-        cases = [BasicTestCase()]
-    else:
-        cases = [RawPubSubTestCase()]
 
     print(f"\nFastPubSub Benchmark Suite v{__version__}")
     print(f"Duration: {args.duration}s per case")

@@ -129,7 +129,7 @@ class Application:
 
     async def _shutdown(self) -> None:
         async with self._shutdown_hooks():
-            self.broker.shutdown()
+            await self.broker.shutdown()
 
     @asynccontextmanager
     async def _shutdown_hooks(self) -> AsyncIterator[None]:

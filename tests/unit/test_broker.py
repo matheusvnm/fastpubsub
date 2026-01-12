@@ -16,8 +16,8 @@ class TestPubSubBroker:
     def async_task_manager(self) -> Generator[MagicMock]:
         with patch(f"{BROKER_MODULE_PATH}.AsyncTaskManager") as mock:
             instance = mock.return_value
-            instance.start = MagicMock()
-            instance.shutdown = MagicMock()
+            instance.start = AsyncMock()
+            instance.shutdown = AsyncMock()
             instance.alive = MagicMock()
             instance.ready = MagicMock()
             instance.create_task = MagicMock()
@@ -103,8 +103,9 @@ class TestPubSubBroker:
         finally:
             os.environ["FASTPUBSUB_SUBSCRIBERS"] = ""
 
-    def test_shutdown_successfully(self, async_task_manager: MagicMock, broker: PubSubBroker):
-        broker.shutdown()
+    @pytest.mark.asyncio
+    async def test_shutdown_successfully(self, async_task_manager: MagicMock, broker: PubSubBroker):
+        await broker.shutdown()
         async_task_manager.shutdown.assert_called_once()
 
     @pytest.mark.asyncio

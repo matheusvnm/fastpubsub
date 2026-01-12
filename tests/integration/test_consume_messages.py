@@ -84,3 +84,36 @@ class TestMessageConsumption:
             assert "Message 1" in received
             assert "Message 2" in received
             assert "Message 3" in received
+
+    @pytest.mark.asyncio
+    async def test_consume_messages_with_graceful_shutdown(
+        self,
+        unique_topic: str,
+        unique_subscription: str,
+        connected_broker: PubSubBroker,
+    ) -> None:
+        """Test that all published messages are processed before shutdown."""
+        received: list[str] = []
+
+        @connected_broker.subscriber(
+            alias="test-shutdown-consumer",
+            topic_name=unique_topic,
+            subscription_name=unique_subscription,
+            autocreate=True,
+        )
+        async def handler(msg: Message) -> None:
+            # Simulate processing
+            await asyncio.sleep(2)
+            received.append(msg.data.decode())
+
+        message_quantity = 3
+        async with managed_broker(connected_broker):
+            for i in range(message_quantity):
+                await connected_broker.publish(topic_name=unique_topic, data=f"Message {i}")
+            # Give some time to start processing
+            await asyncio.sleep(2)
+
+        # After context exit, all messages should be processed
+        assert len(received) == message_quantity
+        for i, message in enumerate(received):
+            assert f"Message {i}" in message

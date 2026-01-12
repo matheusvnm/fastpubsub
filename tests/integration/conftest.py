@@ -88,4 +88,4 @@ async def managed_broker(broker: PubSubBroker) -> AsyncGenerator[None, None]:
     try:
         yield
     finally:
-        broker.shutdown()
+        await broker.shutdown()
