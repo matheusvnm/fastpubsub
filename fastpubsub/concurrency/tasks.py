@@ -10,6 +10,8 @@ from google.cloud.pubsub_v1.subscriber.futures import StreamingPullFuture
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 
 from fastpubsub.clients.pubsub import PubSubClient
+from fastpubsub.clients.scheduler import AsyncScheduler
+from fastpubsub.concurrency.utils import apply_async
 from fastpubsub.datastructures import Message
 from fastpubsub.exceptions import Drop, Retry
 from fastpubsub.logger import FastPubSubLogger
@@ -63,26 +65,30 @@ class PubSubStreamingPullTask:
         Args:
             subscriber: The subscriber to poll messages for.
         """
+        self.loop = asyncio.get_running_loop()
+        self.scheduler: AsyncScheduler = AsyncScheduler(self.loop)
+
         self.subscriber: Subscriber = subscriber
         self.mapper = MessageMapper(self.subscriber)
         self.client = PubSubClient(self.subscriber.project_id)
         self.task: StreamingPullFuture | None = None
-        self.loop = asyncio.get_running_loop()
 
-    def start(self) -> None:
+    async def start(self) -> None:
         """Starts the message polling loop."""
         logger.info(f"The {self.subscriber.name} handler is waiting for messages.")
-        future = self.client.subscribe(
+        self.task = await self.client.subscribe(
             callback=self._on_message,
             subscription_name=self.subscriber.subscription_name,
+            scheduler=self.scheduler,
             max_messages=self.subscriber.control_flow_policy.max_messages,
         )
 
-        self.task = future
-
     def _on_message(self, received_message: PubSubMessage) -> Any:
         coroutine = self._consume(received_message)
-        return self.loop.create_task(coroutine)
+        task = self.loop.create_task(coroutine)
+        self.scheduler.register_task_execution(task, received_message)
+
+        return task
 
     async def _consume(self, received_message: PubSubMessage) -> Any:
         message = self.mapper.convert(received_message)
@@ -95,28 +101,28 @@ class PubSubStreamingPullTask:
                 callstack = self.subscriber._build_callstack()
                 response = await callstack.on_message(message)
                 future = received_message.ack_with_response()
-                self._wait_acknowledge_response(future=future)
+                await self._wait_acknowledge_response(future=future)
                 logger.info("The message successfully processed.")
                 return response
             except Drop:
                 future = received_message.ack_with_response()
-                self._wait_acknowledge_response(future=future)
+                await self._wait_acknowledge_response(future=future)
                 logger.info("The message will be dropped.")
                 return
             except Retry:
                 future = received_message.nack_with_response()
-                self._wait_acknowledge_response(future=future)
+                await self._wait_acknowledge_response(future=future)
                 logger.warning("The message will be retried later.")
                 return
             except Exception:
                 future = received_message.nack_with_response()
-                self._wait_acknowledge_response(future=future)
+                await self._wait_acknowledge_response(future=future)
                 logger.exception("Unhandled exception on message", stacklevel=5)
                 return
 
-    def _wait_acknowledge_response(self, future: Future[Any]) -> None:
+    async def _wait_acknowledge_response(self, future: Future[Any]) -> None:
         try:
-            future.result(timeout=60)
+            await apply_async(future.result)
         except AcknowledgeError as e:
             self._on_acknowledge_failed(e)
         except TimeoutError:
@@ -165,8 +171,12 @@ class PubSubStreamingPullTask:
 
         return not bool(self.task.done())
 
-    def shutdown(self) -> None:
+    async def shutdown(self, timeout: float = 30.0) -> None:
         """Shuts down the task."""
         logger.info(f"The {self.subscriber.name} handler is turning off...")
         if self.task and self.task.running():
+            await self.scheduler.wait_for_completion(timeout=timeout)
             self.task.cancel()
+            self.task.result(timeout=timeout)
+
+        logger.info(f"The {self.subscriber.name} handler is shutdown...")

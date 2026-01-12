@@ -186,19 +186,8 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 [group("bench")]
 @bench duration="60": up && down
     just _start_msg "Running all benchmarks for {{ duration }}s each"
-    {{ run_test_command }} benchmarks.bench --all --duration {{ duration }}
+    {{ run_test_command }} benchmarks.bench --case all --duration {{ duration }}
 
-[doc("Run FastPubSub benchmark (basic case)")]
-[group("bench")]
-@bench-basic duration="60": up && down
-    just _start_msg "Running FastPubSub benchmark for {{ duration }}s"
-    {{ run_test_command }} benchmarks.bench --case basic --duration {{ duration }}
-
-[doc("Run baseline benchmark (raw google-cloud-pubsub)")]
-[group("bench")]
-@bench-raw duration="60": up && down
-    just _start_msg "Running baseline benchmark for {{ duration }}s"
-    {{ run_test_command }} benchmarks.bench --case raw_pubsub --duration {{ duration }}
 
 [doc("Run quick benchmark (10s duration)")]
 [group("bench")]

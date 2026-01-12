@@ -14,7 +14,7 @@ from fastpubsub.broker import PubSubBroker
 def mock_broker() -> MagicMock:
     broker = MagicMock(spec=PubSubBroker)
     broker.start = AsyncMock()
-    broker.shutdown = MagicMock()
+    broker.shutdown = AsyncMock()
     return broker
 
 
