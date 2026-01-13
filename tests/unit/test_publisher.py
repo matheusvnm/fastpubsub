@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.commands import PublishMessageCommand
+from fastpubsub.middlewares.di import PublishMessageSerializerMiddleware
 from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.router import PubSubRouter
 from tests.conftest import callstack_matches
@@ -67,13 +67,17 @@ class TestPublisher:
         callstack_b = message_publisher_b._build_callstack()
         callstack_c = message_publisher_c._build_callstack()
 
-        expected_output_a = [first_middleware, PublishMessageCommand]
+        expected_output_a = [first_middleware, PublishMessageSerializerMiddleware]
         assert callstack_matches(callstack_a, expected_output_a)
 
-        expected_output_b = [second_middleware, first_middleware, PublishMessageCommand]
+        expected_output_b = [
+            second_middleware,
+            first_middleware,
+            PublishMessageSerializerMiddleware,
+        ]
         assert callstack_matches(callstack_b, expected_output_b)
 
-        expected_output_c = [first_middleware, PublishMessageCommand]
+        expected_output_c = [first_middleware, PublishMessageSerializerMiddleware]
         assert callstack_matches(callstack_c, expected_output_c)
 
     @pytest.mark.parametrize(
@@ -98,8 +102,8 @@ class TestPublisher:
         publisher.include_middleware(second_middleware)
         publisher.include_middleware(second_middleware)
         assert len(publisher.middlewares) == 2
-        assert publisher.middlewares[0] == first_middleware
-        assert publisher.middlewares[1] == second_middleware
+        assert publisher.middlewares[0].cls == first_middleware
+        assert publisher.middlewares[1].cls == second_middleware
 
 
 class TestPublisherSerialization:

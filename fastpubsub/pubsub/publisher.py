@@ -1,15 +1,15 @@
 """Publisher logic."""
 
 import json
-from collections.abc import MutableSequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
 from fastpubsub.concurrency.utils import ensure_async_middleware
 from fastpubsub.exceptions import FastPubSubException
+from fastpubsub.middlewares import Middleware, PublishMessageSerializerMiddleware
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.commands import PublishMessageCommand
 
 
 class Publisher:
@@ -19,7 +19,7 @@ class Publisher:
         self,
         topic_name: str,
         project_id: str = "",
-        middlewares: list[type[BaseMiddleware]] | None = None,
+        middlewares: Sequence[Middleware] = (),
     ):
         """Initializes the Publisher.
 
@@ -31,11 +31,11 @@ class Publisher:
         """
         self.topic_name = topic_name
         self.project_id = project_id
-        self.middlewares: list[type[BaseMiddleware]] = []
+        self.middlewares: MutableSequence[Middleware] = []
 
-        if middlewares and isinstance(middlewares, MutableSequence):
-            for middleware in middlewares:
-                self.include_middleware(middleware)
+        if middlewares and isinstance(middlewares, Sequence):
+            for middleware, args, kwargs in middlewares:
+                self.include_middleware(middleware, *args, **kwargs)
 
     @validate_call(config=ConfigDict(strict=True))
     async def publish(
@@ -60,13 +60,13 @@ class Publisher:
             data=serialized_message, ordering_key=ordering_key, attributes=attributes
         )
 
-    def _build_callstack(self, autocreate: bool = True) -> PublishMessageCommand | BaseMiddleware:
-        callstack: PublishMessageCommand | BaseMiddleware = PublishMessageCommand(
-            project_id=self.project_id, topic_name=self.topic_name, autocreate=autocreate
+    def _build_callstack(self, autocreate: bool = True) -> BaseMiddleware:
+        callstack: BaseMiddleware = PublishMessageSerializerMiddleware(
+            None, project_id=self.project_id, topic_name=self.topic_name, autocreate=autocreate
         )
 
-        for middleware in reversed(self.middlewares):
-            callstack = middleware(next_call=callstack)
+        for middleware, args, kwargs in reversed(self.middlewares):
+            callstack = middleware(callstack, *args, **kwargs)
         return callstack
 
     async def _serialize_message(self, data: BaseModel | dict[str, Any] | str | bytes) -> bytes:
@@ -90,17 +90,22 @@ class Publisher:
         )
 
     @validate_call(config=ConfigDict(strict=True))
-    def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
+    def include_middleware(
+        self, middleware: type[BaseMiddleware], *args: Sequence[Any], **kwargs: Mapping[str, Any]
+    ) -> None:
         """Includes a middleware in the publisher.
 
         Args:
             middleware: The middleware to include.
+            # TODO: FIX ME
         """
-        if middleware in self.middlewares:
+        ensure_async_middleware(middleware)
+
+        wrapper_middleware = Middleware(middleware, *args, *kwargs)
+        if wrapper_middleware in self.middlewares:
             return
 
-        ensure_async_middleware(middleware)
-        self.middlewares.append(middleware)
+        self.middlewares.append(wrapper_middleware)
 
     def _set_project_id(self, project_id: str) -> None:
         if not self.project_id:

@@ -1,6 +1,7 @@
 """Subscriber logic."""
 
-from collections.abc import MutableSequence, Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
+from typing import Any
 
 from pydantic import ConfigDict, validate_call
 
@@ -12,8 +13,8 @@ from fastpubsub.datastructures import (
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
+from fastpubsub.middlewares import HandleMessageSerializerMiddleware, Middleware
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.commands import HandleMessageCommand
 from fastpubsub.types import AsyncCallable
 
 
@@ -30,7 +31,7 @@ class Subscriber:
         delivery_policy: MessageDeliveryPolicy,
         control_flow_policy: MessageControlFlowPolicy,
         dead_letter_policy: DeadLetterPolicy | None = None,
-        middlewares: Sequence[type[BaseMiddleware]] | None = None,
+        middlewares: Sequence[Middleware] = (),
         project_id: str = "",
     ) -> None:
         """Initializes the Subscriber.
@@ -49,6 +50,7 @@ class Subscriber:
             and consume messages from.
             If set the broker's project id will be ignored.
         """
+        self.func = func
         self.project_id = project_id
         self.topic_name = topic_name
         self.subscription_name = subscription_name
@@ -57,37 +59,40 @@ class Subscriber:
         self.delivery_policy = delivery_policy
         self.dead_letter_policy = dead_letter_policy
         self.control_flow_policy = control_flow_policy
-        self.handler = HandleMessageCommand(target=func)
-        self.middlewares: list[type[BaseMiddleware]] = []
+        self.middlewares: MutableSequence[Middleware] = []
 
-        if middlewares and isinstance(middlewares, MutableSequence):
-            for middleware in middlewares:
-                self.include_middleware(middleware)
+        if middlewares and isinstance(middlewares, Sequence):
+            for middleware, args, kwargs in middlewares:
+                self.include_middleware(middleware, *args, **kwargs)
 
     @validate_call(config=ConfigDict(strict=True))
-    def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
+    def include_middleware(
+        self, middleware: type[BaseMiddleware], *args: Sequence[Any], **kwargs: Mapping[str, Any]
+    ) -> None:
         """Includes a middleware in the subscriber.
 
         Args:
             middleware: The middleware to include.
+            # TODO: FIX ME
         """
-        if middleware in self.middlewares:
+        ensure_async_middleware(middleware)
+
+        wrapper_middleware = Middleware(middleware, *args, *kwargs)
+        if wrapper_middleware in self.middlewares:
             return
 
-        ensure_async_middleware(middleware)
-        self.middlewares.append(middleware)
+        self.middlewares.append(wrapper_middleware)
 
-    def _build_callstack(self) -> HandleMessageCommand | BaseMiddleware:
-        callstack: HandleMessageCommand | BaseMiddleware = self.handler
-        for middleware in reversed(self.middlewares):
-            callstack = middleware(callstack)
+    def _build_callstack(self) -> BaseMiddleware:
+        callstack: BaseMiddleware = HandleMessageSerializerMiddleware(None, self.func)
+        for middleware, args, kwargs in reversed(self.middlewares):
+            callstack = middleware(callstack, *args, **kwargs)
         return callstack
 
     @property
     def name(self) -> str:
         """The name of the subscriber."""
-        target_callable = self.handler.target
-        return target_callable.__name__
+        return getattr(self.func, "__name__", "")
 
     def _set_project_id(self, project_id: str) -> None:
         if not self.project_id:

@@ -2,7 +2,7 @@
 
 import re
 from collections import OrderedDict
-from collections.abc import Sequence
+from collections.abc import Mapping, MutableSequence, Sequence
 from typing import Any
 from weakref import WeakSet
 
@@ -17,7 +17,7 @@ from fastpubsub.datastructures import (
     MessageRetryPolicy,
 )
 from fastpubsub.exceptions import FastPubSubException
-from fastpubsub.middlewares.base import BaseMiddleware
+from fastpubsub.middlewares.base import BaseMiddleware, Middleware
 from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.pubsub.subscriber import Subscriber
 from fastpubsub.types import AsyncDecoratedCallable, SubscribedCallable
@@ -33,8 +33,8 @@ class PubSubRouter:
         prefix: str = "",
         *,
         project_id: str = "",
-        routers: Sequence["PubSubRouter"] | None = None,
-        middlewares: Sequence[type[BaseMiddleware]] | None = None,
+        routers: Sequence["PubSubRouter"] = (),
+        middlewares: Sequence[Middleware] = (),
     ):
         """Initializes the PubSubRouter.
 
@@ -61,7 +61,7 @@ class PubSubRouter:
         self.routers: list[PubSubRouter] = []
         self.subscribers: dict[str, Subscriber] = {}
         self.publishers: WeakSet[Publisher] = WeakSet()
-        self.middlewares: list[type[BaseMiddleware]] = []
+        self.middlewares: MutableSequence[Middleware] = []
 
         if routers:
             if not isinstance(routers, Sequence):
@@ -74,8 +74,8 @@ class PubSubRouter:
             if not isinstance(middlewares, Sequence):
                 raise FastPubSubException("Your routers should be passed as a sequence")
 
-            for middleware in middlewares:
-                self.include_middleware(middleware)
+            for middleware, args, kwargs in middlewares:
+                self.include_middleware(middleware, *args, **kwargs)
 
     def _set_project_id(self, project_id: str) -> None:
         if self.project_id or not project_id:
@@ -112,12 +112,13 @@ class PubSubRouter:
 
         router._add_prefix(self.prefix)
         router._set_project_id(self.project_id)
-        for middleware in self.middlewares:
-            router.include_middleware(middleware)
+
+        for middleware, args, kwargs in self.middlewares:
+            router.include_middleware(middleware, *args, **kwargs)
 
         self.routers.append(router)
 
-    @validate_call(config=ConfigDict(strict=True))
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def subscriber(
         self,
         alias: str,
@@ -136,7 +137,7 @@ class PubSubRouter:
         min_backoff_delay_secs: int = 10,
         max_backoff_delay_secs: int = 600,
         max_messages: int = 1000,
-        middlewares: Sequence[type[BaseMiddleware]] | None = None,
+        middlewares: Sequence[Middleware] = (),
     ) -> SubscribedCallable:
         """Decorator to register a function as a subscriber.
 
@@ -276,7 +277,9 @@ class PubSubRouter:
         )
 
     @validate_call(config=ConfigDict(strict=True))
-    def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
+    def include_middleware(
+        self, middleware: type[BaseMiddleware], *args: Sequence[Any], **kwargs: Mapping[str, Any]
+    ) -> None:
         """Includes a middleware in the router.
 
         Args:
@@ -288,11 +291,12 @@ class PubSubRouter:
         for subscriber in self.subscribers.values():
             subscriber.include_middleware(middleware)
 
-        if middleware not in self.middlewares:
-            self.middlewares.append(middleware)
-
         for router in self.routers:
-            router.include_middleware(middleware)
+            router.include_middleware(middleware, *args, *kwargs)
+
+        wrapper_middleware = Middleware(middleware, *args, *kwargs)
+        if wrapper_middleware not in self.middlewares:
+            self.middlewares.append(wrapper_middleware)
 
     def _get_subscribers(self) -> dict[str, Subscriber]:
         subscribers: dict[str, Subscriber] = {}

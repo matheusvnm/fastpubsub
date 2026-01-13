@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.commands import HandleMessageCommand
+from fastpubsub.middlewares.di import HandleMessageSerializerMiddleware
 from fastpubsub.pubsub.subscriber import Subscriber
 from fastpubsub.router import PubSubRouter
 from tests.conftest import callstack_matches
@@ -13,6 +13,8 @@ from tests.conftest import callstack_matches
 
 def subscriber_create_test_cases():
     default_parameters = {"alias": "alias", "topic_name": "topic", "subscription_name": "sub"}
+
+    class InvalidMiddlewareClass: ...
 
     return [
         [{"alias": None, "topic_name": "topic", "subscription_name": "sub"}],
@@ -34,6 +36,7 @@ def subscriber_create_test_cases():
         [{**default_parameters, "max_backoff_delay_secs": None}],
         [{**default_parameters, "max_messages": None}],
         [{**default_parameters, "middlewares": True}],
+        [{**default_parameters, "middlewares": (InvalidMiddlewareClass,)}],
     ]
 
 
@@ -74,17 +77,17 @@ class TestSubscriber:
 
         subscriber_a = subscribers["a.sub_a"]
         callstack_a = subscriber_a._build_callstack()
-        expected_output = [first_middleware, HandleMessageCommand]
+        expected_output = [first_middleware, HandleMessageSerializerMiddleware]
         assert callstack_matches(callstack_a, expected_output)
 
         subscriber_b = subscribers["a.b.sub_b"]
         callstack_b = subscriber_b._build_callstack()
-        expected_output = [second_middleware, first_middleware, HandleMessageCommand]
+        expected_output = [second_middleware, first_middleware, HandleMessageSerializerMiddleware]
         assert callstack_matches(callstack_b, expected_output)
 
         subscriber_c = subscribers["sub_c"]
         callstack_c = subscriber_c._build_callstack()
-        expected_output = [HandleMessageCommand]
+        expected_output = [HandleMessageSerializerMiddleware]
         assert callstack_matches(callstack_c, expected_output)
 
     def test_subscriber_name(self, subscriber: Subscriber):
@@ -106,8 +109,8 @@ class TestSubscriber:
         subscriber.include_middleware(second_middleware)
         subscriber.include_middleware(second_middleware)
         assert len(subscriber.middlewares) == 2
-        assert subscriber.middlewares[0] == first_middleware
-        assert subscriber.middlewares[1] == second_middleware
+        assert subscriber.middlewares[0].cls == first_middleware
+        assert subscriber.middlewares[1].cls == second_middleware
 
     @pytest.mark.parametrize(
         ["data"],

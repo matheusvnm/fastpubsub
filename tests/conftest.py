@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import os
 import uuid
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.pubsub.commands import HandleMessageCommand, PublishMessageCommand
 from fastpubsub.router import PubSubRouter
 
 if TYPE_CHECKING:
@@ -65,8 +65,8 @@ def router_factory() -> Callable[..., PubSubRouter]:
 
 
 def callstack_matches(
-    callstack: BaseMiddleware | PublishMessageCommand | HandleMessageCommand,
-    expected_output: list[type[BaseMiddleware] | type[PublishMessageCommand]],
+    callstack: BaseMiddleware,
+    expected_output: Sequence[type[BaseMiddleware]],
 ) -> bool:
     """Verify that the callstack matches the expected order of middlewares/commands.
 
@@ -77,15 +77,20 @@ def callstack_matches(
     Returns:
         True if the callstack matches the expected output, False otherwise.
     """
+    callstack_collection = []
+
     next_call = callstack
     while next_call is not None:
-        if not isinstance(next_call, expected_output[0]):
-            return False
-
+        callstack_collection.append(next_call)
         next_call = getattr(next_call, "next_call", None)
-        expected_output.pop(0)
 
-    if len(expected_output):
-        return False
+    assert len(callstack_collection) == len(expected_output), "The callstacks do not match in size"
+
+    for i in range(len(callstack_collection)):
+        existing_middleware = type(callstack_collection[i])
+        expected_middlewares = expected_output[i]
+        assert existing_middleware == expected_middlewares, (
+            f"The callstack on {i} is {existing_middleware} but should be {expected_middlewares}"
+        )
 
     return True

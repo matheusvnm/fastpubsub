@@ -1,10 +1,11 @@
 """Base classes for middlewares."""
 
 from abc import abstractmethod
-from typing import Any, Union
+from collections.abc import Iterator, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Union
 
-from fastpubsub.datastructures import Message
-from fastpubsub.pubsub.commands import HandleMessageCommand, PublishMessageCommand
+if TYPE_CHECKING:
+    from fastpubsub.datastructures import Message
 
 
 class BaseMiddleware:
@@ -14,9 +15,7 @@ class BaseMiddleware:
     implement your own middleware.
     """
 
-    def __init__(
-        self, next_call: Union["BaseMiddleware", "PublishMessageCommand", "HandleMessageCommand"]
-    ):
+    def __init__(self, next_call: Union["BaseMiddleware", None]):
         """Initializes the BaseMiddleware.
 
         Args:
@@ -25,7 +24,7 @@ class BaseMiddleware:
         self.next_call = next_call
 
     @abstractmethod
-    async def on_message(self, message: Message) -> Any:
+    async def on_message(self, message: "Message") -> Any:
         """Handles a message.
 
         When extending this methods, you should always call
@@ -34,9 +33,6 @@ class BaseMiddleware:
         Args:
             message: The message to handle.
         """
-        if isinstance(self.next_call, PublishMessageCommand):
-            raise TypeError(f"Incorrect middleware stack build for {self.__class__.__name__}")
-
         if not self.next_call:
             return
 
@@ -56,10 +52,34 @@ class BaseMiddleware:
             ordering_key: The ordering key for the message.
             attributes: A dictionary of message attributes.
         """
-        if isinstance(self.next_call, HandleMessageCommand):
-            raise TypeError(f"Incorrect middleware stack build for {self.__class__.__name__}")
-
         if not self.next_call:
             return
 
         return await self.next_call.on_publish(data, ordering_key, attributes)
+
+
+class Middleware:
+    def __init__(
+        self, cls: type[BaseMiddleware], *args: Sequence[Any], **kwargs: Mapping[str, Any]
+    ) -> None:
+        self.cls = cls
+        self.args = args
+        self.kwargs = kwargs
+
+    def __iter__(self) -> Iterator[Any]:
+        as_tuple = (self.cls, self.args, self.kwargs)
+        return iter(as_tuple)
+
+    def __repr__(self) -> str:
+        class_name = self.__class__.__name__
+        args_strings = [f"{value!r}" for value in self.args]
+        option_strings = [f"{key}={value!r}" for key, value in self.kwargs.items()]
+        name = getattr(self.cls, "__name__", "")
+        args_repr = ", ".join([name] + args_strings + option_strings)
+        return f"{class_name}({args_repr})"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Middleware):
+            return False
+
+        return self.cls == other.cls
