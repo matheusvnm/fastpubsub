@@ -2,7 +2,7 @@
 
 import logging
 import os
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, validate_call
@@ -171,7 +171,7 @@ class PubSubBroker:
 
     @validate_call(config=ConfigDict(strict=True))
     def include_middleware(
-        self, middleware: type[BaseMiddleware], *args: Sequence[Any], **kwargs: Mapping[str, Any]
+        self, middleware: type[BaseMiddleware], *args: Any, **kwargs: Any
     ) -> None:
         """Includes a middleware in the broker.
 

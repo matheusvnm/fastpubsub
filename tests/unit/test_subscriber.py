@@ -1,3 +1,4 @@
+from fastpubsub.middlewares import Middleware
 from typing import Any
 
 import pytest
@@ -8,13 +9,17 @@ from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.middlewares.di import HandleMessageSerializerMiddleware
 from fastpubsub.pubsub.subscriber import Subscriber
 from fastpubsub.router import PubSubRouter
-from tests.conftest import callstack_matches
+from tests.conftest import callstack_matches, callstack_to_collection
 
 
 def subscriber_create_test_cases():
     default_parameters = {"alias": "alias", "topic_name": "topic", "subscription_name": "sub"}
 
     class InvalidMiddlewareClass: ...
+
+    class ValidMiddlewareWithParameter(BaseMiddleware):
+        def __init__(self, next_call: BaseMiddleware, param: int = 0):
+            pass
 
     return [
         [{"alias": None, "topic_name": "topic", "subscription_name": "sub"}],
@@ -36,7 +41,8 @@ def subscriber_create_test_cases():
         [{**default_parameters, "max_backoff_delay_secs": None}],
         [{**default_parameters, "max_messages": None}],
         [{**default_parameters, "middlewares": True}],
-        [{**default_parameters, "middlewares": (InvalidMiddlewareClass,)}],
+        [{**default_parameters, "middlewares": Middleware(InvalidMiddlewareClass)}],
+        [{**default_parameters, "middlewares": Middleware(ValidMiddlewareWithParameter, True)}], # Invalid type
     ]
 
 
@@ -90,6 +96,116 @@ class TestSubscriber:
         expected_output = [HandleMessageSerializerMiddleware]
         assert callstack_matches(callstack_c, expected_output)
 
+
+    def test_build_callstack_with_parameters(
+        self,
+        broker: PubSubBroker,
+        router_a: PubSubRouter,
+        first_middleware: type[BaseMiddleware],
+        second_middleware: type[BaseMiddleware],
+    ):
+        broker.include_middleware(first_middleware, "broker_arg", arg_2="broker_kwarg")
+        broker.include_middleware(second_middleware, arg_2="broker_kwargs_only")
+        router_a.include_middleware(first_middleware, "router_arg", arg_2="router_kwarg")
+        router_a.include_middleware(second_middleware, "router_arg_only")
+        broker.include_router(router_a)
+
+        async def handler_a(_): ...
+        broker.subscriber("broker_handler", topic_name="tn", subscription_name="sn")(handler_a)
+
+        async def handler_b(_): ...
+        router_a.subscriber("router_handler", topic_name="tn", subscription_name="sn")(handler_b)
+
+        subscribers = broker.router._get_subscribers()
+
+        broker_subscriber = subscribers["broker_handler"]
+        broker_callstack = broker_subscriber._build_callstack()
+        callstack_collection = callstack_to_collection(broker_callstack)
+        assert len(callstack_collection) == 3
+
+        first_broker_call = callstack_collection[0]
+        assert isinstance(first_broker_call, first_middleware)
+        assert first_broker_call.arg_1 == "broker_arg"
+        assert first_broker_call.arg_2 == "broker_kwarg"
+
+        second_broker_call = callstack_collection[1]
+        assert isinstance(second_broker_call, second_middleware)
+        assert second_broker_call.arg_1 == ""
+        assert second_broker_call.arg_2 == "broker_kwargs_only"
+
+        router_subscriber = subscribers["a.router_handler"]
+        router_callstack = router_subscriber._build_callstack()
+        callstack_collection = callstack_to_collection(router_callstack)
+        assert len(callstack_collection) == 3
+
+        first_router_call = callstack_collection[0]
+        assert isinstance(first_router_call, first_middleware)
+        assert first_router_call.arg_1 == "router_arg"
+        assert first_router_call.arg_2 == "router_kwarg"
+
+        second_router_call = callstack_collection[1]
+        assert isinstance(second_router_call, second_middleware)
+        assert second_router_call.arg_1 == "router_arg_only"
+        assert second_router_call.arg_2 == ""
+
+    def test_build_callstack_with_parameters_on_constructor(self,
+        first_middleware: type[BaseMiddleware],
+        second_middleware: type[BaseMiddleware],
+    ):
+        router_middlewares = [
+            Middleware(first_middleware, "router_arg", arg_2="router_kwarg"),
+            Middleware(second_middleware, "router_arg_only"),
+        ]
+
+        broker_middlewares = [
+            Middleware(first_middleware, "broker_arg", arg_2="broker_kwarg"),
+            Middleware(second_middleware, arg_2="broker_kwargs_only"),
+        ]
+
+        router = PubSubRouter(middlewares=router_middlewares)
+        broker = PubSubBroker("some_project", routers=[router], middlewares=broker_middlewares)
+
+        async def handler_a(_): ...
+        broker.subscriber("sub_a", topic_name="tn", subscription_name="sn")(handler_a)
+
+        async def handler_b(_): ...
+        router.subscriber("sub_b", topic_name="tn", subscription_name="sn")(handler_b)
+
+        subscribers = broker.router._get_subscribers()
+
+        # Broker Subscriber
+        broker_subscriber = subscribers["sub_a"]
+        broker_callstack = broker_subscriber._build_callstack()
+        callstack_collection = callstack_to_collection(broker_callstack)
+        assert len(callstack_collection) == 3
+
+        first_broker_call = callstack_collection[0]
+        assert isinstance(first_broker_call, first_middleware)
+        assert first_broker_call.arg_1 == "broker_arg"
+        assert first_broker_call.arg_2 == "broker_kwarg"
+
+        second_broker_call = callstack_collection[1]
+        assert isinstance(second_broker_call, second_middleware)
+        assert second_broker_call.arg_1 == ""
+        assert second_broker_call.arg_2 == "broker_kwargs_only"
+
+        # Router Subscriber
+        router_subscriber = subscribers["sub_b"]
+        router_callstack = router_subscriber._build_callstack()
+        callstack_collection = callstack_to_collection(router_callstack)
+        assert len(callstack_collection) == 3
+
+        first_router_call = callstack_collection[0]
+        assert isinstance(first_router_call, first_middleware)
+        assert first_router_call.arg_1 == "router_arg"
+        assert first_router_call.arg_2 == "router_kwarg"
+
+        second_router_call = callstack_collection[1]
+        assert isinstance(second_router_call, second_middleware)
+        assert second_router_call.arg_1 == "router_arg_only"
+        assert second_router_call.arg_2 == ""
+
+
     def test_subscriber_name(self, subscriber: Subscriber):
         assert subscriber.name == "some_subscriber_handler"
 
@@ -119,8 +235,7 @@ class TestSubscriber:
     def test_subscriber_invalid_data_failed(
         self, data: dict[str, Any], broker: PubSubBroker, router_a: PubSubRouter
     ):
-        with pytest.raises(ValidationError):
-            broker.subscriber(**data)
-
-        with pytest.raises(ValidationError):
-            router_a.subscriber(**data)
+        objs = [broker, router_a]
+        for obj in objs:
+            with pytest.raises(ValidationError):
+                obj.subscriber(**data)

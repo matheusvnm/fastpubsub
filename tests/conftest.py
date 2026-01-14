@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import uuid
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, MutableSequence
 
 import pytest
 
@@ -64,26 +64,38 @@ def router_factory() -> Callable[..., PubSubRouter]:
     return _create
 
 
-def callstack_matches(
-    callstack: BaseMiddleware,
-    expected_output: Sequence[type[BaseMiddleware]],
-) -> bool:
-    """Verify that the callstack matches the expected order of middlewares/commands.
+def callstack_to_collection(callstack: BaseMiddleware) -> MutableSequence[BaseMiddleware]:
+    """Receives a callstack and transform it into an ordered sequence.
 
     Args:
-        callstack: The callstack to verify.
-        expected_output: The expected order of middlewares/commands.
+        callstack: The callstack to transform.
 
     Returns:
-        True if the callstack matches the expected output, False otherwise.
+        A collections of callstack in the same order they would be called.
     """
-    callstack_collection = []
 
+    callstack_collection = []
     next_call = callstack
     while next_call is not None:
         callstack_collection.append(next_call)
         next_call = getattr(next_call, "next_call", None)
+    return callstack_collection
 
+
+def callstack_matches(
+    callstack: BaseMiddleware,
+    expected_output: Sequence[type[BaseMiddleware]],
+) -> bool:
+    """Verify that the callstack matches the expected order of middlewares.
+
+    Args:
+        callstack: The callstack to verify.
+        expected_output: The expected order of middlewares.
+
+    Returns:
+        True if the callstack matches the expected output, False otherwise.
+    """
+    callstack_collection = callstack_to_collection(callstack)
     assert len(callstack_collection) == len(expected_output), "The callstacks do not match in size"
 
     for i in range(len(callstack_collection)):

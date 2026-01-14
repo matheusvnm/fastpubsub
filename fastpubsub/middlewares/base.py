@@ -1,7 +1,7 @@
 """Base classes for middlewares."""
 
 from abc import abstractmethod
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any, Union
 
 if TYPE_CHECKING:
@@ -23,7 +23,7 @@ class BaseMiddleware:
         """
         self.next_call = next_call
 
-    @abstractmethod
+
     async def on_message(self, message: "Message") -> Any:
         """Handles a message.
 
@@ -38,7 +38,6 @@ class BaseMiddleware:
 
         return await self.next_call.on_message(message)
 
-    @abstractmethod
     async def on_publish(
         self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
     ) -> Any:
@@ -59,9 +58,7 @@ class BaseMiddleware:
 
 
 class Middleware:
-    def __init__(
-        self, cls: type[BaseMiddleware], *args: Sequence[Any], **kwargs: Mapping[str, Any]
-    ) -> None:
+    def __init__(self, cls: type[BaseMiddleware], *args: Any, **kwargs: Any) -> None:
         self.cls = cls
         self.args = args
         self.kwargs = kwargs

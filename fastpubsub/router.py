@@ -2,7 +2,7 @@
 
 import re
 from collections import OrderedDict
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from typing import Any
 from weakref import WeakSet
 
@@ -278,7 +278,7 @@ class PubSubRouter:
 
     @validate_call(config=ConfigDict(strict=True))
     def include_middleware(
-        self, middleware: type[BaseMiddleware], *args: Sequence[Any], **kwargs: Mapping[str, Any]
+        self, middleware: type[BaseMiddleware], *args: Any, **kwargs: Any
     ) -> None:
         """Includes a middleware in the router.
 
@@ -286,15 +286,15 @@ class PubSubRouter:
             middleware: The middleware to include.
         """
         for publisher in self.publishers:
-            publisher.include_middleware(middleware)
+            publisher.include_middleware(middleware, *args, **kwargs)
 
         for subscriber in self.subscribers.values():
-            subscriber.include_middleware(middleware)
+            subscriber.include_middleware(middleware, *args, **kwargs)
 
         for router in self.routers:
-            router.include_middleware(middleware, *args, *kwargs)
+            router.include_middleware(middleware, *args, **kwargs)
 
-        wrapper_middleware = Middleware(middleware, *args, *kwargs)
+        wrapper_middleware = Middleware(middleware, *args, **kwargs)
         if wrapper_middleware not in self.middlewares:
             self.middlewares.append(wrapper_middleware)
 

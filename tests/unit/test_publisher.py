@@ -1,3 +1,4 @@
+from fastpubsub.middlewares import Middleware
 import json
 from datetime import datetime
 from uuid import UUID, uuid4
@@ -11,7 +12,7 @@ from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.middlewares.di import PublishMessageSerializerMiddleware
 from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.router import PubSubRouter
-from tests.conftest import callstack_matches
+from tests.conftest import callstack_matches, callstack_to_collection
 
 
 class UserSchema(BaseModel):
@@ -79,6 +80,98 @@ class TestPublisher:
 
         expected_output_c = [first_middleware, PublishMessageSerializerMiddleware]
         assert callstack_matches(callstack_c, expected_output_c)
+
+
+    def test_build_callstack_with_parameters(
+        self,
+        broker: PubSubBroker,
+        router_a: PubSubRouter,
+        first_middleware: type[BaseMiddleware],
+        second_middleware: type[BaseMiddleware],
+    ):
+        broker.include_middleware(first_middleware, "broker_arg", arg_2="broker_kwarg")
+        broker.include_middleware(second_middleware, arg_2="broker_kwargs_only")
+        router_a.include_middleware(first_middleware, "router_arg", arg_2="router_kwarg")
+        router_a.include_middleware(second_middleware, "router_arg_only")
+        broker.include_router(router_a)
+
+        broker_publisher = broker.publisher(topic_name="somerandomtopic")
+        broker_callstack = broker_publisher._build_callstack()
+        callstack_collection = callstack_to_collection(broker_callstack)
+        assert len(callstack_collection) == 3
+
+        first_broker_call = callstack_collection[0]
+        assert isinstance(first_broker_call, first_middleware)
+        assert first_broker_call.arg_1 == "broker_arg"
+        assert first_broker_call.arg_2 == "broker_kwarg"
+
+        second_broker_call = callstack_collection[1]
+        assert isinstance(second_broker_call, second_middleware)
+        assert second_broker_call.arg_1 == ""
+        assert second_broker_call.arg_2 == "broker_kwargs_only"
+
+        router_publisher = router_a.publisher(topic_name="somerandomtopic")
+        router_callstack = router_publisher._build_callstack()
+        callstack_collection = callstack_to_collection(router_callstack)
+        assert len(callstack_collection) == 3
+
+        first_router_call = callstack_collection[0]
+        assert isinstance(first_router_call, first_middleware)
+        assert first_router_call.arg_1 == "router_arg"
+        assert first_router_call.arg_2 == "router_kwarg"
+
+        second_router_call = callstack_collection[1]
+        assert isinstance(second_router_call, second_middleware)
+        assert second_router_call.arg_1 == "router_arg_only"
+        assert second_router_call.arg_2 == ""
+
+    def test_build_callstack_with_parameters_on_constructor(
+        self,
+        first_middleware: type[BaseMiddleware],
+        second_middleware: type[BaseMiddleware],
+    ):
+        router_middlewares = [
+            Middleware(first_middleware, "router_arg", arg_2="router_kwarg"),
+            Middleware(second_middleware, "router_arg_only"),
+        ]
+
+        broker_middlewares = [
+            Middleware(first_middleware, "broker_arg", arg_2="broker_kwarg"),
+            Middleware(second_middleware, arg_2="broker_kwargs_only"),
+        ]
+
+        router = PubSubRouter(middlewares=router_middlewares)
+        broker = PubSubBroker("some_project", routers=[router], middlewares=broker_middlewares)
+
+        broker_publisher = broker.publisher(topic_name="somerandomtopic")
+        broker_callstack = broker_publisher._build_callstack()
+        callstack_collection = callstack_to_collection(broker_callstack)
+        assert len(callstack_collection) == 3
+
+        first_broker_call = callstack_collection[0]
+        assert isinstance(first_broker_call, first_middleware)
+        assert first_broker_call.arg_1 == "broker_arg"
+        assert first_broker_call.arg_2 == "broker_kwarg"
+
+        second_broker_call = callstack_collection[1]
+        assert isinstance(second_broker_call, second_middleware)
+        assert second_broker_call.arg_1 == ""
+        assert second_broker_call.arg_2 == "broker_kwargs_only"
+
+        router_publisher = router.publisher(topic_name="somerandomtopic")
+        router_callstack = router_publisher._build_callstack()
+        callstack_collection = callstack_to_collection(router_callstack)
+        assert len(callstack_collection) == 3
+
+        first_router_call = callstack_collection[0]
+        assert isinstance(first_router_call, first_middleware)
+        assert first_router_call.arg_1 == "router_arg"
+        assert first_router_call.arg_2 == "router_kwarg"
+
+        second_router_call = callstack_collection[1]
+        assert isinstance(second_router_call, second_middleware)
+        assert second_router_call.arg_1 == "router_arg_only"
+        assert second_router_call.arg_2 == ""
 
     @pytest.mark.parametrize(
         "project_id",

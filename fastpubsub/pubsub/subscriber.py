@@ -1,6 +1,6 @@
 """Subscriber logic."""
 
-from collections.abc import Mapping, MutableSequence, Sequence
+from collections.abc import MutableSequence, Sequence
 from typing import Any
 
 from pydantic import ConfigDict, validate_call
@@ -67,7 +67,7 @@ class Subscriber:
 
     @validate_call(config=ConfigDict(strict=True))
     def include_middleware(
-        self, middleware: type[BaseMiddleware], *args: Sequence[Any], **kwargs: Mapping[str, Any]
+        self, middleware: type[BaseMiddleware], *args: Any, **kwargs: Any
     ) -> None:
         """Includes a middleware in the subscriber.
 
@@ -77,7 +77,7 @@ class Subscriber:
         """
         ensure_async_middleware(middleware)
 
-        wrapper_middleware = Middleware(middleware, *args, *kwargs)
+        wrapper_middleware = Middleware(middleware, *args, **kwargs)
         if wrapper_middleware in self.middlewares:
             return
 
