@@ -284,6 +284,8 @@ class PubSubRouter:
 
         Args:
             middleware: The middleware to include.
+            args: The positional arguments used on the middleware instantiation.
+            kwargs: The keyword  arguments used on the middleware instantiation.
         """
         for publisher in self.publishers:
             publisher.include_middleware(middleware, *args, **kwargs)

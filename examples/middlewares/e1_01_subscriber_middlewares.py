@@ -1,10 +1,12 @@
 from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubcriberMiddleware
-from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
+from fastpubsub import FastPubSub, Message, Middleware, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
 
-router = PubSubRouter(prefix="myawesomerouter", middlewares=[RouterMiddleware])
+router = PubSubRouter(prefix="myawesomerouter", middlewares=[Middleware(RouterMiddleware)])
 broker = PubSubBroker(
-    project_id="fastpubsub-pubsub-local", middlewares=[BrokerMiddleware], routers=[router]
+    project_id="fastpubsub-pubsub-local",
+    middlewares=[Middleware(BrokerMiddleware)],
+    routers=[router],
 )
 app = FastPubSub(broker)
 
@@ -16,6 +18,7 @@ app = FastPubSub(broker)
 )
 async def broker_handle(_: Message) -> None:
     logger.info("This handler has only the broker middleware")
+    await broker.publish(topic_name="topic_two_mid", data={"C": "D"})
 
 
 @router.subscriber(
@@ -25,13 +28,14 @@ async def broker_handle(_: Message) -> None:
 )
 async def router_handle(_: Message) -> None:
     logger.info("This handler has a router and broker middlewares")
+    await router.publish(topic_name="topic_three_mid", data={"F": "G"})
 
 
 @router.subscriber(
     "router-subscriber-with-mid",
     topic_name="topic_three_mid",
     subscription_name="subscription_three_mid",
-    middlewares=[SubcriberMiddleware],
+    middlewares=[Middleware(SubcriberMiddleware)],
 )
 async def router_handle_with_middleware(_: Message) -> None:
     logger.info("This handler has all middlewares")
@@ -40,5 +44,3 @@ async def router_handle_with_middleware(_: Message) -> None:
 @app.after_startup
 async def after_started() -> None:
     await broker.publish(topic_name="topic_one_mid", data={"A": "B"})
-    await broker.publish(topic_name="topic_two_mid", data={"C": "D"})
-    await broker.publish(topic_name="topic_three_mid", data={"F": "G"})

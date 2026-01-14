@@ -13,6 +13,15 @@ class GZipMiddleware(BaseMiddleware):
     def __init__(
         self, next_call: BaseMiddleware, compresslevel: int = 9, mtime: int | float | None = None
     ):
+        """Initializes the GZipMiddleware.
+
+        Args:
+            next_call: The next call in the chain to call.
+            compresslevel: The level of compression used on
+                gzip.compress function on a ranges of 0 to 9.
+            mtime: The modification time. The modification time is
+                set to the current time by default.
+        """
         super().__init__(next_call)
         self.compresslevel = compresslevel
         self.mtime = mtime

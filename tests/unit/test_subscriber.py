@@ -1,10 +1,10 @@
-from fastpubsub.middlewares import Middleware
 from typing import Any
 
 import pytest
 from pydantic import ValidationError
 
 from fastpubsub.broker import PubSubBroker
+from fastpubsub.middlewares import Middleware
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.middlewares.di import HandleMessageSerializerMiddleware
 from fastpubsub.pubsub.subscriber import Subscriber
@@ -42,7 +42,9 @@ def subscriber_create_test_cases():
         [{**default_parameters, "max_messages": None}],
         [{**default_parameters, "middlewares": True}],
         [{**default_parameters, "middlewares": Middleware(InvalidMiddlewareClass)}],
-        [{**default_parameters, "middlewares": Middleware(ValidMiddlewareWithParameter, True)}], # Invalid type
+        [
+            {**default_parameters, "middlewares": Middleware(ValidMiddlewareWithParameter, True)}
+        ],  # Invalid type
     ]
 
 
@@ -96,7 +98,6 @@ class TestSubscriber:
         expected_output = [HandleMessageSerializerMiddleware]
         assert callstack_matches(callstack_c, expected_output)
 
-
     def test_build_callstack_with_parameters(
         self,
         broker: PubSubBroker,
@@ -111,9 +112,11 @@ class TestSubscriber:
         broker.include_router(router_a)
 
         async def handler_a(_): ...
+
         broker.subscriber("broker_handler", topic_name="tn", subscription_name="sn")(handler_a)
 
         async def handler_b(_): ...
+
         router_a.subscriber("router_handler", topic_name="tn", subscription_name="sn")(handler_b)
 
         subscribers = broker.router._get_subscribers()
@@ -148,7 +151,8 @@ class TestSubscriber:
         assert second_router_call.arg_1 == "router_arg_only"
         assert second_router_call.arg_2 == ""
 
-    def test_build_callstack_with_parameters_on_constructor(self,
+    def test_build_callstack_with_parameters_on_constructor(
+        self,
         first_middleware: type[BaseMiddleware],
         second_middleware: type[BaseMiddleware],
     ):
@@ -166,9 +170,11 @@ class TestSubscriber:
         broker = PubSubBroker("some_project", routers=[router], middlewares=broker_middlewares)
 
         async def handler_a(_): ...
+
         broker.subscriber("sub_a", topic_name="tn", subscription_name="sn")(handler_a)
 
         async def handler_b(_): ...
+
         router.subscriber("sub_b", topic_name="tn", subscription_name="sn")(handler_b)
 
         subscribers = broker.router._get_subscribers()
@@ -204,7 +210,6 @@ class TestSubscriber:
         assert isinstance(second_router_call, second_middleware)
         assert second_router_call.arg_1 == "router_arg_only"
         assert second_router_call.arg_2 == ""
-
 
     def test_subscriber_name(self, subscriber: Subscriber):
         assert subscriber.name == "some_subscriber_handler"

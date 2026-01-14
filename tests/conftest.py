@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import os
 import uuid
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, MutableSequence
+from collections.abc import MutableSequence, Sequence
+from typing import TYPE_CHECKING, Any
 
 import pytest
 

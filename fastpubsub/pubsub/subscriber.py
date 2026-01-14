@@ -73,7 +73,8 @@ class Subscriber:
 
         Args:
             middleware: The middleware to include.
-            # TODO: FIX ME
+            args: The positional arguments used on the middleware instantiation.
+            kwargs: The keyword  arguments used on the middleware instantiation.
         """
         ensure_async_middleware(middleware)
 

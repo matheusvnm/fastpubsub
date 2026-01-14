@@ -124,7 +124,7 @@ class PubSubBroker:
         Args:
             topic_name: The name of the topic.
             project_id: An alternative project id to publish messages.
-                        If set the broker's project id will be ignored.
+                If set the broker's project id will be ignored.
 
         Returns:
             A publisher for the given topic.
@@ -177,6 +177,8 @@ class PubSubBroker:
 
         Args:
             middleware: The middleware to include.
+            args: The positional arguments used on the middleware instantiation.
+            kwargs: The keyword  arguments used on the middleware instantiation.
         """
         return self.router.include_middleware(middleware, *args, **kwargs)
 

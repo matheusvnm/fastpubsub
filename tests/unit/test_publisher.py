@@ -1,4 +1,3 @@
-from fastpubsub.middlewares import Middleware
 import json
 from datetime import datetime
 from uuid import UUID, uuid4
@@ -8,6 +7,7 @@ from pydantic import BaseModel
 
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.exceptions import FastPubSubException
+from fastpubsub.middlewares import Middleware
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.middlewares.di import PublishMessageSerializerMiddleware
 from fastpubsub.pubsub.publisher import Publisher
@@ -80,7 +80,6 @@ class TestPublisher:
 
         expected_output_c = [first_middleware, PublishMessageSerializerMiddleware]
         assert callstack_matches(callstack_c, expected_output_c)
-
 
     def test_build_callstack_with_parameters(
         self,
