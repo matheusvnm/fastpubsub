@@ -4,12 +4,16 @@ build-backend = "uv_build"
 
 [project]
 name = "fastpubsub"
-description = "A high performance FastAPI-based message consumer framework for PubSub"
+description = "FastPubSub: A high performance FastAPI-based message consumer framework for Google PubSub applications"
 readme = "README.md"
-version = "0.8.0"
+version = "0.8.1"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
+authors = [
+    { name = "Sandro Matheus Vila Nova Marques", email = "sandro-matheus@hotmail.com" },
+]
+
 dependencies = [
     "click>=8.2.1",
     "fastapi[standard-no-fastapi-cloud-cli]>=0.120.2",
@@ -23,13 +27,15 @@ dependencies = [
 
 
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Topic :: Software Development :: Libraries :: Python Modules",
