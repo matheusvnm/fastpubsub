@@ -2,10 +2,10 @@ from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
 from fastpubsub.logger import logger
-from fastpubsub.middlewares.gzip import GZipMiddleware
+from fastpubsub.middlewares import GZipMiddleware
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
-broker.include_middleware(GZipMiddleware)
+broker.include_middleware(GZipMiddleware, compresslevel=2)
 
 app = FastPubSub(broker)
 
@@ -16,7 +16,7 @@ app = FastPubSub(broker)
     subscription_name="gzipped_sub",
 )
 async def broker_gzip_message(message: Message) -> None:
-    logger.info(f"We received message with encoding {message.attributes['Content-Encoding']}")
+    logger.info(f"We received message with encoding {message.attributes['content-encoding']}")
 
 
 @app.after_startup

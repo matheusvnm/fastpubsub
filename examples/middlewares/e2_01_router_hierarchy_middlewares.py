@@ -1,13 +1,15 @@
 from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubRouterMiddleware
-from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
+from fastpubsub import FastPubSub, Message, Middleware, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
 
-child_router = PubSubRouter(prefix="subrouter", middlewares=[SubRouterMiddleware])
+child_router = PubSubRouter(prefix="subrouter", middlewares=[Middleware(SubRouterMiddleware)])
 parent_router = PubSubRouter(
-    prefix="router", routers=[child_router], middlewares=[RouterMiddleware]
+    prefix="router", routers=[child_router], middlewares=[Middleware(RouterMiddleware)]
 )
 broker = PubSubBroker(
-    project_id="fastpubsub-pubsub-local", middlewares=[BrokerMiddleware], routers=[parent_router]
+    project_id="fastpubsub-pubsub-local",
+    middlewares=[Middleware(BrokerMiddleware)],
+    routers=[parent_router],
 )
 app = FastPubSub(broker)
 
@@ -19,6 +21,7 @@ app = FastPubSub(broker)
 )
 async def broker_handle(_: Message) -> None:
     logger.info("We received a message!")
+    await parent_router.publish(topic_name="some_test_topic2", data={"C": "D"})
 
 
 @parent_router.subscriber(
@@ -28,6 +31,7 @@ async def broker_handle(_: Message) -> None:
 )
 async def parent_router_handle(_: Message) -> None:
     logger.info("We received a message!")
+    await child_router.publish(topic_name="some_test_topic3", data={"E": "F"})
 
 
 @child_router.subscriber(
@@ -42,5 +46,3 @@ async def subrouter_handle(_: Message) -> None:
 @app.after_startup
 async def after_started() -> None:
     await broker.publish(topic_name="some_test_topic", data={"A": "B"})
-    await parent_router.publish(topic_name="some_test_topic2", data={"C": "D"})
-    await child_router.publish(topic_name="some_test_topic3", data={"E": "F"})

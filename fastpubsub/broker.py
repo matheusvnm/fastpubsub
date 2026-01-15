@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, validate_call
 from fastpubsub.builder import PubSubSubscriptionBuilder
 from fastpubsub.concurrency.manager import AsyncTaskManager
 from fastpubsub.exceptions import FastPubSubException
+from fastpubsub.middlewares import Middleware
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.pubsub.subscriber import Subscriber
@@ -26,8 +27,8 @@ class PubSubBroker:
         self,
         project_id: str,
         shutdown_timeout: float = 30.0,
-        routers: Sequence[PubSubRouter] | None = None,
-        middlewares: Sequence[type[BaseMiddleware]] | None = None,
+        routers: Sequence[PubSubRouter] = (),
+        middlewares: Sequence[Middleware] = (),
     ):
         """Initializes the PubSubBroker.
 
@@ -47,7 +48,7 @@ class PubSubBroker:
         self.router = PubSubRouter(routers=routers, project_id=project_id, middlewares=middlewares)
         self.task_manager = AsyncTaskManager()
 
-    @validate_call(config=ConfigDict(strict=True))
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def subscriber(
         self,
         alias: str,
@@ -66,7 +67,7 @@ class PubSubBroker:
         min_backoff_delay_secs: int = 10,
         max_backoff_delay_secs: int = 600,
         max_messages: int = 1000,
-        middlewares: Sequence[type[BaseMiddleware]] | None = None,
+        middlewares: Sequence[Middleware] = (),
     ) -> SubscribedCallable:
         """Decorator to register a function as a subscriber.
 
@@ -123,7 +124,7 @@ class PubSubBroker:
         Args:
             topic_name: The name of the topic.
             project_id: An alternative project id to publish messages.
-                        If set the broker's project id will be ignored.
+                If set the broker's project id will be ignored.
 
         Returns:
             A publisher for the given topic.
@@ -169,13 +170,17 @@ class PubSubBroker:
         return self.router.include_router(router)
 
     @validate_call(config=ConfigDict(strict=True))
-    def include_middleware(self, middleware: type[BaseMiddleware]) -> None:
+    def include_middleware(
+        self, middleware: type[BaseMiddleware], *args: Any, **kwargs: Any
+    ) -> None:
         """Includes a middleware in the broker.
 
         Args:
             middleware: The middleware to include.
+            args: The positional arguments used on the middleware instantiation.
+            kwargs: The keyword  arguments used on the middleware instantiation.
         """
-        return self.router.include_middleware(middleware)
+        return self.router.include_middleware(middleware, *args, **kwargs)
 
     async def start(self) -> None:
         """Starts the broker."""

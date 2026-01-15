@@ -25,6 +25,7 @@ app = FastPubSub(broker)
 )
 async def broker_handle(_: Message) -> None:
     logger.info("We received a message on broker!")
+    await parent_router.publish(topic_name="some_test_topic2", data={"C": "D"})
 
 
 @parent_router.subscriber(
@@ -34,6 +35,7 @@ async def broker_handle(_: Message) -> None:
 )
 async def parent_router_handle(_: Message) -> None:
     logger.info("We received a message on parent router!")
+    await child_router.publish(topic_name="some_test_topic3", data={"E": "F"})
 
 
 @child_router.subscriber(
@@ -48,5 +50,3 @@ async def subrouter_handle(_: Message) -> None:
 @app.after_startup
 async def after_started() -> None:
     await broker.publish(topic_name="some_test_topic", data={"A": "B"})
-    await parent_router.publish(topic_name="some_test_topic2", data={"C": "D"})
-    await child_router.publish(topic_name="some_test_topic3", data={"E": "F"})

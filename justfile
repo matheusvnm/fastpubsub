@@ -252,7 +252,9 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 [unix]
 @clean:
     just _start_msg "Removing temporary files"
-    rm -rf .cov htmlcov/ dist/ fastpubsub.egg-info/
+    find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+    find . -type f -name "*.pyc" -delete 2>/dev/null || true
+    rm -rf .pytest_cache htmlcov .coverage .cov dist/ fastpubsub.egg-info/ 2>/dev/null || true
 
 # ----------------------------------------------------------------------------
 # Private Commands
