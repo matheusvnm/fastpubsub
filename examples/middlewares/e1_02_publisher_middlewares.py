@@ -1,8 +1,8 @@
 from examples.middlewares.middlewares import PublisherMiddleware, RouterMiddleware
-from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
+from fastpubsub import FastPubSub, Message, Middleware, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
 
-router = PubSubRouter(prefix="core", middlewares=[RouterMiddleware])
+router = PubSubRouter(prefix="core", middlewares=[Middleware(RouterMiddleware)])
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local", routers=[router])
 app = FastPubSub(broker)
 
@@ -23,6 +23,7 @@ async def router_handle(message: Message) -> None:
 )
 async def broker_handle(message: Message) -> None:
     logger.info(f"We received message {message} on broker_handle")
+    await router.publish(topic_name="topic_b", data={"some_message": "messageB"})
 
 
 publisher = broker.publisher("topic_a")
@@ -31,5 +32,4 @@ publisher.include_middleware(PublisherMiddleware)
 
 @app.after_startup
 async def test_publish() -> None:
-    await router.publish(topic_name="topic_b", data={"some_message": "messageB"})
     await publisher.publish(data={"some_message": "messageA"})

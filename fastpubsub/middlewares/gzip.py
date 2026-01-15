@@ -7,9 +7,24 @@ from fastpubsub.datastructures import Message
 from fastpubsub.middlewares.base import BaseMiddleware
 
 
-# V2: Middlewares must can have args/kwargs
 class GZipMiddleware(BaseMiddleware):
     """A middleware for compressing and decompressing messages using gzip."""
+
+    def __init__(
+        self, next_call: BaseMiddleware, compresslevel: int = 9, mtime: int | float | None = None
+    ):
+        """Initializes the GZipMiddleware.
+
+        Args:
+            next_call: The next call in the chain to call.
+            compresslevel: The level of compression used on
+                gzip.compress function on a ranges of 0 to 9.
+            mtime: The modification time. The modification time is
+                set to the current time by default.
+        """
+        super().__init__(next_call)
+        self.compresslevel = compresslevel
+        self.mtime = mtime
 
     async def on_message(self, message: Message) -> Any:
         """Decompresses a message.
@@ -17,7 +32,7 @@ class GZipMiddleware(BaseMiddleware):
         Args:
             message: The message to decompress.
         """
-        if message.attributes and message.attributes.get("Content-Encoding") == "gzip":
+        if message.attributes.get("content-encoding", "") == "gzip":
             decompressed_data = gzip.decompress(data=message.data)
             new_message = Message(
                 id=message.id,
@@ -46,6 +61,8 @@ class GZipMiddleware(BaseMiddleware):
         if not attributes:
             attributes = {}
 
-        attributes["Content-Encoding"] = "gzip"
-        compressed_data = gzip.compress(data=data)
+        attributes["content-encoding"] = "gzip"
+        compressed_data = gzip.compress(
+            data=data, compresslevel=self.compresslevel, mtime=self.mtime
+        )
         return await super().on_publish(compressed_data, ordering_key, attributes)

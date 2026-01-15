@@ -32,7 +32,11 @@ def router_b() -> PubSubRouter:
 def first_middleware() -> type[BaseMiddleware]:
     """Create a FirstMiddleware class for testing."""
 
-    class FirstMiddleware(BaseMiddleware): ...
+    class FirstMiddleware(BaseMiddleware):
+        def __init__(self, next_call: BaseMiddleware, arg_1: str = "", arg_2: str = ""):
+            super().__init__(next_call)
+            self.arg_1 = arg_1
+            self.arg_2 = arg_2
 
     return FirstMiddleware
 
@@ -41,7 +45,11 @@ def first_middleware() -> type[BaseMiddleware]:
 def second_middleware() -> type[BaseMiddleware]:
     """Create a SecondMiddleware class for testing."""
 
-    class SecondMiddleware(BaseMiddleware): ...
+    class SecondMiddleware(BaseMiddleware):
+        def __init__(self, next_call: BaseMiddleware, arg_1: str = "", arg_2: str = ""):
+            super().__init__(next_call)
+            self.arg_1 = arg_1
+            self.arg_2 = arg_2
 
     return SecondMiddleware
 
@@ -50,7 +58,11 @@ def second_middleware() -> type[BaseMiddleware]:
 def third_middleware() -> type[BaseMiddleware]:
     """Create a ThirdMiddleware class for testing."""
 
-    class ThirdMiddleware(BaseMiddleware): ...
+    class ThirdMiddleware(BaseMiddleware):
+        def __init__(self, next_call: BaseMiddleware, arg_1: str = "", arg_2: str = ""):
+            super().__init__(next_call)
+            self.arg_1 = arg_1
+            self.arg_2 = arg_2
 
     return ThirdMiddleware
 
@@ -59,7 +71,11 @@ def third_middleware() -> type[BaseMiddleware]:
 def final_middleware() -> type[BaseMiddleware]:
     """Create a FinalMiddleware class for testing."""
 
-    class FinalMiddleware(BaseMiddleware): ...
+    class FinalMiddleware(BaseMiddleware):
+        def __init__(self, next_call: BaseMiddleware, arg_1: str = "", arg_2: str = ""):
+            super().__init__(next_call)
+            self.arg_1 = arg_1
+            self.arg_2 = arg_2
 
     return FinalMiddleware
 

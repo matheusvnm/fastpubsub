@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from fastpubsub.broker import PubSubBroker
+from fastpubsub.middlewares import Middleware
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.pubsub.subscriber import Subscriber
@@ -24,12 +25,12 @@ class TestMiddlewareHierarchy:
         broker.include_middleware(middleware=first_middleware)
 
     def test_include_broker_middleware_only_once(self, first_middleware: type[BaseMiddleware]):
-        new_broker = PubSubBroker(project_id="id", middlewares=(first_middleware,))
+        new_broker = PubSubBroker(project_id="id", middlewares=(Middleware(first_middleware),))
         new_broker.include_middleware(middleware=first_middleware)
         assert len(new_broker.router.middlewares) == 1
 
     def test_include_router_middleware_only_once(self, first_middleware: type[BaseMiddleware]):
-        router = PubSubRouter(prefix="core", middlewares=(first_middleware,))
+        router = PubSubRouter(prefix="core", middlewares=(Middleware(first_middleware),))
         router.include_middleware(first_middleware)
 
         broker = PubSubBroker(project_id="id")
@@ -60,16 +61,16 @@ class TestMiddlewareHierarchy:
         broker.include_router(router_a)
 
         assert len(router_b.middlewares) == 3
-        assert router_b.middlewares[0] == third_middleware
-        assert router_b.middlewares[1] == second_middleware
-        assert router_b.middlewares[2] == first_middleware
+        assert router_b.middlewares[0].cls == third_middleware
+        assert router_b.middlewares[1].cls == second_middleware
+        assert router_b.middlewares[2].cls == first_middleware
 
         assert len(router_a.middlewares) == 2
-        assert router_a.middlewares[0] == second_middleware
-        assert router_a.middlewares[1] == first_middleware
+        assert router_a.middlewares[0].cls == second_middleware
+        assert router_a.middlewares[1].cls == first_middleware
 
         assert len(broker.router.middlewares) == 1
-        assert broker.router.middlewares[0] == first_middleware
+        assert broker.router.middlewares[0].cls == first_middleware
 
     def test_flat_router_broker_middleware_hierarchy(
         self,
@@ -84,15 +85,15 @@ class TestMiddlewareHierarchy:
         broker.include_router(router_b)
 
         assert len(router_b.middlewares) == 2
-        assert router_b.middlewares[0] == third_middleware
-        assert router_b.middlewares[1] == first_middleware
+        assert router_b.middlewares[0].cls == third_middleware
+        assert router_b.middlewares[1].cls == first_middleware
 
         assert len(router_a.middlewares) == 2
-        assert router_a.middlewares[0] == second_middleware
-        assert router_a.middlewares[1] == first_middleware
+        assert router_a.middlewares[0].cls == second_middleware
+        assert router_a.middlewares[1].cls == first_middleware
 
         assert len(broker.router.middlewares) == 1
-        assert broker.router.middlewares[0] == first_middleware
+        assert broker.router.middlewares[0].cls == first_middleware
 
 
 class TestSubscriberPublisherMiddlewareHierarchy(TestMiddlewareHierarchy):
@@ -119,21 +120,21 @@ class TestSubscriberPublisherMiddlewareHierarchy(TestMiddlewareHierarchy):
             "some_alias",
             topic_name="topic",
             subscription_name="sub",
-            middlewares=(final_middleware,),
+            middlewares=(Middleware(final_middleware),),
         )(handle_child)
 
         router_a.subscriber(
             "some_alias2",
             topic_name="topic",
             subscription_name="sub2",
-            middlewares=(final_middleware,),
+            middlewares=(Middleware(final_middleware),),
         )(handle_parent)
 
         broker.subscriber(
             "some_alias3",
             topic_name="topic",
             subscription_name="sub3",
-            middlewares=(final_middleware,),
+            middlewares=(Middleware(final_middleware),),
         )(handle_broker)
 
         router_a.include_router(router_b)
@@ -141,21 +142,21 @@ class TestSubscriberPublisherMiddlewareHierarchy(TestMiddlewareHierarchy):
 
         subscriber: Subscriber = router_b.subscribers.popitem()[1]
         assert len(subscriber.middlewares) == 4
-        assert subscriber.middlewares[0] == final_middleware
-        assert subscriber.middlewares[1] == third_middleware
-        assert subscriber.middlewares[2] == second_middleware
-        assert subscriber.middlewares[3] == first_middleware
+        assert subscriber.middlewares[0].cls == final_middleware
+        assert subscriber.middlewares[1].cls == third_middleware
+        assert subscriber.middlewares[2].cls == second_middleware
+        assert subscriber.middlewares[3].cls == first_middleware
 
         subscriber: Subscriber = router_a.subscribers.popitem()[1]
         assert len(subscriber.middlewares) == 3
-        assert subscriber.middlewares[0] == final_middleware
-        assert subscriber.middlewares[1] == second_middleware
-        assert subscriber.middlewares[2] == first_middleware
+        assert subscriber.middlewares[0].cls == final_middleware
+        assert subscriber.middlewares[1].cls == second_middleware
+        assert subscriber.middlewares[2].cls == first_middleware
 
         subscriber: Subscriber = broker.router.subscribers.popitem()[1]
         assert len(subscriber.middlewares) == 2
-        assert subscriber.middlewares[0] == final_middleware
-        assert subscriber.middlewares[1] == first_middleware
+        assert subscriber.middlewares[0].cls == final_middleware
+        assert subscriber.middlewares[1].cls == first_middleware
 
     def test_publisher_middleware_hierarchy(
         self,
@@ -179,19 +180,19 @@ class TestSubscriberPublisherMiddlewareHierarchy(TestMiddlewareHierarchy):
         publisher_broker.include_middleware(final_middleware)
 
         assert len(publisher_b.middlewares) == 4
-        assert publisher_b.middlewares[0] == third_middleware
-        assert publisher_b.middlewares[1] == second_middleware
-        assert publisher_b.middlewares[2] == first_middleware
-        assert publisher_b.middlewares[3] == final_middleware
+        assert publisher_b.middlewares[0].cls == third_middleware
+        assert publisher_b.middlewares[1].cls == second_middleware
+        assert publisher_b.middlewares[2].cls == first_middleware
+        assert publisher_b.middlewares[3].cls == final_middleware
 
         assert len(publisher_a.middlewares) == 3
-        assert publisher_a.middlewares[0] == second_middleware
-        assert publisher_a.middlewares[1] == first_middleware
-        assert publisher_a.middlewares[2] == final_middleware
+        assert publisher_a.middlewares[0].cls == second_middleware
+        assert publisher_a.middlewares[1].cls == first_middleware
+        assert publisher_a.middlewares[2].cls == final_middleware
 
         assert len(publisher_broker.middlewares) == 2
-        assert publisher_broker.middlewares[0] == first_middleware
-        assert publisher_broker.middlewares[1] == final_middleware
+        assert publisher_broker.middlewares[0].cls == first_middleware
+        assert publisher_broker.middlewares[1].cls == final_middleware
 
     def test_fail_to_include_non_base_middleware(self):
         class NonBaseMiddleware: ...

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from fastpubsub.middlewares import Middleware
 from fastpubsub.middlewares.base import BaseMiddleware
 from tests.integration.conftest import managed_broker
 
@@ -81,7 +82,7 @@ class TestMiddlewares:
             topic_name=unique_topic,
             subscription_name=unique_subscription,
             autocreate=True,
-            middlewares=[SubscriberMiddleware],
+            middlewares=[Middleware(SubscriberMiddleware)],
         )
         async def handler(msg: str) -> None:
             mock("handler")
