@@ -69,7 +69,8 @@ class Publisher:
             callstack = middleware(callstack, *args, **kwargs)
         return callstack
 
-    async def _serialize_message(self, data: BaseModel | dict[str, Any] | str | bytes) -> bytes:
+    @staticmethod
+    async def _serialize_message(data: BaseModel | dict[str, Any] | str | bytes) -> bytes:
         if isinstance(data, bytes):
             return data
 
