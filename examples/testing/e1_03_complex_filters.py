@@ -1,9 +1,19 @@
-"""Example: Complex filter expressions with AND, OR, NOT operators.
+"""Title: Complex Filter Expressions
 
-This example shows how to use logical operators in filter expressions
-to create sophisticated message routing rules for testing.
+Demonstrates complex filter expressions with AND, OR, NOT operators and functions.
 
-Run with: pytest examples/testing/e1_03_complex_filters.py -v
+This example shows:
+- AND operator: requires all conditions to match
+- OR operator: matches if any condition is true
+- NOT operator: excludes messages matching the condition
+- hasPrefix() function: matches attribute value prefixes
+- Existence check (attributes:key): matches when attribute is present
+- Combining multiple filters for sophisticated routing rules
+
+These filter expressions follow Google Cloud Pub/Sub's CEL subset syntax.
+
+Run with:
+    pytest examples/testing/e1_03_complex_filters.py -v
 """
 
 import pytest

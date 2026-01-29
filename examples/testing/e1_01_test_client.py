@@ -1,9 +1,19 @@
-"""Example: Basic PubSubTestClient usage.
+"""Title: Basic PubSubTestClient Usage
 
-This example demonstrates the basic usage of PubSubTestClient for testing
-subscriber handlers without needing a real PubSub emulator.
+Demonstrates the basic usage of PubSubTestClient for testing subscriber handlers.
 
-Run with: pytest examples/testing/e1_01_test_client.py -v
+This example shows:
+- Creating a test broker fixture for pytest
+- Using PubSubTestClient as an async context manager
+- Publishing messages and verifying subscriber receives them
+- Publishing dictionary data (JSON serialized automatically)
+- Inspecting all published messages with get_published_messages()
+
+PubSubTestClient enables fast, isolated unit tests without needing a real
+Google Cloud Pub/Sub emulator.
+
+Run with:
+    pytest examples/testing/e1_01_test_client.py -v
 """
 
 import pytest

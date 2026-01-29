@@ -1,10 +1,19 @@
-"""Example: Using filter expressions with PubSubTestClient.
+"""Title: Filter Expression Testing
 
-This example demonstrates how to test subscribers with filter expressions.
+Demonstrates testing subscribers with filter expressions using PubSubTestClient.
+
+This example shows:
+- Creating subscribers with filter_expression parameter
+- Testing attribute-based message routing (e.g., 'attributes.type = "order"')
+- Verifying messages are filtered correctly based on attributes
+- Testing scenarios where no messages match the filter
+- Testing messages with missing attributes
+
 Filter expressions allow subscribers to receive only messages that match
 specific attribute criteria, just like in Google Cloud Pub/Sub.
 
-Run with: pytest examples/testing/e1_02_filter_expressions.py -v
+Run with:
+    pytest examples/testing/e1_02_filter_expressions.py -v
 """
 
 import pytest

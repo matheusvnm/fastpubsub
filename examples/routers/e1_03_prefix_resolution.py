@@ -1,3 +1,23 @@
+"""Title: Prefix Resolution with Unique Aliases
+
+Demonstrates that routers with empty prefixes can coexist when aliases are unique.
+
+This example shows:
+- Creating multiple routers with empty prefixes ("")
+- Using different aliases for each subscriber to avoid conflicts
+- How prefix resolution works when no prefix is specified
+
+When using empty prefixes, you must ensure that all subscriber aliases are
+globally unique, as there's no prefix to differentiate them.
+
+Run with:
+    fastpubsub run examples.routers.e1_03_prefix_resolution:app
+
+Requirements:
+    - Set PUBSUB_EMULATOR_HOST for local testing, or
+    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
+"""
+
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message

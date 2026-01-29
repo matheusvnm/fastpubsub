@@ -1,3 +1,27 @@
+"""Title: Cross-Project Publishing
+
+Demonstrates publishing messages across multiple Google Cloud projects.
+
+This example shows:
+- Creating publishers and subscribers across three different GCP projects
+- Using project_id parameter on broker.publisher() to target different projects
+- Message flow across projects: first -> second -> third
+- Chaining message processing across project boundaries
+
+The flow:
+1. Message published to first project triggers subscriber
+2. First subscriber publishes to second project
+3. Second subscriber publishes to third project using a Publisher instance
+
+Run with:
+    fastpubsub run examples.basic_usage.e2_04_cross_project_publisher:app
+
+Requirements:
+    - Set PUBSUB_EMULATOR_HOST for local testing, or
+    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
+    - Ensure all three projects exist and are accessible
+"""
+
 from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
 from fastpubsub.pubsub import Publisher

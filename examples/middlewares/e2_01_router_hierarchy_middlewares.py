@@ -1,3 +1,27 @@
+"""Title: Router Middleware at Initialization
+
+Demonstrates adding middleware to routers at initialization time.
+
+This example shows:
+- Creating nested routers (child_router inside parent_router)
+- Adding middleware via the middlewares parameter in constructors
+- How middleware cascades through nested router hierarchy
+
+The hierarchy is:
+- Broker (with BrokerMiddleware)
+  - Parent Router (with RouterMiddleware)
+    - Child Router (with SubRouterMiddleware)
+
+Each level adds its middleware to the execution chain.
+
+Run with:
+    fastpubsub run examples.middlewares.e2_01_router_hierarchy_middlewares:app
+
+Requirements:
+    - Set PUBSUB_EMULATOR_HOST for local testing, or
+    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
+"""
+
 from examples.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubRouterMiddleware
 from fastpubsub import FastPubSub, Message, Middleware, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
