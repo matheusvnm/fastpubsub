@@ -1,3 +1,24 @@
+"""Title: Nested Router Hierarchy
+
+Demonstrates creating nested routers for organizing complex applications.
+
+This example shows:
+- Creating multiple routers with different prefixes (core, sales, logistics)
+- Nesting routers using include_router()
+- How the same alias/subscription names can be used across routers without conflict
+- Each router's prefix ensures unique handler identification
+
+This pattern is useful for organizing large applications into logical domains
+or microservice-like boundaries while maintaining a single deployment.
+
+Run with:
+    fastpubsub run examples.routers.e1_02_nested_routers:app
+
+Requirements:
+    - Set PUBSUB_EMULATOR_HOST for local testing, or
+    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
+"""
+
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message

@@ -1,3 +1,25 @@
+"""Title: Router Bound to Different Project
+
+Demonstrates creating a router that operates on a different GCP project than the broker.
+
+This example shows:
+- Creating a router with a specific project_id different from the broker
+- All subscribers/publishers on that router default to the router's project
+- Cross-project message flow between broker and router
+- Using a publisher to send messages to a different project
+
+This is useful for multi-project architectures where different parts of your
+application communicate across GCP project boundaries.
+
+Run with:
+    fastpubsub run examples.routers.e1_02_cross_project_router:app
+
+Requirements:
+    - Set PUBSUB_EMULATOR_HOST for local testing, or
+    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
+    - Ensure both projects exist and are accessible
+"""
+
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message

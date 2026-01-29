@@ -1,9 +1,19 @@
-"""Example: Using PubSubTestClient for test assertions.
+"""Title: Test Assertions with PubSubTestClient
 
-This example demonstrates how to use the test client in actual pytest
-tests with assertions on message routing and content.
+Demonstrates practical pytest patterns for testing FastPubSub applications.
 
-Run with: pytest examples/testing/e2_01_test_assertions.py -v
+This example shows:
+- Writing real pytest test cases with PubSubTestClient
+- Asserting on message counts received by subscribers
+- Testing filter expression routing with assertions
+- Inspecting published message content and attributes
+- Combining complex filters with assertions
+
+These patterns represent best practices for unit testing FastPubSub
+subscriber handlers and message routing logic.
+
+Run with:
+    pytest examples/testing/e2_01_test_assertions.py -v
 """
 
 import pytest
