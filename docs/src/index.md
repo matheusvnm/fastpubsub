@@ -1,14 +1,24 @@
+---
+icon: lucide/zap
+hide:
+  - title
+---
+
+<div class="home" markdown>
+
+# FastPubSub
+
 <p align="center">
-  <a href="https://github.com/matheusvnm/fastpubsub"><img src="https://github.com/matheusvnm/fastpubsub/blob/dev/docs/logo.png" alt="FastPubSub"></a>
+  <a href="/"><img src="assets/images/logo.png" alt="FastPubSub"></a>
 </p>
 
 <p align="center">
-    <em>A high-performance, asyncio-native framework for Google Cloud Pub/Sub applications.</em>
+    <em>A high-performance, asyncio-native framework for Google Cloud Pub/Sub applications.</em> 
 </p>
 
 
 ---
-
+ 
 
 **Documentation**: <a href="https://github.com/matheusvnm/fastpubsub/wiki" target="_blank">https://github.com/matheusvnm/fastpubsub/wiki</a>
 
@@ -137,3 +147,5 @@ Sending a message on my [linkedin](https://www.linkedin.com/in/matheusvnm).
 
 ## License
 This project is licensed under the terms of the Apache 2.0 license.
+
+</div>

@@ -1,0 +1,120 @@
+[project]
+site_name = "FastPubSub"
+site_description = "FastPubSub: A high performance FastAPI-based message consumer framework for Google PubSub applications"
+site_author = "Sandro Matheus Vila Nova Marques"
+#site_url = "https://www.example.com/" TODO: Set as Github Pages URL
+
+repo = "fontawesome/brands/github"
+repo_name = "matheusvnm/fastpubsub"
+repo_url = "https://github.com/matheusvnm/fastpubsub"
+copyright = "Copyright &copy; 2026 FastPubSub"
+
+docs_dir = "src"
+site_dir = "site"
+
+extra_css = ["stylesheets/extra.css"]
+
+nav = [
+    { "Home" = "index.md" },
+    { "Tutorial" = [
+        { "The Basis" = [
+            { "Introduction to Google PubSub" = "tutorial/basis/intro-google-pubsub.md" },
+            { "Introduction to Async/Await" = "tutorial/basis/intro-async-await.md"},
+        ]},
+        {"User Guide" = [
+            { "First Steps" = "tutorial/user-guide/first-steps.md"},
+            { "Subscribers" = "tutorial/user-guide/subscribers.md" },
+            { "Publishers" = "tutorial/user-guide/publishers.md" },
+            { "Lifespan and Hooks" = "tutorial/user-guide/lifespan.md" },
+            { "Routers" = "tutorial/user-guide/routers.md" },
+            { "Middlewares" = "tutorial/user-guide/middlewares.md" },
+            { "Message Lifecycle and Acknowledgement" = "tutorial/user-guide/lifecycle.md" },
+            { "Command-Line Interface (CLI)" = "tutorial/user-guide/cli.md" },
+            { "Testing" = "tutorial/user-guide/testing.md" },
+            { "Deployment" = "tutorial/user-guide/deployment.md"},
+            { "Observability" = "tutorial/user-guide/observability.md"},
+            { "Troubleshooting" = "tutorial/user-guide/troubleshooting.md"},
+        ]},
+        { "Integrations" = [
+            { "FastAPI" = "tutorial/integrations/fastapi.md" },
+            { "Pydantic" = "tutorial/integrations/pydantic.md" },
+            { "Uvicorn" = "tutorial/integrations/uvicorn.md" },
+        ]},
+    ]},
+    {"Advanced User Guide" = [
+        {"Advanced User Guide" = [
+            { "Custom Middlewares" = "advanced/custom-middlewares.md"},
+            { "Dead-Letter Topics" = "advanced/dlt.md"},
+            { "Message Filtering" = "advanced/filters.md"},
+            { "Exactly-Once Delivery" = "advanced/delivery-guarantees.md"},
+            { "Message Ordering" = "advanced/ordering.md"},
+            { "Performance Tuning" = "advanced/tuning.md"},
+            { "Cross-Project Configuration" = "advanced/multiple-projects.md"},
+        ]},
+    ]},
+    { "References" = []},
+    { "About" = [
+        { "About" = [
+            { "The Project" = "about/project.md"},
+            { "Versioning" = "about/versions.md"},
+        ]},
+    ]},
+    { "Release Notes" = "index.md" },
+]
+
+
+[project.theme]
+logo = "assets/images/small_logo.png"
+favicon = "images/favicon.png"
+language = "en"
+features = [
+    "announce.dismiss",
+    "content.code.annotate",
+    "content.code.copy",
+    "content.code.select",
+    "content.footnote.tooltips",
+    "content.tabs.link",
+    "content.tooltips",
+    "navigation.footer",
+    "navigation.indexes",
+    "navigation.instant",
+    "navigation.instant.prefetch",
+    "navigation.instant.progress",
+    "navigation.path",
+    "navigation.tabs",
+    "navigation.tabs.sticky",
+    "navigation.top",
+    "navigation.indexes",
+    "navigation.sections",
+    "navigation.tracking",
+    "search.highlight",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "material/brightness-7"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "material/brightness-4"
+toggle.name = "Switch to light mode"
+
+
+[project.theme.font]
+text = "Helvetica"
+code = "Jetbrains Mono"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/matheusvnm/fastpubsub"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/linkedin"
+link = "https://linkedin.com/in/matheusvnm"

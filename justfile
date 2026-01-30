@@ -6,10 +6,11 @@ pubsub_emulator_host := "localhost:8085"
 
 # DIRECTORIES
 
-target_dirs := "fastpubsub tests examples benchmarks"
-lint_dirs := "fastpubsub examples benchmarks"
-lint_extra_dirs := "fastpubsub examples tests benchmarks"
+target_dirs := "fastpubsub tests docs/snippets benchmarks"
+lint_dirs := "fastpubsub docs/snippets benchmarks"
+lint_extra_dirs := "fastpubsub docs/snippets tests benchmarks"
 pre_commit_hook_path := ".git/hooks/pre-commit"
+docs_dir := "docs/"
 
 # COLORS
 
@@ -256,6 +257,17 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
     find . -type f -name "*.pyc" -delete 2>/dev/null || true
     rm -rf .pytest_cache htmlcov .coverage .cov dist/ fastpubsub.egg-info/ 2>/dev/null || true
 
+[doc("Creates the Zensical static documentation")]
+[group('docs')]
+@build-docs:
+    just _start_msg "Building documentation"
+    uv run zensical build docs/ -o docs/_site
+
+[doc("Creates the Zensical static documentation")]
+[group('docs')]
+@serve-docs:
+    just _start_msg "Starting documentation server"
+    uv run zensical serve -f {{ docs_dir }}/zensical.toml -a localhost:8001
 # ----------------------------------------------------------------------------
 # Private Commands
 # ----------------------------------------------------------------------------
