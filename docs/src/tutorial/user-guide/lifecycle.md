@@ -30,45 +30,24 @@ sequenceDiagram
 ### Steps
 
 1. **Polling and Fetching**: The broker's background task continuously polls the subscription, fetching batches of messages
-2. **Deserialization**: Each raw message becomes a FastPubSub `Message` object with a clean, Pythonic interface
-3. **Middleware Chain**: The message passes through middlewares, which can inspect or modify it
+2. **Deserialization**: Each raw message becomes a FastPubSub `Message` object with a clean dataclass interface
+3. **Middleware Chain**: The message passes through middlewares, which can inspect, intercept or clone its data.
 4. **Handler Execution**: Your decorated handler function runs with the message
-5. **Acknowledgment**: The outcome determines the message's fate
-
----
-
-## Acknowledgment Logic
-
-### On Success
-
-If your handler completes without raising an exception, the broker automatically sends an `ack()` to Pub/Sub. The message is permanently removed from the subscription.
-
-```python
-@broker.subscriber(
-    alias="order-handler",
-    topic_name="orders",
-    subscription_name="orders-subscription",
-)
-async def handle_order(message: Message):
-    # Process the order
-    order = parse_order(message.data)
-    await save_to_database(order)
-    # If we reach here, message is acked automatically
-```
-
-### On Failure
-
-If your handler raises an exception, the broker determines whether to `ack()` or `nack()` based on the exception type.
+5. **Acknowledgment**: The outcome determines the message's fate. If your handler completes without raising an exception, the broker automatically sends an `ack()` to Pub/Sub. The message is permanently removed from the subscription.
 
 ---
 
 ## Error Handling
 
-FastPubSub provides explicit exceptions for controlling message fate.
+Error handling is a critical part of any message-based system. FastPubSub provides a powerful and explicit model for managing both expected and unexpected failures.
 
-### `Drop`: Acknowledge and Discard
+### Controlled Acknowledgement with `Drop`
 
-Use `Drop` when you receive a message that cannot be processed and should not be retried. This could be a "poison pill" with malformed data or an event that's no longer relevant.
+Sometimes, you receive a message that you cannot process, but you don't want it to be retried. This could be a "poison pill" message with malformed data or an event that is no longer relevant. For these cases, FastPubSub provides the `Drop` exception.
+
+* **What it does:** Raising Drop tells the broker to `ack()` the message. This permanently removes it from the queue, preventing it from being redelivered or sent to a Dead-Letter Topic (DLT).
+* **When to use it:** Use this when a message is valid from Pub/Sub's perspective but invalid for your business logic, and you know it will never be processable.
+
 
 ```python
 from fastpubsub.exceptions import Drop
@@ -83,11 +62,14 @@ async def handle_events(message: Message):
     # Process v2+ events...
 ```
 
-**Effect**: The broker sends `ack()`. The message is permanently removed and won't go to the dead-letter topic.
 
-### `Retry`: Negative Acknowledge
+### Controlled Retries with `Retry`
 
-Use `Retry` for temporary, recoverable errors (database unavailable, API timeout). The message will be redelivered after a backoff period.
+For temporary, recoverable errors (e.g., a database is temporarily unavailable, a downstream API times out), you want Pub/Sub to redeliver the message later. The `Retry` exception makes this intent clear. 
+
+* **What it does:** Raising `Retry` tells the broker to `nack()` the message. Google Pub/Sub will hold the message and attempt to redeliver it after a period of time.
+* **When to use it:** Use this for any transient error where you expect a future attempt to succeed.
+
 
 ```python
 from fastpubsub.exceptions import Retry
@@ -104,17 +86,17 @@ async def handle_order(message: Message):
         raise Retry("Downstream service timed out.")
 ```
 
-**Effect**: The broker sends `nack()`. Pub/Sub holds the message and redelivers after the configured backoff.
-
 !!! tip "Exponential Backoff"
 
-    By default, FastPubSub configures subscriptions with exponential backoff retry, preventing a loop of rapidly failing messages.
+    By default, FastPubSub configures subscriptions with exponential backoff retry, preventing a loop of rapidly failing messages. Read the full feature documention on [Google Pub/Sub](https://cloud.google.com/pubsub/docs/subscription-retry-policy).
 
-### Unhandled Exceptions
+### The Safety Net: Unhandled Exceptions
 
-Any exception that is not `Drop` or `Retry` is treated as an unexpected error.
+Any exception that is not `Drop` or `Retry` is considered an unhandled unexpected error. FastPubSub default behavior acts as a safety net.
 
-**Effect**: The broker catches it, logs the full traceback, and sends `nack()`. The message is redelivered.
+* **What it does:** If your handler raises any other exception (e.g., `ValueError`, `KeyError`, `DatabaseError`), the broker will automatically catch it, log the full traceback, and `nack()` the message.
+* **When it happens:** This covers all unexpected bugs and failures in your code, ensuring that no message is accidentally lost due to an unforeseen error.
+
 
 ```python
 @broker.subscriber(...)
@@ -135,64 +117,6 @@ async def handle_event(message: Message):
 | `Drop` | `ack()` | Permanently removed |
 | `Retry` | `nack()` | Redelivered after backoff |
 | Any other | `nack()` | Redelivered after backoff |
-
----
-
-## Best Practices
-
-### Validate Early, Drop or Retry Explicitly
-
-```python
-from fastpubsub.exceptions import Drop, Retry
-from pydantic import ValidationError
-
-@broker.subscriber(...)
-async def handle_order(message: Message):
-    # Validate message format
-    try:
-        order = Order.model_validate_json(message.data)
-    except ValidationError as e:
-        logger.error(f"Invalid order format: {e}")
-        raise Drop("Invalid message format")
-
-    # Process the order
-    try:
-        await process_order(order)
-    except ServiceUnavailable:
-        raise Retry("Service unavailable")
-```
-
-### Use Dead-Letter Topics for Investigation
-
-```python
-@broker.subscriber(
-    alias="order-processor",
-    topic_name="orders",
-    subscription_name="orders-subscription",
-    dead_letter_topic="orders-dlq",
-    max_delivery_attempts=5,
-)
-async def process_order(message: Message):
-    # After 5 failures, message goes to DLQ
-    await risky_operation(message.data)
-```
-
-### Handle the Dead-Letter Topic
-
-```python
-@broker.subscriber(
-    alias="dlq-handler",
-    topic_name="orders-dlq",
-    subscription_name="orders-dlq-subscription",
-)
-async def handle_failed_orders(message: Message):
-    logger.error(f"Message {message.id} failed permanently", extra={
-        "message_data": message.data.decode("utf-8"),
-        "attributes": message.attributes,
-    })
-    await send_alert_to_ops_team(message)
-    await store_for_manual_review(message)
-```
 
 ---
 

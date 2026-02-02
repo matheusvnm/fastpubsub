@@ -2284,29 +2284,29 @@
 <p>As your application grows, managing all subscribers and publishers in a single file becomes cumbersome. Routers, inspired by FastAPI's <code>APIRouter</code>, help you organize and scale your application by dividing it into smaller, modular components.</p>
 <h2 id="why-use-routers">Why Use Routers?<a class="headerlink" href="#why-use-routers" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Logical Separation</strong>: Organize by domain or feature (<code>users</code>, <code>orders</code>, <code>notifications</code>)</li>
-<li><strong>Code Modularity</strong>: Split into multiple files and directories</li>
-<li><strong>Avoid Naming Conflicts</strong>: Prefixes namespace subscriber aliases</li>
-<li><strong>Scoped Configurations</strong>: Apply middlewares to groups of subscribers</li>
+<li><strong>Logical Separation:</strong> Organize your subscribers and publishers by domain or feature (e.g., <code>users</code>, <code>orders</code>, <code>notifications</code>). This makes your codebase easier to navigate and understand.</li>
+<li><strong>Code Modularity:</strong> Split your application into multiple Python files and directories. Each module can define its own self-contained router, which is then included in the main application.</li>
+<li><strong>Avoid Naming Conflicts:</strong> Routers use a <code>prefix</code> to namespace the aliases of their subscribers. This prevents two subscribers from different domains from having the same alias (e.g., <code>users.create</code> and <code>orders.create</code>).</li>
+<li><strong>Scoped Configurations:</strong> Apply configurations, such as a specific set of middlewares, to an entire group of subscribers at once.</li>
 </ul>
 <hr />
 <h2 id="core-concepts">Core Concepts<a class="headerlink" href="#core-concepts" title="Permanent link">&para;</a></h2>
 <h3 id="prefix-and-aliasing">Prefix and Aliasing<a class="headerlink" href="#prefix-and-aliasing" title="Permanent link">&para;</a></h3>
-<p>When you create a router, you give it a string prefix that's prepended to the <code>alias</code> and <code>subscription_name</code> of every subscriber.</p>
+<p>The key to understanding routers is the aliasing mechanism. When you create a router, you give it a string prefix that will be prepended to the <code>alias</code> of every subscriber defined within it. The final alias is then used by the CLI as <code>prefix.alias</code> to define which subscriber should be started.</p>
 <p><strong>Example:</strong></p>
 <ul>
 <li>Router: <code>users_router = PubSubRouter(prefix="users")</code></li>
 <li>Subscriber: <code>@users_router.subscriber(alias="new-user", subscription_name="new-accounts", ...)</code></li>
 <li>Final alias: <code>users.new-user</code></li>
-<li>Final subscription name: <code>users.new-accounts</code></li>
+<li>Final subscriber name: <code>users.new-accounts</code></li>
 </ul>
 <hr />
 <h2 id="how-to-use-routers">How to Use Routers<a class="headerlink" href="#how-to-use-routers" title="Permanent link">&para;</a></h2>
 <p>Using routers is a three-step process:</p>
 <ol>
-<li><strong>Create</strong> a router with a unique prefix</li>
-<li><strong>Define</strong> subscribers using the router's decorator</li>
-<li><strong>Include</strong> the router in your broker</li>
+<li><strong>Create a Router:</strong> Instantiate <strong>PubSubRouter</strong> in a separate module, providing a unique <strong>prefix</strong>.</li>
+<li><strong>Define Subscribers:</strong> Use the router's <code>@router.subscriber()</code> decorator, just as you would with a broker.</li>
+<li><strong>Include the Router:</strong> In your main application file, import the router instance and include it in your central broker using <code>broker.include_router()</code> or via construtor.</li>
 </ol>
 <h3 id="example-multi-file-application">Example: Multi-File Application<a class="headerlink" href="#example-multi-file-application" title="Permanent link">&para;</a></h3>
 <p><strong>Project structure:</strong></p>

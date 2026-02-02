@@ -4,10 +4,10 @@ As your application grows, managing all subscribers and publishers in a single f
 
 ## Why Use Routers?
 
-- **Logical Separation**: Organize by domain or feature (`users`, `orders`, `notifications`)
-- **Code Modularity**: Split into multiple files and directories
-- **Avoid Naming Conflicts**: Prefixes namespace subscriber aliases
-- **Scoped Configurations**: Apply middlewares to groups of subscribers
+* **Logical Separation:** Organize your subscribers and publishers by domain or feature (e.g., `users`, `orders`, `notifications`). This makes your codebase easier to navigate and understand.
+* **Code Modularity:** Split your application into multiple Python files and directories. Each module can define its own self-contained router, which is then included in the main application.
+* **Avoid Naming Conflicts:** Routers use a `prefix` to namespace the aliases of their subscribers. This prevents two subscribers from different domains from having the same alias (e.g., `users.create` and `orders.create`).
+* **Scoped Configurations:** Apply configurations, such as a specific set of middlewares, to an entire group of subscribers at once.
 
 ---
 
@@ -15,14 +15,14 @@ As your application grows, managing all subscribers and publishers in a single f
 
 ### Prefix and Aliasing
 
-When you create a router, you give it a string prefix that's prepended to the `alias` and `subscription_name` of every subscriber.
+The key to understanding routers is the aliasing mechanism. When you create a router, you give it a string prefix that will be prepended to the `alias` of every subscriber defined within it. The final alias is then used by the CLI as `prefix.alias` to define which subscriber should be started.
 
 **Example:**
 
 - Router: `users_router = PubSubRouter(prefix="users")`
 - Subscriber: `@users_router.subscriber(alias="new-user", subscription_name="new-accounts", ...)`
 - Final alias: `users.new-user`
-- Final subscription name: `users.new-accounts`
+- Final subscriber name: `users.new-accounts`
 
 ---
 
@@ -30,9 +30,10 @@ When you create a router, you give it a string prefix that's prepended to the `a
 
 Using routers is a three-step process:
 
-1. **Create** a router with a unique prefix
-2. **Define** subscribers using the router's decorator
-3. **Include** the router in your broker
+1. **Create a Router:** Instantiate **PubSubRouter** in a separate module, providing a unique **prefix**.
+2. **Define Subscribers:** Use the router's `@router.subscriber()` decorator, just as you would with a broker.
+3. **Include the Router:** In your main application file, import the router instance and include it in your central broker using `broker.include_router()` or via construtor.
+
 
 ### Example: Multi-File Application
 

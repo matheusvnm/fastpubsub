@@ -85,13 +85,12 @@ Applied to all subscribers and publishers in the application.
 === "Via include_middleware function"
 
 
-    ```python hl_lines="6"
+    ```python hl_lines="5"
     from fastpubsub import PubSubBroker, Middleware
+    from my_app.middlewares import GlobalLoggingMiddleware
 
     broker = PubSubBroker(project_id="your-project-id")
     broker.include_middleware(GlobalLoggingMiddleware)
-
-    broker.include_middleware(GZipMiddleware, compresslevel=5)
     ```
 
 === "Via constructor"
