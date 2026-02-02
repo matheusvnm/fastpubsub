@@ -1,3 +1,25 @@
+"""Title: Different Message Format Support
+
+Demonstrates publishing messages in various formats supported by FastPubSub.
+
+This example shows:
+- Publishing Pydantic models (automatically serialized to JSON)
+- Publishing dictionaries (serialized to JSON)
+- Publishing strings (encoded to bytes)
+- Publishing raw bytes
+
+FastPubSub automatically handles serialization for different data types,
+making it easy to work with structured data using Pydantic models while
+also supporting simple string and bytes payloads.
+
+Run with:
+    fastpubsub run examples.basic_usage.e2_04_message_formats:app
+
+Requirements:
+    - Set PUBSUB_EMULATOR_HOST for local testing, or
+    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
+"""
+
 from pydantic import BaseModel
 
 from fastpubsub import FastPubSub, Message, Publisher, PubSubBroker

@@ -6,7 +6,6 @@ from fastpubsub.datastructures import Message, PushMessage
 from fastpubsub.middlewares import BaseMiddleware, Middleware
 from fastpubsub.pubsub import Publisher, Subscriber
 from fastpubsub.router import PubSubRouter
-from fastpubsub.testing import PubSubTestClient
 
 __all__ = [
     "FastPubSub",
@@ -18,5 +17,4 @@ __all__ = [
     "Middleware",
     "Message",
     "PushMessage",
-    "PubSubTestClient",
 ]

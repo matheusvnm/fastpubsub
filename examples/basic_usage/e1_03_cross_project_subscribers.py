@@ -1,3 +1,25 @@
+"""Title: Cross-Project Subscription
+
+Demonstrates how to subscribe to topics in different Google Cloud projects.
+
+This example shows:
+- Creating subscribers that listen to topics in different GCP projects
+- Using the project_id parameter on @broker.subscriber to override the default project
+- Publishing messages to topics in different projects
+
+The example creates two subscribers:
+1. One listening to the default project's topic
+2. Another listening to the same topic name but in an alternative project
+
+Run with:
+    fastpubsub run examples.basic_usage.e1_03_cross_project_subscribers:app
+
+Requirements:
+    - Set PUBSUB_EMULATOR_HOST for local testing, or
+    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
+    - Ensure both projects exist and are accessible (Only for GCP on Cloud)
+"""
+
 from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
 

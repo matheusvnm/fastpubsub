@@ -1,3 +1,25 @@
+"""Title: Publisher Middleware
+
+Demonstrates how to add middleware specifically to publishers.
+
+This example shows:
+- Creating a Publisher instance with broker.publisher()
+- Adding middleware to a publisher using publisher.include_middleware()
+- Publisher middleware only runs on publish operations, not on receive
+
+This is useful for:
+- Adding logging or metrics to outgoing messages
+- Transforming message data before publishing
+- Adding headers or attributes to all published messages
+
+Run with:
+    fastpubsub run examples.middlewares.e1_02_publisher_middlewares:app
+
+Requirements:
+    - Set PUBSUB_EMULATOR_HOST for local testing, or
+    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
+"""
+
 from examples.middlewares.middlewares import PublisherMiddleware, RouterMiddleware
 from fastpubsub import FastPubSub, Message, Middleware, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
