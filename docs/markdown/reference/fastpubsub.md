@@ -1,0 +1,3 @@
+# `FastPubSub` class
+
+::: fastpubsub.FastPubSub

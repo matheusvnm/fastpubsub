@@ -89,7 +89,8 @@ dev = [
 ]
 
 docs = [
-    "zensical==0.0.20"
+    "mkdocstrings-python>=2.0.1",
+    "zensical==0.0.20",
 ]
 
 [tool.pytest.ini_options]

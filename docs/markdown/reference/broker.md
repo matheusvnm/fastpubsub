@@ -1,0 +1,4 @@
+# `PubSubBroker` class
+
+
+::: fastpubsub.PubSubBroker

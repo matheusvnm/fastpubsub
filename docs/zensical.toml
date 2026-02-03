@@ -9,8 +9,8 @@ repo_name = "matheusvnm/fastpubsub"
 repo_url = "https://github.com/matheusvnm/fastpubsub"
 copyright = "Copyright &copy; 2026 FastPubSub"
 
-docs_dir = "src"
-site_dir = "site"
+site_dir = "_build"
+docs_dir = "markdown"
 
 extra_css = ["stylesheets/extra.css"]
 
@@ -41,8 +41,8 @@ nav = [
             { "Uvicorn" = "tutorial/integrations/uvicorn.md" },
         ]},
     ]},
-    {"Advanced User Guide" = [
-        {"Advanced User Guide" = [
+    {"Advanced Topics" = [
+        {"User Guide" = [
             { "Custom Middlewares" = "advanced/custom-middlewares.md"},
             { "Dead-Letter Topics" = "advanced/dlt.md"},
             { "Message Filtering" = "advanced/filters.md"},
@@ -52,14 +52,23 @@ nav = [
             { "Cross-Project Configuration" = "advanced/multiple-projects.md"},
         ]},
     ]},
-    { "References" = []},
+    { "Reference (Code API)" = [
+        { "Reference (Code API)" = "reference/index.md" },
+        { "FastPubSub" = "reference/fastpubsub.md" },
+        { "PubSubBroker" = "reference/broker.md" },
+        { "PubSubRouter" = "reference/router.md" },
+        { "Publisher" = "reference/publisher.md" },
+        { "Subscriber" = "reference/subscriber.md" },
+        { "BaseMiddleware" = "reference/middlewares.md" },
+        { "Message" = "reference/messages.md" },
+    ]},
     { "About" = [
         { "About" = [
             { "The Project" = "about/project.md"},
             { "Versioning" = "about/versions.md"},
         ]},
     ]},
-    { "Release Notes" = "index.md" },
+    { "Release Notes" = "about/release-notes.md" },
 ]
 
 
@@ -118,3 +127,26 @@ link = "https://github.com/matheusvnm/fastpubsub"
 [[project.extra.social]]
 icon = "fontawesome/brands/linkedin"
 link = "https://linkedin.com/in/matheusvnm"
+
+# [project.markdown_extensions.pymdownx.snippets]
+# base_path = ["src/snippets", "src"]
+# check_paths = true
+
+[project.plugins.mkdocstrings.handlers.python]
+inventories = ["https://docs.python.org/3/objects.inv"]
+paths = [".."]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "google"
+show_root_heading = true
+show_if_no_docstring = true
+inherited_members = true
+members_order = "source"
+separate_signature = true
+unwrap_annotated = true
+filters = ["!^_"]
+merge_init_into_class = true
+docstring_section_style = "spacy"
+signature_crossrefs = true
+show_symbol_type_heading = true
+show_symbol_type_toc = true

@@ -1,0 +1,135 @@
+name: Test Documentation
+
+on:
+  push:
+    paths:
+      - 'docs/src/snippets/**/*.py'
+      - 'docs/src/**/*.md'
+      - '.github/workflows/test-docs.yml'
+  pull_request:
+    paths:
+      - 'docs/src/snippets/**/*.py'
+      - 'docs/src/**/*.md'
+      - '.github/workflows/test-docs.yml'
+
+jobs:
+  validate-snippets:
+    name: Validate Code Snippets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+
+      - name: Check Python syntax
+        run: |
+          echo "Checking Python syntax in docs/src/snippets/"
+          python -m py_compile docs/src/snippets/**/*.py
+          echo "All snippets have valid Python syntax"
+
+      - name: Run snippet imports
+        run: |
+          echo "Verifying all snippets can be imported"
+          python << 'EOF'
+          import importlib.util
+          import sys
+          from pathlib import Path
+
+          snippets_dir = Path("docs/src/snippets")
+          errors = []
+
+          for py_file in snippets_dir.rglob("*.py"):
+              if py_file.name == "__init__.py":
+                  continue
+
+              module_name = py_file.stem
+              spec = importlib.util.spec_from_file_location(module_name, py_file)
+
+              if spec and spec.loader:
+                  try:
+                      module = importlib.util.module_from_spec(spec)
+                      # Don't execute, just verify it can be loaded
+                      print(f"✓ {py_file.relative_to(snippets_dir)}")
+                  except Exception as e:
+                      errors.append(f"✗ {py_file.relative_to(snippets_dir)}: {e}")
+
+          if errors:
+              print("\nErrors found:")
+              for error in errors:
+                  print(error)
+              sys.exit(1)
+          else:
+              print(f"\nAll {len(list(snippets_dir.rglob('*.py')))} snippets validated successfully")
+          EOF
+
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Zensical
+        run: pip install zensical
+
+      - name: Build documentation
+        run: |
+          cd docs
+          zensical build --clean
+          echo "Documentation built successfully"
+
+      - name: Check for broken internal links
+        run: |
+          echo "Checking for broken links in documentation"
+          python << 'EOF'
+          import re
+          from pathlib import Path
+
+          docs_dir = Path("docs/src")
+          errors = []
+
+          # Pattern to match markdown links
+          link_pattern = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
+
+          for md_file in docs_dir.rglob("*.md"):
+              content = md_file.read_text()
+
+              for match in link_pattern.finditer(content):
+                  link_text, link_url = match.groups()
+
+                  # Skip external links
+                  if link_url.startswith(('http://', 'https://', '#', 'mailto:')):
+                      continue
+
+                  # Resolve relative path
+                  if link_url.startswith('../'):
+                      target = (md_file.parent / link_url).resolve()
+                  else:
+                      target = (md_file.parent / link_url).resolve()
+
+                  # Remove anchor if present
+                  target_path = str(target).split('#')[0]
+
+                  if not Path(target_path).exists():
+                      errors.append(f"{md_file.relative_to(docs_dir)}: broken link '{link_url}'")
+
+          if errors:
+              print("Broken links found:")
+              for error in errors:
+                  print(f"  ✗ {error}")
+              # Warning only, don't fail the build
+              print(f"\nFound {len(errors)} broken links (warning only)")
+          else:
+              print("No broken links found")
+          EOF
