@@ -17,24 +17,22 @@ FastPubSub provides several parameters to control message processing behavior:
 | `min_backoff_delay_secs` | Minimum retry delay | 10 |
 | `max_backoff_delay_secs` | Maximum retry delay | 600 |
 
+---
+
+## Step-by-Step
+
+1. Measure baseline throughput and latency.
+2. Tune `max_messages` based on workload type.
+3. Adjust `ack_deadline_seconds` for processing time.
+4. Configure backoff and dead-letter topics for failures.
+5. Re-test under load.
+
 ## Concurrency Control with max_messages
 
 The `max_messages` parameter controls how many messages your subscriber processes simultaneously. This is your primary tool for balancing throughput against resource usage.
 
 ```python
-from fastpubsub import FastPubSub, PubSubBroker, Message
-
-broker = PubSubBroker(project_id="your-project-id")
-app = FastPubSub(broker)
-
-@broker.subscriber(
-    alias="high-throughput",
-    topic_name="events",
-    subscription_name="events-subscription",
-    max_messages=500,  # (1)!
-)
-async def high_throughput_handler(message: Message):
-    await fast_async_operation(message.data)
+--8<-- "advanced/e1_06_tuning.py:high_concurrency"
 ```
 
 1. Process up to 500 messages concurrently
@@ -43,42 +41,17 @@ async def high_throughput_handler(message: Message):
 
 === "I/O-Bound Workloads"
     ```python
-    # High concurrency for I/O-bound tasks (API calls, database queries)
-    @broker.subscriber(
-        alias="api-caller",
-        topic_name="api-requests",
-        subscription_name="api-requests-subscription",
-        max_messages=500,  # High - most time is spent waiting
-    )
-    async def call_external_api(message: Message):
-        await http_client.post("/api/endpoint", json=message.data)
+    --8<-- "advanced/e1_06_tuning.py:io_bound"
     ```
 
 === "CPU-Bound Workloads"
     ```python
-    # Low concurrency for CPU-bound tasks
-    @broker.subscriber(
-        alias="data-processor",
-        topic_name="processing-jobs",
-        subscription_name="processing-subscription",
-        max_messages=10,  # Low - use multiple workers instead
-    )
-    async def process_data(message: Message):
-        result = compute_heavy_operation(message.data)
-        await save_result(result)
+    --8<-- "advanced/e1_06_tuning.py:cpu_bound"
     ```
 
 === "Rate-Limited APIs"
     ```python
-    # Match the API rate limit
-    @broker.subscriber(
-        alias="rate-limited-api",
-        topic_name="api-requests",
-        subscription_name="api-requests-subscription",
-        max_messages=50,  # Match API's rate limit
-    )
-    async def call_rate_limited_api(message: Message):
-        await rate_limited_client.call(message.data)
+    --8<-- "advanced/e1_06_tuning.py:rate_limited"
     ```
 
 ### Guidelines by Workload Type
@@ -99,15 +72,7 @@ async def high_throughput_handler(message: Message):
 The `ack_deadline_seconds` parameter sets how long Pub/Sub waits before considering a message processing failed. If your handler doesn't acknowledge the message within this time, Pub/Sub redelivers it.
 
 ```python
-@broker.subscriber(
-    alias="slow-processor",
-    topic_name="heavy-tasks",
-    subscription_name="heavy-tasks-subscription",
-    ack_deadline_seconds=600,  # (1)!
-    max_messages=10,  # (2)!
-)
-async def slow_handler(message: Message):
-    await complex_ml_inference(message.data)
+--8<-- "advanced/e1_06_tuning.py:ack_deadline"
 ```
 
 1. Allow up to 10 minutes for processing
@@ -168,32 +133,12 @@ With `min_backoff=10` and `max_backoff=600`:
 
 === "Transient Failures"
     ```python
-    # Short backoff for transient issues (network blips)
-    @broker.subscriber(
-        alias="network-sensitive",
-        topic_name="events",
-        subscription_name="events-subscription",
-        min_backoff_delay_secs=5,
-        max_backoff_delay_secs=60,
-        max_delivery_attempts=5,
-    )
-    async def handle_event(message: Message):
-        await send_notification(message.data)
+    --8<-- "advanced/e1_06_tuning.py:transient_backoff"
     ```
 
 === "External Service Issues"
     ```python
-    # Longer backoff for external service outages
-    @broker.subscriber(
-        alias="external-api",
-        topic_name="api-calls",
-        subscription_name="api-calls-subscription",
-        min_backoff_delay_secs=30,
-        max_backoff_delay_secs=600,
-        max_delivery_attempts=10,
-    )
-    async def call_api(message: Message):
-        await external_service.process(message.data)
+    --8<-- "advanced/e1_06_tuning.py:external_backoff"
     ```
 
 ## Scaling with Multiple Workers
@@ -231,36 +176,7 @@ Track these metrics to understand your application's performance:
 A production-ready configuration combining all tuning parameters:
 
 ```python
-from fastpubsub import FastPubSub, PubSubBroker, Message, Middleware
-from fastpubsub import GZipMiddleware
-
-broker = PubSubBroker(
-    project_id="your-project-id",
-    shutdown_timeout=30.0,  # (1)!
-    middlewares=[
-        Middleware(GZipMiddleware, compresslevel=6)  # (2)!
-    ]
-)
-app = FastPubSub(broker)
-
-@broker.subscriber(
-    alias="optimized-processor",
-    topic_name="events",
-    subscription_name="events-subscription",
-    # Concurrency
-    max_messages=200,  # (3)!
-    # Timeouts
-    ack_deadline_seconds=120,  # (4)!
-    # Retry policy
-    min_backoff_delay_secs=10,
-    max_backoff_delay_secs=300,
-    max_delivery_attempts=5,
-    # Error handling
-    dead_letter_topic="events-dlq",
-    autocreate=True,
-)
-async def process_event(message: Message):
-    await handle_event(message.data)
+--8<-- "advanced/e1_06_tuning.py:complete_tuned"
 ```
 
 1. Wait up to 30 seconds for in-flight messages during shutdown
@@ -281,6 +197,14 @@ async def process_event(message: Message):
 
 !!! tip "Use Graceful Shutdown"
     Configure `shutdown_timeout` on your broker to allow in-flight messages to complete before termination.
+
+---
+
+## Common Pitfalls
+
+- Increasing `max_messages` without monitoring memory.
+- Setting `ack_deadline_seconds` lower than typical processing time.
+- Treating CPU-bound workloads as I/O-bound.
 
 ## Recap
 

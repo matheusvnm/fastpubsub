@@ -30,6 +30,15 @@ Tasks can only be paused when they encounter an `await` keyword. This yields con
 
     Without async/await, if one task blocks (using `time.sleep()` or a synchronous database call), the entire thread freezes. No other tasks can run, causing your application to become unresponsive.
 
+---
+
+## Step-by-Step
+
+1. Write handlers with `async def`.
+2. Replace blocking calls with async equivalents.
+3. Use `await` for I/O (HTTP, DB, file).
+4. Validate concurrency under load.
+
 ## The Event Loop
 
 Think of the event loop as a task scheduler running in a single thread. It maintains a queue of tasks and switches between them when they yield control with `await`.
@@ -102,11 +111,11 @@ async def process_message(message: Message):
 sequenceDiagram
     participant Client as HTTP Client
     participant App as FastPubSub App
-    participant PubSub as Google Pub/Sub
+    participant Pub/Sub as Google Pub/Sub
     participant Handler as Message Handler
 
     par Message arrives from Pub/Sub
-        PubSub->>App: Pull New Message
+        Pub/Sub->>App: Pull New Message
         App->>Handler: process_message(message)
         Handler->>Handler: time.sleep(5) # BLOCKS!
         Note over App,Handler: The entire event loop is frozen!
@@ -152,11 +161,11 @@ async def process_message(message: Message):
 sequenceDiagram
     participant Client as HTTP Client
     participant App as FastPubSub App
-    participant PubSub as Google Pub/Sub
+    participant Pub/Sub as Google Pub/Sub
     participant Handler as Message Handler
 
     par Message arrives from Pub/Sub
-        PubSub->>App: Pull New Message
+        Pub/Sub->>App: Pull New Message
         App->>Handler: process_message(message)
         Handler->>App: await asyncio.sleep(5)
         Note right of App: Event loop is free!
@@ -221,6 +230,14 @@ from fastpubsub import PubSubBroker, Message
 import asyncpg  # Async PostgreSQL driver
 
 broker = PubSubBroker(project_id="your-project-id")
+pool: asyncpg.Pool | None = None
+
+async def connect_pool():
+    # Create the pool once at startup
+    return await asyncpg.create_pool("postgresql://...")
+
+# In your startup hook:
+# pool = await connect_pool()
 
 @broker.subscriber(
     alias="save-to-db",
@@ -228,9 +245,7 @@ broker = PubSubBroker(project_id="your-project-id")
     subscription_name="user-events-subscription",
 )
 async def save_user(message: Message):
-    pool = await asyncpg.create_pool("postgresql://...")
-
-    # Async database query
+    assert pool is not None
     async with pool.acquire() as conn:
         await conn.execute(
             "INSERT INTO events (data) VALUES ($1)",
@@ -351,33 +366,9 @@ def cpu_intensive_task(data):
 )
 async def process_compute(message: Message):
     # Run CPU-bound work in a separate process
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(executor, cpu_intensive_task, message.data)
     print(f"Result: {result}")
-```
-
----
-
-## Running Async Code
-
-FastPubSub handles the event loop for you. Define your async handlers and run the application:
-
-```bash
-fastpubsub run app:app
-```
-
-If you need to run async code outside of FastPubSub (in a script), use `asyncio.run()`:
-
-```python
-import asyncio
-from fastpubsub import PubSubBroker
-
-async def main():
-    broker = PubSubBroker(project_id="your-project-id")
-    await broker.publish("topic", data={"message": "Hello"})
-
-# Run the async function
-asyncio.run(main())
 ```
 
 ---

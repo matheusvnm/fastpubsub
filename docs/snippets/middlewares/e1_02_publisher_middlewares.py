@@ -20,7 +20,8 @@ Requirements:
     - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
 """
 
-from snippets.middlewares.middlewares import PublisherMiddleware, RouterMiddleware
+# --8<-- [start:publisher_middlewares_full]
+from middlewares.middlewares import PublisherMiddleware, RouterMiddleware
 
 from fastpubsub import FastPubSub, Message, Middleware, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
@@ -49,10 +50,15 @@ async def broker_handle(message: Message) -> None:
     await router.publish(topic_name="topic_b", data={"some_message": "messageB"})
 
 
+# --8<-- [start:publisher_with_middleware]
 publisher = broker.publisher("topic_a")
 publisher.include_middleware(PublisherMiddleware)
+# --8<-- [end:publisher_with_middleware]
 
 
 @app.after_startup
 async def test_publish() -> None:
     await publisher.publish(data={"some_message": "messageA"})
+
+
+# --8<-- [end:publisher_middlewares_full]

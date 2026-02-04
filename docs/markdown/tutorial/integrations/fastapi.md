@@ -4,7 +4,7 @@ icon: lucide/plug
 
 # FastAPI Integration
 
-The most important concept to understand is that `FastPubSub` **is** a FastAPI application. It inherits directly from `fastapi.FastAPI`, which means you get all the features of a modern web framework out of the box.
+The most important concept to understand is that `FastPubSub` **is** a FastAPI application. It inherits directly from `fastapi.FastAPI` class, which means you get all the features of a modern web framework out of the box.
 
 This design lets you build applications that both consume Pub/Sub messages and serve a REST API in the same process. You can use FastAPI's dependency injection, routers, path operations, and more.
 
@@ -13,35 +13,17 @@ This design lets you build applications that both consume Pub/Sub messages and s
 A common pattern is having a subscriber that processes data and an API endpoint that triggers tasks:
 
 ```python
-from fastpubsub import FastPubSub, PubSubBroker, Message
-from fastpubsub.logger import logger
-from pydantic import BaseModel
-
-broker = PubSubBroker(project_id="your-project-id")
-app = FastPubSub(broker)
-
-class UserTask(BaseModel):
-    user_id: int
-    task_name: str
-
-# Standard FastAPI POST endpoint
-@app.post("/tasks/")
-async def create_task(task: UserTask):
-    """Receives an HTTP POST request and publishes to Pub/Sub."""
-    await broker.publish(topic_name="tasks", data=task)
-    return {"message": "Task accepted"}
-
-# Standard FastPubSub subscriber
-@broker.subscriber(
-    alias="task-handler",
-    topic_name="tasks",
-    subscription_name="tasks-subscription",
-)
-async def handle_task(message: Message):
-    """Consumes messages from the 'tasks' topic."""
-    task = UserTask.model_validate_json(message.data)
-    logger.info(f"Processing task for user {task.user_id}...")
+--8<-- "integrations/e1_01_fastapi.py:hybrid_app"
 ```
+
+---
+
+## Step-by-Step
+
+1. Create a `PubSubBroker`.
+2. Instantiate `FastPubSub` with the broker.
+3. Add HTTP endpoints as usual.
+4. Add subscribers with `@broker.subscriber`.
 
 ---
 
@@ -52,17 +34,12 @@ The `PubSubBroker` is fully asynchronous. Methods like `broker.publish()` are as
 If you want to call a broker method from a FastAPI endpoint, that endpoint must be `async def`:
 
 ```python
-# Correct
-@app.post("/submit")
-async def submit_data(data: MyData):
-    await broker.publish(topic_name="events", data=data)
-    return {"status": "ok"}
+--8<-- "integrations/e1_01_fastapi.py:async_endpoint"
 
 # Wrong - cannot await in sync function
-@app.post("/submit")
-def submit_data_sync(data: MyData):
-    await broker.publish(topic_name="events", data=data)  # SyntaxError!
-    return {"status": "failed"}
+# @app.post("/submit")
+# def submit_data_sync(data: MyData):
+#     await broker.publish(topic_name="events", data=data)  # SyntaxError!
 ```
 
 ---
@@ -145,56 +122,25 @@ Since `FastPubSub` inherits from `FastAPI`, you can use all standard features:
 ### Path Parameters and Query Parameters
 
 ```python
-@app.get("/orders/{order_id}")
-async def get_order(order_id: str, include_items: bool = False):
-    order = await fetch_order(order_id)
-    if include_items:
-        order["items"] = await fetch_items(order_id)
-    return order
+--8<-- "integrations/e1_01_fastapi.py:path_params"
 ```
 
 ### Request Body Validation
 
 ```python
-from pydantic import BaseModel, Field
-
-class CreateOrder(BaseModel):
-    product_id: str
-    quantity: int = Field(gt=0)
-
-@app.post("/orders/")
-async def create_order(order: CreateOrder):
-    await broker.publish("orders", data=order)
-    return {"status": "queued"}
+--8<-- "integrations/e1_01_fastapi.py:request_body"
 ```
 
 ### FastAPI Routers
 
 ```python
-from fastapi import APIRouter
-
-api_router = APIRouter(prefix="/api/v1")
-
-@api_router.get("/status")
-async def status():
-    return {"status": "healthy"}
-
-app.include_router(api_router)
+--8<-- "integrations/e1_01_fastapi.py:fastapi_router"
 ```
 
 ### Response Models
 
 ```python
-from pydantic import BaseModel
-
-class OrderResponse(BaseModel):
-    order_id: str
-    status: str
-
-@app.post("/orders/", response_model=OrderResponse)
-async def create_order(order: CreateOrder):
-    order_id = await process_order(order)
-    return OrderResponse(order_id=order_id, status="created")
+--8<-- "integrations/e1_01_fastapi.py:response_model"
 ```
 
 ---
@@ -213,12 +159,13 @@ FastAPI-style parameter annotations for subscriber handlers aren't yet supported
 
 Tracked in [GitHub Issue #14](https://github.com/matheusvnm/fastpubsub/issues/14).
 
+
 ---
 
 ## Recap
 
-- **FastPubSub is FastAPI**: Supports all FastAPI features like routers, path operations, and response models
-- **Async required**: API endpoints calling broker methods must be `async def`
-- **Separate systems**: FastAPI Middlewares, Exception Handlers, and Dependency Injection only apply to HTTP endpoints, not Pub/Sub handlers
-- **Health checks**: Built-in `/consumers/alive` and `/consumers/ready` endpoints (customizable)
-- **Limitations**: Requires at least one subscriber; FastAPI-style parameter annotations not yet supported in subscribers
+- **FastPubSub is FastAPI**: Supports all FastAPI features like routers, path operations, and response models.
+- **Async required**: API endpoints calling broker methods must be `async def`.
+- **Separate systems**: FastAPI Middlewares, Exception Handlers, and Dependency Injection only apply to HTTP endpoints, not Pub/Sub handlers.
+- **Health checks**: Built-in `/consumers/alive` and `/consumers/ready` endpoints (customizable).
+- **Limitations**: Requires at least one subscriber; FastAPI-style parameter annotations not yet supported in subscribers.

@@ -21,6 +21,7 @@ from fastpubsub import BaseMiddleware, Message
 from fastpubsub.logger import logger
 
 
+# --8<-- [start:broker_middleware]
 class BrokerMiddleware(BaseMiddleware):
     async def on_message(self, message: Message) -> Any:
         logger.info(
@@ -39,6 +40,10 @@ class BrokerMiddleware(BaseMiddleware):
         return await super().on_publish(data, ordering_key, attributes)
 
 
+# --8<-- [end:broker_middleware]
+
+
+# --8<-- [start:router_middleware]
 class RouterMiddleware(BaseMiddleware):
     async def on_message(self, message: Message) -> Any:
         logger.info(
@@ -57,6 +62,10 @@ class RouterMiddleware(BaseMiddleware):
         return await super().on_publish(data, ordering_key, attributes)
 
 
+# --8<-- [end:router_middleware]
+
+
+# --8<-- [start:subrouter_middleware]
 class SubRouterMiddleware(BaseMiddleware):
     async def on_message(self, message: Message) -> Any:
         logger.info(
@@ -75,6 +84,10 @@ class SubRouterMiddleware(BaseMiddleware):
         return await super().on_publish(data, ordering_key, attributes)
 
 
+# --8<-- [end:subrouter_middleware]
+
+
+# --8<-- [start:subscriber_middleware]
 class SubcriberMiddleware(BaseMiddleware):
     async def on_message(self, message: Message) -> Any:
         logger.info("I'm the subscriber middleware! I will only be executed at subscriber level")
@@ -86,6 +99,10 @@ class SubcriberMiddleware(BaseMiddleware):
         pass
 
 
+# --8<-- [end:subscriber_middleware]
+
+
+# --8<-- [start:publisher_middleware]
 class PublisherMiddleware(BaseMiddleware):
     async def on_publish(
         self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
@@ -95,3 +112,6 @@ class PublisherMiddleware(BaseMiddleware):
 
     async def on_message(self, message: Message) -> Any:
         pass
+
+
+# --8<-- [end:publisher_middleware]

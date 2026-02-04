@@ -44,24 +44,7 @@ await broker.publish(topic_name="my-topic", data={"hello": "world"})
 ### Example
 
 ```python
-from fastpubsub import FastPubSub, Message, PubSubBroker
-from fastpubsub.logger import logger
-
-broker = PubSubBroker(project_id="your-project-id")
-app = FastPubSub(broker)
-
-@broker.subscriber(
-    alias="test-handler",
-    topic_name="test-topic",
-    subscription_name="test-subscription",
-)
-async def handle(message: Message) -> None:
-    logger.info(f"Processed message: {message}")
-
-@app.after_startup
-async def publish_on_startup() -> None:
-    logger.info("Publishing a message directly via the broker...")
-    await broker.publish("test-topic", {"hello": "world"})
+--8<-- "basic_usage/e2_01_basic_publisher.py:basic_publisher_full"
 ```
 
 ### When to Use
@@ -71,7 +54,19 @@ async def publish_on_startup() -> None:
 - Debugging or quick scripts.
 - Topic name determined at runtime.
 
-Flexible and simple, but can become repetitive if you frequently publish to the same topic. The topic is specified every time, which can lead to typos caught only at runtime.
+### Trade-offs
+- Flexible and simple, but can become repetitive if you frequently publish to the same topic. 
+- The topic is specified every time, which can lead to typos caught only at runtime.
+- Dependency injection becomes harder.
+
+---
+
+## Step-by-Step
+
+1. Create a broker and app.
+2. Decide on a topic and message schema.
+3. Publish using `await broker.publish(...)`.
+4. Confirm delivery by checking subscriber logs.
 
 ---
 
@@ -81,11 +76,9 @@ The approach involves `Publisher` object that is pre-configured for a specific t
 
 
 ```python
-# Create once
-user_events_publisher = broker.publisher("user-events-topic")
+--8<-- "basic_usage/e2_02_basic_publisher.py:publisher_instance"
 
-# Use anywhere without specifying topic
-await user_events_publisher.publish(data={"event": "login"})
+--8<-- "basic_usage/e2_02_basic_publisher.py:publisher_instance_publish"
 ```
 
 ### Example with Dependency Injection
@@ -93,45 +86,7 @@ await user_events_publisher.publish(data={"event": "login"})
 This pattern works well with clean architecture and dependency injection:
 
 ```python
-from typing import Any
-from dataclasses import dataclass
-from pydantic import BaseModel
-from fastpubsub import FastPubSub, Message, Publisher, PubSubBroker
-from fastpubsub.logger import logger
-
-
-@dataclass
-class MyAwesomeUseCase:
-    publisher: Publisher
-
-    async def execute(self, data: dict) -> Any:
-        # Business logic here...
-        # Then publish the event
-        return await self.publisher.publish(data=data)
-
-
-class User(BaseModel):
-    name: str
-    age: int
-
-
-broker = PubSubBroker(project_id="your-project-id")
-app = FastPubSub(broker)
-
-# Create a dedicated publisher for user events
-user_publisher = broker.publisher("new-users-topic")
-
-
-@app.post("/new-user")
-async def receive_new_user(user: User) -> dict[str, str]:
-    logger.info(f"Received a new user: {user.name}")
-
-    # Inject the dedicated publisher into the use case
-    # Easy to mock in tests
-    use_case = MyAwesomeUseCase(publisher=user_publisher)
-    await use_case.execute(user.model_dump())
-
-    return {"message": "Use case executed successfully"}
+--8<-- "basic_usage/e2_05_publisher_dependency_injection.py"
 ```
 
 ### When to Use
@@ -141,38 +96,34 @@ async def receive_new_user(user: User) -> dict[str, str]:
 - Using dependency injection
 - Unit testing (easily mock the publisher)
 
-It requires a minor, one-time setup for each dedicated topic. This might feel like boilerplate if you have dozens of topics being published from a single module, in which case the direct broker method might be more appropriate for that specific scenario.
+
+### Trade-offs
+
+- It requires a minor, one-time setup for each dedicated topic. 
+- This might feel like boilerplate if you have dozens of topics being published from a single module.
+
 
 ---
 
 ## Other Common Usages
 
-Google PubSub has some great feature that allow the developer some flexibility of how the data is delivered to the consumer. The next sections describe some of the common configurations you will use the most when working with FastPubSub.
+Google Pub/Sub has features that let you control how data is delivered to the consumer. The next sections describe common configurations you will use when working with FastPubSub.
 
 
 ### Publishing with Attributes
 
-Sometimes you need to add metadata for adding context to your message events without modifing your schema. Such scenarios may arise when you need server-side filtering or adding information for routing. On FastPubSub, you can add information to messages using their attributes. These will be directly linked to the PubSub message attributes rather then its payload.
+Sometimes you need to add metadata to give context to your message events without modifying your schema. This is useful for server-side filtering or routing. In FastPubSub, you can add information to messages using their attributes. These map directly to Pub/Sub message attributes rather than the payload.
 
 === "Via `broker.publish` function"
 
-    ```python hl_lines="4"
-    await broker.publish(
-        topic_name="events",
-        data={"user_id": "123", "action": "login"},
-        attributes={"event_type": "user_login", "priority": "high"}
-    )
+    ```python hl_lines="6"
+    --8<-- "basic_usage/e2_06_publish_with_attributes.py:publish_attributes_broker"
     ```
 
 === "Via `Publisher` object"
 
-    ```python hl_lines="5"
-    event_publisher = broker.publisher("events")
-
-    await event_publisher.publish(
-        data={"user_id": "123", "action": "login"},
-        attributes={"event_type": "user_login", "priority": "high"}
-    )
+    ```python hl_lines="7"
+    --8<-- "basic_usage/e2_06_publish_with_attributes.py:publish_attributes_publisher"
     ```
 
 ---
@@ -184,70 +135,34 @@ For ordered message delivery, enable the `enable_message_ordering` on the receiv
 
 === "Via `broker.publish` function"
 
-    ```python hl_lines="4 10"
-
-    await broker.publish(
-        topic_name="user-events",
-        data={"action": "login", "user_id": "user-123"},
-        ordering_key="user-123" # Same key ensures order
-    )
-
-    await broker.publish(
-        topic_name="user-events",
-        data={"action": "update_profile", "user_id": "user-123"},
-        ordering_key="user-123"  # Same key ensures order
-    )
+    ```python hl_lines="6 12"
+    --8<-- "basic_usage/e2_07_publish_with_ordering.py:publish_ordering_broker"
     ```
-
 
 === "Via `Publisher` object"
 
-    ```python hl_lines="6 11"
-
-    ordered_publisher = broker.publisher("user-events")
-
-    # Publish with ordering key
-    await ordered_publisher.publish(
-        data={"action": "login", "user_id": "user-123"},
-        ordering_key="user-123" # Same key ensures order
-    )
-
-    await ordered_publisher.publish(
-        data={"action": "update_profile", "user_id": "user-123"},
-        ordering_key="user-123"  # Same key ensures order
-    )
+    ```python hl_lines="9 14"
+    --8<-- "basic_usage/e2_07_publish_with_ordering.py:publish_ordering_publisher"
     ```
-
-
 
 ---
 
 ### Cross-Project Publishing
 
-On some scenarios, you may need to publish messages into projects that is not directly linked to the subscribers you created. FastPubSub allows you to publish to a topic in different GCP project id by just overriding the `project_id` attribute.
+In some scenarios, you may need to publish messages into projects that are not directly linked to the subscribers you created. FastPubSub allows you to publish to a topic in a different GCP project by overriding the `project_id` attribute.
 
 
 === "Via `broker.publish` function"
 
-    ```python hl_lines="4"
-    await broker.publish(
-        topic_name="shared-events",
-        data={"event": "cross_project"},
-        project_id="other-project-id"
-    )
+    ```python hl_lines="6"
+    --8<-- "basic_usage/e2_08_cross_project_publish.py:cross_project_broker"
     ```
-
 
 === "Via `Publisher` object"
 
-    ```python hl_lines="3"
-    cross_project_publisher = broker.publisher(
-        "shared-events",
-        project_id="other-project-id"
-    )
-    await cross_project_publisher.publish(data={"event": "cross_project"})
+    ```python hl_lines="8"
+    --8<-- "basic_usage/e2_08_cross_project_publish.py:cross_project_publisher"
     ```
-
 
 ---
 

@@ -23,31 +23,7 @@ Cross-project messaging is useful when:
 Override the broker's default project on individual subscribers using the `project_id` parameter:
 
 ```python
-from fastpubsub import FastPubSub, PubSubBroker, Message
-
-# Main broker uses project-a
-broker = PubSubBroker(project_id="project-a")  # (1)!
-app = FastPubSub(broker)
-
-# This subscriber uses the default project (project-a)
-@broker.subscriber(
-    alias="local-handler",
-    topic_name="local-events",
-    subscription_name="local-events-subscription",
-)
-async def handle_local_events(message: Message):
-    await process_local_event(message.data)
-
-# This subscriber uses a different project (project-b)
-@broker.subscriber(
-    alias="cross-project-handler",
-    topic_name="shared-events",
-    subscription_name="project-a-subscription",
-    project_id="project-b",  # (2)!
-    autocreate=True,
-)
-async def handle_cross_project_events(message: Message):
-    await process_shared_event(message.data)
+--8<-- "advanced/e1_07_multiple_projects.py:cross_project_subscriber"
 ```
 
 1. Default project for all subscribers
@@ -61,25 +37,7 @@ async def handle_cross_project_events(message: Message):
 Create publishers that send messages to topics in different projects:
 
 ```python
-broker = PubSubBroker(project_id="project-a")
-app = FastPubSub(broker)
-
-# Publisher for the default project
-local_publisher = broker.publisher("local-events")
-
-# Publisher for a different project
-cross_project_publisher = broker.publisher(
-    "shared-events",
-    project_id="project-b"  # (1)!
-)
-
-@app.post("/send-event")
-async def send_event(data: dict):
-    # Publish to local project
-    await local_publisher.publish(data)
-
-    # Publish to other project
-    await cross_project_publisher.publish(data)
+--8<-- "advanced/e1_07_multiple_projects.py:cross_project_publisher"
 ```
 
 1. Target topic is in project-b
@@ -98,40 +56,21 @@ await broker.publish(
 )
 ```
 
+---
+
+## Step-by-Step
+
+1. Decide which project owns each topic and subscription.
+2. Grant IAM permissions across projects.
+3. Override `project_id` on subscribers or publishers as needed.
+4. Verify access with a test publish/consume.
+
 ## Router-Level Cross-Project
 
 Use routers to organize subscribers by project. All subscribers in the router inherit the router's project:
 
 ```python
-from fastpubsub import PubSubBroker, PubSubRouter, FastPubSub, Message
-
-broker = PubSubBroker(project_id="project-a")
-app = FastPubSub(broker)
-
-# Router for external project
-external_router = PubSubRouter(
-    prefix="external",
-    project_id="project-b"  # (1)!
-)
-
-@external_router.subscriber(
-    alias="shared-handler",  # (2)!
-    topic_name="shared-events",
-    subscription_name="project-a-subscription",
-)
-async def handle_shared(message: Message):
-    await process_shared_event(message.data)
-
-@external_router.subscriber(
-    alias="analytics-handler",
-    topic_name="analytics-events",
-    subscription_name="project-a-analytics-subscription",
-)
-async def handle_analytics(message: Message):
-    await process_analytics(message.data)
-
-# Include the router in the broker
-broker.include_router(external_router)
+--8<-- "advanced/e1_07_multiple_projects.py:router_cross_project"
 ```
 
 1. All subscribers in this router use project-b
@@ -142,31 +81,7 @@ broker.include_router(external_router)
 Routers can be nested, with each level potentially overriding the project:
 
 ```python
-broker = PubSubBroker(project_id="project-a")
-
-# First level router - uses project-b
-level1_router = PubSubRouter(
-    prefix="external",
-    project_id="project-b"
-)
-
-# Second level router - uses project-c
-level2_router = PubSubRouter(
-    prefix="analytics",
-    project_id="project-c"
-)
-
-# Subscriber uses project-c (inherited from level2)
-@level2_router.subscriber(
-    alias="handler",
-    topic_name="metrics",
-    subscription_name="metrics-subscription",
-)
-async def handle_metrics(message: Message):
-    pass
-
-level1_router.include_router(level2_router)
-broker.include_router(level1_router)
+--8<-- "advanced/e1_07_multiple_projects.py:nested_routers"
 ```
 
 ## Complete Example
@@ -174,57 +89,7 @@ broker.include_router(level1_router)
 A service that consumes events from multiple projects:
 
 ```python
-from fastpubsub import FastPubSub, PubSubBroker, PubSubRouter, Message
-
-# Main project
-broker = PubSubBroker(project_id="my-service")
-app = FastPubSub(broker)
-
-# Local events
-@broker.subscriber(
-    alias="local-orders",
-    topic_name="orders",
-    subscription_name="orders-subscription",
-)
-async def handle_local_orders(message: Message):
-    await process_order(message.data)
-
-# Events from shared platform
-platform_router = PubSubRouter(
-    prefix="platform",
-    project_id="shared-platform"
-)
-
-@platform_router.subscriber(
-    alias="user-events",
-    topic_name="user-events",
-    subscription_name="my-service-user-subscription",
-)
-async def handle_user_events(message: Message):
-    await sync_user_data(message.data)
-
-@platform_router.subscriber(
-    alias="notifications",
-    topic_name="notifications",
-    subscription_name="my-service-notifications-subscription",
-)
-async def handle_notifications(message: Message):
-    await send_notification(message.data)
-
-broker.include_router(platform_router)
-
-# Publishing to both projects
-@app.post("/create-order")
-async def create_order(order: dict):
-    # Local publish
-    await broker.publish("orders", order)
-
-    # Notify platform
-    await broker.publish(
-        "order-events",
-        {"order_id": order["id"], "action": "created"},
-        project_id="shared-platform"
-    )
+--8<-- "advanced/e1_07_multiple_projects.py:complete_example"
 ```
 
 ??? example "See cross-project examples"
@@ -276,6 +141,14 @@ gcloud projects add-iam-policy-binding project-b \
 
 !!! tip "Use Service Accounts"
     Always use service accounts for cross-project access, not user credentials. This ensures consistent permissions and better security auditing.
+
+---
+
+## Common Pitfalls
+
+- Missing IAM permissions in the target project.
+- Using ambiguous subscription names across projects.
+- Forgetting to override `project_id` on cross-project publishers.
 
 ## Recap
 

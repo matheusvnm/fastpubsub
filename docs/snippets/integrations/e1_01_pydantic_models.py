@@ -19,6 +19,7 @@ Requirements:
     - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
 """
 
+# --8<-- [start:pydantic_integration_full]
 from pydantic import BaseModel, Field, ValidationError
 
 from fastpubsub import FastPubSub, Message, PubSubBroker
@@ -29,6 +30,7 @@ broker = PubSubBroker(project_id="fastpubsub-local")
 app = FastPubSub(broker)
 
 
+# --8<-- [start:pydantic_schemas]
 # Define message schemas using Pydantic
 class OrderEvent(BaseModel):
     """Schema for order events."""
@@ -50,11 +52,15 @@ class UserEvent(BaseModel):
     metadata: dict | None = None
 
 
+# --8<-- [end:pydantic_schemas]
+
+
 # Storage for received events
 received_orders: list[OrderEvent] = []
 received_users: list[UserEvent] = []
 
 
+# --8<-- [start:pydantic_handler]
 @broker.subscriber(
     alias="order-handler",
     topic_name="order-events",
@@ -82,6 +88,9 @@ async def handle_order(message: Message) -> None:
         # Log validation errors and drop invalid messages
         logger.warning(f"Invalid order event: {e}")
         raise Drop(f"Validation failed: {e}")
+
+
+# --8<-- [end:pydantic_handler]
 
 
 @broker.subscriber(
@@ -148,3 +157,6 @@ async def test_pydantic_integration() -> None:
         {"user_id": "USR-000", "email": "invalid-email", "action": "test"},
     )
     logger.info("Published invalid email (will be dropped)")
+
+
+# --8<-- [end:pydantic_integration_full]

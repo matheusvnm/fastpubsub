@@ -21,6 +21,7 @@ Requirements:
     - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
 """
 
+# --8<-- [start:cross_level_alias_error]
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
@@ -53,3 +54,6 @@ async def handle_on_first_unnamed_router(message: Message) -> None:
 )
 async def handle_on_second_unnamed_router(message: Message) -> None:
     logger.info(f"Processed message on second unnamed router: {message}")
+
+
+# --8<-- [end:cross_level_alias_error]

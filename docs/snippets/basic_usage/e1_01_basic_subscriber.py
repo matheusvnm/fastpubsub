@@ -1,39 +1,35 @@
-"""Title: Basic Subscriber Setup
-
-Demonstrates the simplest way to create a Pub/Sub subscriber with FastPubSub.
-
-This example shows:
-- Creating a PubSubBroker with a project ID
-- Defining a subscriber using the @broker.subscriber decorator
-- Handling incoming messages with an async handler function
-- Publishing a test message on application startup
-
-The subscriber listens to 'subscriber-topic' and logs each received message.
-
-Run with:
-    fastpubsub run examples.basic_usage.e1_01_basic_subscriber:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
+from pydantic import BaseModel, Field
 from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
 
+
+class Address(BaseModel):
+    street: str = Field(..., examples=["5th Avenue"])
+    number: str = Field(..., examples=["1548"])
+
+
+# --8<-- [start:basic_subscriber_setup]
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 app = FastPubSub(broker)
+# --8<-- [end:basic_subscriber_setup]
 
 
+# --8<-- [start:basic_subscriber]
 @broker.subscriber(
-    "subscriber-alias",
-    topic_name="subscriber-topic",
-    subscription_name="subscriber-subscription",
+    alias="my_handler",
+    topic_name="in_topic",
+    subscription_name="sub_name",
 )
-async def process_message(message: Message) -> None:
-    logger.info(f"Processed message: {message}")
+async def handle_message(message: Message):
+   logger.info(f"The message {message.id} is processed.")
+   await broker.publish(topic_name="out_topic", data="Hi!")
+# --8<-- [end:basic_subscriber]
 
 
+# --8<-- [start:basic_subscriber_startup]
 @app.after_startup
 async def test_publish() -> None:
-    await broker.publish("subscriber-topic", {"message": "streaming a message"})
+    address = Address(street="Av. Flores", number="213")
+    await broker.publish(topic_name="in_topic", data=address)
+
+# --8<-- [end:basic_subscriber_startup]

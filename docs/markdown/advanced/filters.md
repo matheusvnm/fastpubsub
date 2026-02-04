@@ -22,22 +22,7 @@ Without filtering, every subscriber on a topic receives every message. Your code
 Add a `filter_expression` parameter to your subscriber to filter messages by their attributes:
 
 ```python
-from fastpubsub import FastPubSub, PubSubBroker, Message
-
-broker = PubSubBroker(project_id="your-project-id")
-app = FastPubSub(broker)
-
-@broker.subscriber(
-    alias="order-handler",
-    topic_name="events",
-    subscription_name="order-events-subscription",
-    filter_expression='attributes.event_type = "order"',  # (1)!
-    autocreate=True,
-)
-async def handle_orders(message: Message):
-    # Only receives messages where event_type = "order"
-    order_data = message.data
-    await process_order(order_data)
+--8<-- "advanced/e1_03_filters.py:basic_filter"
 ```
 
 1. Filter syntax: `attributes.{name} = "{value}"`
@@ -68,6 +53,15 @@ await broker.publish(
 !!! warning "Attributes Are Required for Filtering"
     Messages without attributes will not match any filter expression. Always include relevant attributes when publishing to filtered topics.
 
+---
+
+## Step-by-Step
+
+1. Decide which attributes you will filter on (e.g., `event_type`).
+2. Add `filter_expression` to the subscriber.
+3. Publish messages with matching attributes.
+4. Verify only the expected subscriber receives them.
+
 ## Filter Expression Syntax
 
 ### Comparison Operators
@@ -90,28 +84,12 @@ Combine conditions with `AND` and `OR`:
 
 === "AND (both must match)"
     ```python
-    @broker.subscriber(
-        alias="premium-urgent",
-        topic_name="tickets",
-        subscription_name="premium-urgent-subscription",
-        filter_expression='attributes.priority = "high" AND attributes.customer_tier = "premium"',
-    )
-    async def handle_premium_urgent(message: Message):
-        # Only receives high-priority tickets from premium customers
-        await escalate_to_senior_support(message.data)
+    --8<-- "advanced/e1_03_filters.py:filter_and"
     ```
 
 === "OR (either can match)"
     ```python
-    @broker.subscriber(
-        alias="critical-alerts",
-        topic_name="alerts",
-        subscription_name="critical-alerts-subscription",
-        filter_expression='attributes.severity = "critical" OR attributes.severity = "high"',
-    )
-    async def handle_critical_alerts(message: Message):
-        # Receives both critical and high severity alerts
-        await page_on_call_engineer(message.data)
+    --8<-- "advanced/e1_03_filters.py:filter_or"
     ```
 
 ### Checking Attribute Existence
@@ -119,15 +97,7 @@ Combine conditions with `AND` and `OR`:
 Use `hasPrefix` to check if an attribute exists:
 
 ```python
-@broker.subscriber(
-    alias="labeled-handler",
-    topic_name="events",
-    subscription_name="labeled-subscription",
-    filter_expression='hasPrefix(attributes.label, "")',  # (1)!
-)
-async def handle_labeled(message: Message):
-    # Receives any message that has a "label" attribute
-    pass
+--8<-- "advanced/e1_03_filters.py:filter_has_prefix"
 ```
 
 1. `hasPrefix(attr, "")` returns true if the attribute exists (any value)
@@ -137,36 +107,7 @@ async def handle_labeled(message: Message):
 A common pattern is having multiple subscribers on the same topic, each with different filters:
 
 ```python
-broker = PubSubBroker(project_id="your-project-id")
-
-# Handler for order events
-@broker.subscriber(
-    alias="order-handler",
-    topic_name="events",
-    subscription_name="order-events-sub",
-    filter_expression='attributes.event_type = "order"',
-)
-async def handle_orders(message: Message):
-    await process_order(message.data)
-
-# Handler for user events
-@broker.subscriber(
-    alias="user-handler",
-    topic_name="events",
-    subscription_name="user-events-sub",
-    filter_expression='attributes.event_type = "user"',
-)
-async def handle_users(message: Message):
-    await process_user_event(message.data)
-
-# Handler for ALL events (no filter)
-@broker.subscriber(
-    alias="audit-handler",
-    topic_name="events",
-    subscription_name="audit-sub",
-)
-async def audit_all_events(message: Message):
-    await log_to_audit_trail(message.data)
+--8<-- "advanced/e1_03_filters.py:multiple_subscribers"
 ```
 
 !!! tip "Audit Subscribers"
@@ -224,7 +165,13 @@ async def test_filter_routes_correctly():
 
 3. **Test Filter Edge Cases**: Test what happens when attributes are missing or have unexpected values. Your filters should handle these gracefully.
 
-4. **Filter Changes Require New Subscriptions**: You cannot change the filter expression of an existing subscription. To update a filter, create a new subscription and delete the old one.
+4. **Filter Changes May Require New Subscriptions**: Depending on your setup, changing a filter can require creating a new subscription and deleting the old one. Validate this in your environment before deploying.
+
+## Common Pitfalls
+
+- Publishing without attributes (filters never match).
+- Overly complex filter expressions that are hard to debug.
+- Numeric comparisons on string attributes (`"9" > "10"` is true).
 
 ## Recap
 

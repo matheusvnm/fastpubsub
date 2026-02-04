@@ -27,43 +27,14 @@ sequenceDiagram
 ```
 
 !!! info "Execution Order"
-    Middlewares execute in registration order for incoming messages (broker → router → subscriber) and reverse order for the return path. For publishing, it's the opposite: subscriber → router → broker middlewares.
+    Middlewares execute in registration order for incoming messages (broker → router → subscriber) and reverse order for the return path. For publishing, it's the opposite: publisher → router → broker middlewares.
 
 ## Middleware with Configuration
 
 Create reusable middlewares that accept configuration parameters:
 
 ```python
-from typing import Any
-from fastpubsub import BaseMiddleware, Message, Middleware
-
-class RateLimitMiddleware(BaseMiddleware):
-    def __init__(self, next_call: BaseMiddleware, requests_per_second: int = 100):  # (1)!
-        super().__init__(next_call)
-
-        self.requests_per_second = requests_per_second
-        self.tokens = requests_per_second
-        self.last_update = time.monotonic()
-
-    async def on_message(self, message: Message) -> Any:
-        await self._acquire_token()
-        return await super().on_message(message)
-
-    async def _acquire_token(self):
-        # Token bucket implementation
-        now = time.monotonic()
-        elapsed = now - self.last_update
-        self.tokens = min(
-            self.requests_per_second,
-            self.tokens + elapsed * self.requests_per_second
-        )
-        self.last_update = now
-
-        if self.tokens < 1:
-            await asyncio.sleep(1 / self.requests_per_second)
-            self.tokens = 1
-
-        self.tokens -= 1
+--8<-- "advanced/e1_01_custom_middlewares.py:rate_limit_middleware"
 ```
 
 1. Constructor receives configuration parameters
@@ -85,53 +56,27 @@ broker = PubSubBroker(
 
 1. Pass configuration as keyword arguments
 
+---
+
+## Step-by-Step
+
+1. Create a middleware class and implement `on_message` or `on_publish`.
+2. Add configuration via the `Middleware(...)` wrapper if needed.
+3. Register it at the broker, router, or subscriber level.
+4. Test behavior using `PubSubTestClient`.
+
 ## Subscriber-Only vs Publisher-Only Middlewares
 
 Create middlewares that only affect one direction:
 
 === "Subscriber Only"
     ```python
-    class ValidationMiddleware(BaseMiddleware):
-        """Only validates incoming messages."""
-
-        async def on_message(self, message: Message) -> Any:
-            # Validate message data
-            if not self._is_valid(message.data):
-                raise Drop("Invalid message format")
-            return await super().on_message(message)
-
-        async def on_publish(
-            self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
-        ) -> Any:
-            # Pass through without modification
-            return await super().on_publish(data, ordering_key, attributes)
-
-        def _is_valid(self, data: bytes) -> bool:
-            try:
-                json.loads(data)
-                return True
-            except json.JSONDecodeError:
-                return False
+    --8<-- "advanced/e1_01_custom_middlewares.py:validation_middleware"
     ```
 
 === "Publisher Only"
     ```python
-    class CompressionMiddleware(BaseMiddleware):
-        """Only compresses outgoing messages."""
-
-        async def on_message(self, message: Message) -> Any:
-            # Pass through without modification
-            return await super().on_message(message)
-
-        async def on_publish(
-            self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
-        ) -> Any:
-            # Compress data before sending
-            compressed = gzip.compress(data)
-            if attributes is None:
-                attributes = {}
-            attributes["content-encoding"] = "gzip"
-            return await super().on_publish(compressed, ordering_key, attributes)
+    --8<-- "advanced/e1_01_custom_middlewares.py:compression_middleware"
     ```
 
 ## Error Handling in Middlewares
@@ -139,28 +84,7 @@ Create middlewares that only affect one direction:
 Handle errors gracefully and decide whether to retry or drop messages:
 
 ```python
-from fastpubsub import BaseMiddleware, Message
-from fastpubsub.exceptions import Drop, Retry
-
-class ErrorHandlingMiddleware(BaseMiddleware):
-    async def on_message(self, message: Message) -> Any:
-        try:
-            return await super().on_message(message)
-
-        except ValidationError as e:
-            # Invalid data - don't retry, just drop
-            logger.warning(f"Dropping invalid message: {e}")
-            raise Drop(f"Validation failed: {e}")
-
-        except TemporaryError as e:
-            # Temporary issue - retry later
-            logger.info(f"Retrying message due to: {e}")
-            raise Retry(f"Temporary failure: {e}")
-
-        except Exception as e:
-            # Unexpected error - log and let it propagate
-            logger.exception(f"Unexpected error processing message {message.id}")
-            raise
+--8<-- "advanced/e1_01_custom_middlewares.py:error_handling_middleware"
 ```
 
 ### Error Transformation
@@ -194,46 +118,7 @@ class ExternalServiceMiddleware(BaseMiddleware):
 Create middlewares for monitoring:
 
 ```python
-import time
-from prometheus_client import Counter, Histogram
-
-# Prometheus metrics
-MESSAGES_PROCESSED = Counter(
-    "pubsub_messages_processed_total",
-    "Total messages processed",
-    ["subscriber", "status"]
-)
-PROCESSING_TIME = Histogram(
-    "pubsub_processing_seconds",
-    "Message processing time",
-    ["subscriber"]
-)
-
-class MetricsMiddleware(BaseMiddleware):
-    def __init__(self, next_call: BaseMiddleware, subscriber_name: str):
-        super().__init__(next_call)
-
-        self.subscriber_name = subscriber_name
-
-    async def on_message(self, message: Message) -> Any:
-        start = time.monotonic()
-        status = "success"
-
-        try:
-            result = await super().on_message(message)
-            return result
-        except Exception:
-            status = "error"
-            raise
-        finally:
-            duration = time.monotonic() - start
-            MESSAGES_PROCESSED.labels(
-                subscriber=self.subscriber_name,
-                status=status
-            ).inc()
-            PROCESSING_TIME.labels(
-                subscriber=self.subscriber_name
-            ).observe(duration)
+--8<-- "advanced/e1_01_custom_middlewares.py:metrics_middleware"
 ```
 
 
@@ -280,25 +165,19 @@ async def test_middleware_integration():
 Combine multiple simple middlewares instead of one complex middleware:
 
 ```python
-# Instead of one big middleware
-class DoEverythingMiddleware(BaseMiddleware):
-    # Logging + Metrics + Validation + Error Handling
-    pass
-
-# Use composition
-broker = PubSubBroker(
-    project_id="your-project-id",
-    middlewares=[
-        Middleware(LoggingMiddleware),
-        Middleware(MetricsMiddleware, subscriber_name="orders"),
-        Middleware(ValidationMiddleware),
-        Middleware(ErrorHandlingMiddleware),
-    ]
-)
+--8<-- "advanced/e1_01_custom_middlewares.py:middleware_composition"
 ```
 
 !!! tip "Single Responsibility"
     Each middleware should do one thing well. This makes them easier to test, reuse, and reason about.
+
+---
+
+## Common Pitfalls
+
+- Forgetting to call `super()` in `on_message` or `on_publish`.
+- Doing slow I/O in middleware without `await`.
+- Mixing FastAPI middlewares with FastPubSub middlewares.
 
 ## Best Practices
 

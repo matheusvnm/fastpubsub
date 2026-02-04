@@ -4,7 +4,7 @@ icon: lucide/layers
 
 # Middlewares
 
-FastPubSub's middleware system intercepts and processes incoming messages before they reach your handler, and outgoing messages before they're sent. Middlewares are ideal for implementing cross-cutting concerns without cluttering business logic.
+A "middleware" is a function that runs on every message received before it is processed by any specific subscriber handler and with every end of processing. The FastPubSub's middleware system intercepts and processes incoming messages before they reach your handler, and outgoing messages before they're sent. Middlewares are ideal for implementing cross-cutting concerns without cluttering business logic.
 
 ## How Middlewares Work
 
@@ -37,43 +37,17 @@ Inherit from `BaseMiddleware` and implement one or both methods:
 ### Example: Logging Middleware
 
 ```python
-import time
-from fastpubsub import Message, BaseMiddleware
-from fastpubsub.logger import logger
-
-class FullLoggingMiddleware(BaseMiddleware):
-
-    async def on_message(self, message: Message):
-        start_time = time.monotonic()
-
-        try:
-            # Call the next middleware or handler
-            response = await super().on_message(message)
-
-            processing_time = (time.monotonic() - start_time) * 1000
-            logger.info(f"Message processed in {processing_time:.2f}ms")
-
-            return response
-        except Exception as e:
-            logger.error(
-                f"Message {message.id} failed with error: {e}",
-                extra={"message_id": message.id}
-            )
-            # Re-raise to trigger nack
-            raise
-
-    async def on_publish(self, data: bytes, ordering_key: str, attributes: dict[str, str] | None):
-        logger.info(f"Publishing message with {len(data)} bytes")
-
-        if attributes is None:
-            attributes = {}
-
-        # Add a trace ID to all outgoing messages
-        attributes["x-trace-id"] = "some-trace-id"
-
-        # Call the next middleware or publisher
-        await super().on_publish(data, ordering_key, attributes)
+--8<-- "middlewares/e4_01_full_logging_middleware.py:logging_middleware"
 ```
+
+---
+
+## Step-by-Step
+
+1. Inherit from `BaseMiddleware`.
+2. Implement `on_message` and/or `on_publish`.
+3. Call `await super().on_message(...)` or `await super().on_publish(...)`.
+4. Register the middleware at the desired level.
 
 ---
 
@@ -88,28 +62,15 @@ Applied to all subscribers and publishers in the application.
 
 === "Via include_middleware function"
 
-
-    ```python hl_lines="5"
-    from fastpubsub import PubSubBroker, Middleware
-    from my_app.middlewares import GlobalLoggingMiddleware
-
-    broker = PubSubBroker(project_id="your-project-id")
-    broker.include_middleware(GlobalLoggingMiddleware)
+    ```python
+    --8<-- "middlewares/e4_02_broker_level_middleware.py:broker_include_middleware"
     ```
 
 === "Via constructor"
 
-    ```python hl_lines="6"
-    from fastpubsub import PubSubBroker, Middleware
-    from my_app.middlewares import GlobalLoggingMiddleware
-
-    broker = PubSubBroker(
-        project_id="your-project-id",
-        middlewares=[Middleware(GlobalLoggingMiddleware)],
-    )
+    ```python
+    --8<-- "middlewares/e4_02_broker_level_middleware.py:broker_constructor_middleware"
     ```
-
-
 
 ### Router Level
 
@@ -117,54 +78,22 @@ Applied to all subscribers and publishers in a specific router (and its nested r
 
 === "Via include_middleware function"
 
-    ```python hl_lines="5"
-    from fastpubsub import PubSubBroker, PubSubRouter, Middleware
-    from my_app.middlewares import UserAuthMiddleware
-
-    users_router = PubSubRouter(prefix="users")
-    users_router.include_middleware(UserAuthMiddleware)
-
-    broker = PubSubBroker(project_id="your-project-id")
-    broker.include_router(users_router)
+    ```python
+    --8<-- "middlewares/e4_03_router_level_middleware.py:router_include_middleware"
     ```
 
 === "Via constructor"
 
-    ```python hl_lines="6"
-    from fastpubsub import PubSubBroker, PubSubRouter, Middleware
-    from my_app.middlewares import UserAuthMiddleware
-
-    users_router = PubSubRouter(
-        prefix="users",
-        middlewares=[Middleware(UserAuthMiddleware)],
-    )
-
-    broker = PubSubBroker(project_id="your-project-id")
-    broker.include_router(users_router)
+    ```python
+    --8<-- "middlewares/e4_03_router_level_middleware.py:router_constructor_middleware"
     ```
-
-
-
 
 ### Subscriber Level
 
 Applied to a single subscriber:
 
 ```python
-from fastpubsub import FastPubSub, PubSubBroker, Message, Middleware
-from my_app.middlewares import DebugMiddleware
-
-broker = PubSubBroker(project_id="your-project-id")
-app = FastPubSub(broker)
-
-@broker.subscriber(
-    alias="debug-handler",
-    topic_name="events",
-    subscription_name="events-subscription",
-    middlewares=[Middleware(DebugMiddleware)],
-)
-async def handle_message(message: Message):
-    print(message)
+--8<-- "middlewares/e4_04_subscriber_level_middleware.py:subscriber_middleware"
 ```
 
 ### Publisher Level
@@ -172,26 +101,27 @@ async def handle_message(message: Message):
 Applied to a dedicated publisher instance:
 
 ```python
-from fastpubsub import FastPubSub, PubSubBroker, Middleware
-from my_app.middlewares import AddTraceMiddleware
+--8<-- "middlewares/e4_05_publisher_level_middleware.py:publisher_middleware"
 
-broker = PubSubBroker(project_id="your-project-id")
-app = FastPubSub(broker)
-
-my_publisher = broker.publisher(
-    "events",
-    middlewares=[Middleware(AddTraceMiddleware)]
-)
-
-@app.after_startup
-async def publish_with_trace():
-    await my_publisher.publish(data={"hello": "world"})
+--8<-- "middlewares/e4_05_publisher_level_middleware.py:publisher_usage"
 ```
+
+### The `Middleware` Wrapper
+
+Use the `Middleware(...)` wrapper when you need to pass constructor arguments to a middleware class. It lets you configure a middleware instance at registration time while keeping the registration API consistent.
 
 
 !!! note "Only one way to add"
 
-    The Subscribers and Publishers middlewares can only be added on the constructor functions `subscriber(...)` or `publisher(...)`, respectively. Specifically, you can not call `broker.publish(...)` passing a middleware.
+    Subscriber and Publisher middlewares can only be added on the constructor functions `subscriber(...)` or `publisher(...)`, respectively. You cannot call `broker.publish(...)` with a middleware.
+
+---
+
+## Common Pitfalls
+
+- Forgetting to call `super()` breaks the chain.
+- Adding middleware at the wrong level (broker vs router vs subscriber).
+- Doing slow I/O inside middleware without `await`.
 
 ---
 

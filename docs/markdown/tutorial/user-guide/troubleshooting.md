@@ -54,14 +54,7 @@ google.api_core.exceptions.PermissionDenied: 403 User not authorized
 | Publishers | `pubsub.topics.publish` |
 | Autocreate | `pubsub.topics.create`, `pubsub.subscriptions.create` |
 
-**Solution:**
-
-```bash
-# Full Pub/Sub access
-gcloud projects add-iam-policy-binding PROJECT_ID \
-    --member="serviceAccount:SA@PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/pubsub.editor"
-```
+**Solution:** Check if you Service Account has enough permissions.
 
 ---
 
@@ -103,27 +96,12 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
 
 1. **Unhandled exceptions:**
    ```python
-   from fastpubsub.exceptions import Drop
-
-   @broker.subscriber(...)
-   async def handler(message: Message):
-       try:
-           data = SomeModel.model_validate_json(message.data)
-       except ValidationError as e:
-           logger.error(f"Invalid message: {e}")
-           raise Drop("Invalid message format")  # Don't retry
+   --8<-- "troubleshooting/e1_01_common_patterns.py:validation_error_handling"
    ```
 
 2. **Processing timeout (ack deadline exceeded):**
    ```python
-   @broker.subscriber(
-       alias="slow-handler",
-       topic_name="topic",
-       subscription_name="subscription",
-       ack_deadline_seconds=120,  # Increase deadline
-   )
-   async def slow_handler(message: Message):
-       await asyncio.sleep(60)  # Takes longer than default 60s
+   --8<-- "troubleshooting/e1_01_common_patterns.py:ack_deadline_handler"
    ```
 
 3. **Blocking operations:**
@@ -135,6 +113,8 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
    await asyncio.sleep(5)
    ```
 
+See [Message Lifecycle](lifecycle.md) for Drop/Retry behavior and [Performance Tuning](../../advanced/tuning.md) for ack deadline guidance.
+
 ---
 
 #### Duplicate message processing
@@ -143,27 +123,12 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
 
 1. **Make handlers idempotent:**
    ```python
-   @broker.subscriber(...)
-   async def idempotent_handler(message: Message):
-       event_id = message.attributes.get("event_id")
-
-       if await redis.exists(f"processed:{event_id}"):
-           return  # Already handled
-
-       await do_work(message.data)
-       await redis.set(f"processed:{event_id}", "1", ex=86400)
+   --8<-- "troubleshooting/e1_01_common_patterns.py:idempotent_handler"
    ```
 
 2. **Enable exactly-once delivery:**
    ```python
-   @broker.subscriber(
-       alias="handler",
-       topic_name="topic",
-       subscription_name="subscription",
-       enable_exactly_once_delivery=True,
-   )
-   async def handler(message: Message):
-       pass
+   --8<-- "troubleshooting/e1_01_common_patterns.py:exactly_once_handler"
    ```
 
 ---
@@ -176,29 +141,15 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
 
 1. **Increase `max_messages`:**
    ```python
-   @broker.subscriber(
-       alias="handler",
-       topic_name="topic",
-       subscription_name="subscription",
-       max_messages=500,  # Higher concurrency for I/O-bound tasks
-   )
-   async def handler(message: Message):
-       await fast_operation(message.data)
+   --8<-- "troubleshooting/e1_02_performance_patterns.py:high_throughput_handler"
    ```
 
 2. **Profile with middleware:**
    ```python
-   import time
-   from fastpubsub import BaseMiddleware, Message
-
-   class ProfilingMiddleware(BaseMiddleware):
-       async def on_message(self, message: Message):
-           start = time.monotonic()
-           result = await super().on_message(message)
-           duration = (time.monotonic() - start) * 1000
-           logger.info(f"Message {message.id} took {duration:.2f}ms")
-           return result
+   --8<-- "troubleshooting/e1_02_performance_patterns.py:profiling_middleware"
    ```
+
+See [Performance Tuning](../../advanced/tuning.md) for guidance on `max_messages` and `ack_deadline_seconds`.
 
 ---
 
@@ -208,12 +159,7 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
 
 1. **Limit concurrent messages:**
    ```python
-   @broker.subscriber(
-       alias="handler",
-       topic_name="topic",
-       subscription_name="subscription",
-       max_messages=10,  # Lower for memory-intensive tasks
-   )
+   --8<-- "troubleshooting/e1_02_performance_patterns.py:low_memory_handler"
    ```
 
 2. **Avoid global mutable state:**
@@ -236,10 +182,7 @@ gcloud projects add-iam-policy-binding PROJECT_ID \
 
 1. **Increase shutdown timeout:**
    ```python
-   broker = PubSubBroker(
-       project_id="your-project-id",
-       shutdown_timeout=30.0,  # Wait 30s for in-flight messages
-   )
+   --8<-- "troubleshooting/e1_02_performance_patterns.py:shutdown_timeout_broker"
    ```
 
 2. **In Kubernetes, set adequate termination period:**
@@ -309,15 +252,7 @@ Failed to connect to localhost:8085
 Enable message ordering and use ordering keys:
 
 ```python
-@broker.subscriber(
-    alias="ordered-handler",
-    topic_name="events",
-    subscription_name="events-subscription",
-    enable_message_ordering=True,
-)
-async def handler(message: Message):
-    user_id = message.ordering_key
-    await process_in_order(user_id, message.data)
+--8<-- "troubleshooting/e1_02_performance_patterns.py:ordered_handler"
 ```
 
 ---

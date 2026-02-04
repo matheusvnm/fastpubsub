@@ -4,7 +4,7 @@ icon: lucide/server
 
 # Production Deployment Guide
 
-FastPubSub applications are designed to be simple to run and scale. The `fastpubsub run` command uses Uvicorn under the hood and is production-ready.
+FastPubSub applications are designed to be simple to run and scale. The `fastpubsub run` command uses Uvicorn under the hood and is production-capable when configured correctly.
 
 ```bash
 fastpubsub run my_app.main:app --host 0.0.0.0 --port 8000 --workers 4
@@ -12,7 +12,7 @@ fastpubsub run my_app.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 !!! note
 
-    FastPubSub integrates its consumer lifecycle directly into the CLI. You must use `fastpubsub run` to start your application—you cannot run it with Gunicorn or plain Uvicorn.
+    FastPubSub integrates its consumer lifecycle directly into the CLI. You must use `fastpubsub run` to start your application. Running with Gunicorn or the `uvicorn` CLI directly is not supported.
 
 ---
 
@@ -26,19 +26,32 @@ Scale by running multiple instances of the same `fastpubsub run` command. All in
 
 Design your consumers to be stateless. Message processing state should be managed by Pub/Sub (acknowledgments) or an external database. Stateless applications can be:
 
-- Shut down, restarted, or moved without data loss
-- Automatically recovered by your orchestrator
-- Scaled based on demand
+- Shut down, restarted, or moved without data loss.
+- Automatically recovered by your orchestrator.
+- Scaled based on demand.
 
 ### Multiple Workers
 
 When you use `--workers N`, the CLI starts one master process managing N worker processes. Each worker:
 
-- Is a separate Python process with its own memory
-- Loads your entire application independently
-- Bypasses the Python GIL for true parallel CPU utilization
+- Is a separate Python process with its own memory.
+- Loads your entire application independently.
+- Bypasses the Python GIL for true parallel CPU utilization.
 
-**Resource scaling:** If one worker uses 100MB RAM, 4 workers use ~400MB total.
+
+!!! warning "Resource Scaling"
+
+    Be careful when increasing the number of workers. If one worker uses 100MB RAM, 4 workers use ~400MB total. 
+
+---
+
+## Deployment Checklist
+
+1. Start with `fastpubsub run` (CLI-only).
+2. Set `GOOGLE_APPLICATION_CREDENTIALS` or `PUBSUB_EMULATOR_HOST`.
+3. Choose workers based on CPU and workload type.
+4. Configure health probes (`/consumers/alive`, `/consumers/ready`).
+5. Set `shutdown_timeout` and `terminationGracePeriodSeconds`.
 
 ---
 
@@ -55,9 +68,9 @@ fastpubsub run app:app --host 0.0.0.0 --port 8000 --workers 1
 
 Scale by increasing `replicas` in your Deployment. This provides:
 
-- Finer-grained scaling (one Pod at a time)
-- Better resource management
-- Isolation (one crash only affects one Pod)
+- Finer-grained scaling (one Pod at a time).
+- Better resource management.
+- Isolation (one crash only affects one Pod).
 
 ### Dockerfile
 
@@ -219,15 +232,7 @@ sudo systemctl status fastpubsub
 Never hardcode production values:
 
 ```python
-import os
-from fastpubsub import FastPubSub, PubSubBroker
-
-PROJECT_ID = os.environ.get("GCP_PROJECT_ID")
-if not PROJECT_ID:
-    raise RuntimeError("GCP_PROJECT_ID environment variable not set.")
-
-broker = PubSubBroker(project_id=PROJECT_ID)
-app = FastPubSub(broker)
+--8<-- "basic_usage/e8_02_deployment_config.py"
 ```
 
 In Kubernetes, inject via `ConfigMaps` or `Secrets`.
@@ -259,10 +264,18 @@ broker = PubSubBroker(
 
 | Type | Description | Health Checks |
 |------|-------------|---------------|
-| **Hybrid** | Has both `@broker.subscriber` handlers and FastAPI endpoints | Built-in consumer endpoints + your API endpoints |
-| **Standalone** | Only `@broker.subscriber` handlers | Built-in consumer endpoints only |
+| **Hybrid** | Has both `@broker.subscriber` handlers and FastAPI endpoints | Built-in subscriber endpoints + your API endpoints |
+| **Standalone** | Only `@broker.subscriber` handlers | Built-in subscriber endpoints only |
 
 Both types use the same deployment strategy.
+
+---
+
+## Common Pitfalls
+
+- Running with the `uvicorn` CLI directly (not supported).
+- Setting too many workers for available memory.
+- Using a shutdown timeout lower than typical processing time.
 
 ---
 

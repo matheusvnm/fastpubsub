@@ -17,6 +17,7 @@ extra_css = ["stylesheets/extra.css"]
 nav = [
     { "Home" = "index.md" },
     { "Tutorial" = [
+        { "Tutorial" = "tutorial/index.md" },
         { "The Basis" = [
             { "Introduction to Google PubSub" = "tutorial/basis/intro-google-pubsub.md" },
             { "Introduction to Async/Await" = "tutorial/basis/intro-async-await.md"},
@@ -52,15 +53,17 @@ nav = [
             { "Cross-Project Configuration" = "advanced/multiple-projects.md"},
         ]},
     ]},
-    { "Reference (Code API)" = [
-        { "Reference (Code API)" = "reference/index.md" },
-        { "FastPubSub" = "reference/fastpubsub.md" },
-        { "PubSubBroker" = "reference/broker.md" },
-        { "PubSubRouter" = "reference/router.md" },
-        { "Publisher" = "reference/publisher.md" },
-        { "Subscriber" = "reference/subscriber.md" },
-        { "BaseMiddleware" = "reference/middlewares.md" },
-        { "Message" = "reference/messages.md" },
+    { "API Documentation" = [
+        { "Overview" = "reference/index.md" },
+        { "Core" = [
+            { "FastPubSub" = "reference/fastpubsub.md" },
+            { "PubSubBroker" = "reference/broker.md" },
+            { "PubSubRouter" = "reference/router.md" },
+            { "Publisher" = "reference/publisher.md" },
+            { "Subscriber" = "reference/subscriber.md" },
+            { "Middlewares" = "reference/middlewares.md" },
+            { "Message" = "reference/messages.md" },
+        ]},
     ]},
     { "About" = [
         { "About" = [
@@ -91,7 +94,6 @@ features = [
     "navigation.instant.progress",
     "navigation.path",
     "navigation.tabs",
-    "navigation.tabs.sticky",
     "navigation.top",
     "navigation.indexes",
     "navigation.sections",
@@ -128,9 +130,6 @@ link = "https://github.com/matheusvnm/fastpubsub"
 icon = "fontawesome/brands/linkedin"
 link = "https://linkedin.com/in/matheusvnm"
 
-# [project.markdown_extensions.pymdownx.snippets]
-# base_path = ["src/snippets", "src"]
-# check_paths = true
 
 [project.plugins.mkdocstrings.handlers.python]
 inventories = ["https://docs.python.org/3/objects.inv"]
@@ -150,3 +149,58 @@ docstring_section_style = "spacy"
 signature_crossrefs = true
 show_symbol_type_heading = true
 show_symbol_type_toc = true
+
+# Markdown extensions
+# We must include all required extensions since one replaces the default configurations.
+[project.markdown_extensions]
+abbr = {}
+admonition = {}
+attr_list = {}
+def_list = {}
+footnotes = {}
+md_in_html = {}
+
+[project.markdown_extensions.toc]
+permalink = true
+
+[project.markdown_extensions.pymdownx.arithmatex]
+generic = true
+
+[project.markdown_extensions.pymdownx.betterem]
+
+[project.markdown_extensions.pymdownx.caret]
+
+[project.markdown_extensions.pymdownx.details]
+
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+
+[project.markdown_extensions.pymdownx.inlinehilite]
+
+[project.markdown_extensions.pymdownx.keys]
+
+[project.markdown_extensions.pymdownx.magiclink]
+
+[project.markdown_extensions.pymdownx.mark]
+
+[project.markdown_extensions.pymdownx.smartsymbols]
+
+[project.markdown_extensions.pymdownx.superfences]
+custom_fences = [{ name = "mermaid", class = "mermaid" }]
+
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+combine_header_slug = true
+
+[project.markdown_extensions.pymdownx.tasklist]
+custom_checkbox = true
+
+[project.markdown_extensions.pymdownx.tilde]
+
+# Snippets extension for including code from external files
+[project.markdown_extensions.pymdownx.snippets]
+base_path = ["docs/snippets", "docs/markdown"]
+check_paths = true
+dedent_subsections = true

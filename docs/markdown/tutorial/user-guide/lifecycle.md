@@ -10,12 +10,12 @@ Every message in FastPubSub follows a well-defined lifecycle from reception to a
 
 ```mermaid
 sequenceDiagram
-    participant PubSub as Google Pub/Sub
+    participant Pub/Sub as Google Pub/Sub
     participant Broker
     participant Middleware
     participant Handler as Your Handler
 
-    Broker->>PubSub: Polls a batch of messages
+    Broker->>Pub/Sub: Polls a batch of messages
     Broker->>Broker: Deserializes to Message object
     loop For each message
         Broker->>Middleware: Message enters the chain
@@ -23,10 +23,10 @@ sequenceDiagram
         Middleware->>Handler: Executes your handler function
         alt Handler Succeeds
             Handler-->>Broker: Returns successfully
-            Broker-->>PubSub: ack()
+            Broker-->>Pub/Sub: ack()
         else Handler Fails
             Handler-->>Broker: Raises an exception
-            Broker-->>PubSub: nack() or ack() (based on exception)
+            Broker-->>Pub/Sub: nack() or ack() (based on exception)
         end
     end
 ```
@@ -54,16 +54,7 @@ Sometimes, you receive a message that you cannot process, but you don't want it 
 
 
 ```python
-from fastpubsub.exceptions import Drop
-
-@broker.subscriber(...)
-async def handle_events(message: Message):
-    event_attributes = message.attributes
-    if event_attributes.get("schema_version") == "v1":
-        # We no longer support v1 events
-        raise Drop("Schema version v1 is deprecated.")
-
-    # Process v2+ events...
+--8<-- "basic_usage/e7_01_lifecycle_drop.py:drop_handler"
 ```
 
 
@@ -76,23 +67,20 @@ For temporary, recoverable errors (e.g., a database is temporarily unavailable, 
 
 
 ```python
-from fastpubsub.exceptions import Retry
-import httpx
-
-@broker.subscriber(...)
-async def handle_order(message: Message):
-    order_id = json.loads(message.data)["order_id"]
-    try:
-        async with httpx.AsyncClient() as client:
-            await client.post(f"https://downstream.service/process/{order_id}")
-    except httpx.TimeoutException:
-        # Service is slow, retry later
-        raise Retry("Downstream service timed out.")
+--8<-- "basic_usage/e7_02_lifecycle_retry.py:retry_handler"
 ```
+
+### Drop vs Retry
+
+| Use Case | Raise | Result |
+|----------|-------|--------|
+| Permanently invalid message | `Drop` | `ack()` and remove |
+| Temporary dependency failure | `Retry` | `nack()` and redeliver |
+| Unexpected bug | any other exception | `nack()` and redeliver |
 
 !!! tip "Exponential Backoff"
 
-    By default, FastPubSub configures subscriptions with exponential backoff retry, preventing a loop of rapidly failing messages. Read the full feature documention on [Google Pub/Sub](https://cloud.google.com/pubsub/docs/subscription-retry-policy).
+    By default, FastPubSub configures subscriptions with exponential backoff retry, preventing a loop of rapidly failing messages. Read the full feature documentation on [Google Pub/Sub](https://cloud.google.com/pubsub/docs/subscription-retry-policy).
 
 ### The Safety Net: Unhandled Exceptions
 
@@ -103,12 +91,7 @@ Any exception that is not `Drop` or `Retry` is considered an unhandled unexpecte
 
 
 ```python
-@broker.subscriber(...)
-async def handle_event(message: Message):
-    # If this raises ValueError, KeyError, etc.
-    # the message is nacked and redelivered
-    data = json.loads(message.data)
-    await process(data)
+--8<-- "basic_usage/e7_03_lifecycle_unhandled.py:unhandled_handler"
 ```
 
 ---
@@ -130,16 +113,17 @@ The framework is actively developed with planned features:
 
 - **FastAPI-Style Exception Handlers**: Register global handlers for specific exceptions
 - **Configurable Acknowledge Policies**: Policies like "ack on receive" for fire-and-forget tasks
-- **Serialization Error Policies**: Control what happens when messages can't be deserialized
+- **Serialization Error Policies**: Control what happens when messages can't be deserialized.
+- **Automated Retry Policies**: Register some exceptions to be automatically retries like Celery tasks does.
 
 ---
 
 ## Recap
 
-- **Lifecycle is a pipeline**: Poll → Deserialize → Middleware → Handler → Ack/Nack
-- **Success means ack**: A handler that completes without error results in acknowledgment
+- **Lifecycle is a pipeline**: Poll → Deserialize → Middleware → Handler → Ack/Nack.
+- **Success means ack**: A handler that completes without error results in acknowledgment.
 - **You control errors**:
-    - `raise Drop()` to permanently discard a message (ack)
-    - `raise Retry()` to request redelivery (nack)
-    - Any other exception results in a nack to ensure the message isn't lost
-- **Dead-letter topics**: Catch messages that fail repeatedly for investigation
+    - `raise Drop()` to permanently discard a message (ack).
+    - `raise Retry()` to request redelivery (nack).
+    - Any other exception results in a nack to ensure the message isn't lost.
+- **Dead-letter topics**: Catch messages that fail repeatedly for investigation.

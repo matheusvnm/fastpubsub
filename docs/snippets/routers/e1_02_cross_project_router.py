@@ -20,6 +20,7 @@ Requirements:
     - Ensure both projects exist and are accessible
 """
 
+# --8<-- [start:cross_project_router_full]
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
@@ -32,6 +33,7 @@ ALTERNATIVE_PROJECT_ID = "fastpubsub-pubsub-alternative"
 TOPIC_NAME = "test-router-topic-mult-project"
 SUBSCRIPTION_NAME = "test-basic-router-subscription"
 
+# --8<-- [start:router_with_project]
 # The router will be attached to a specific project
 # All the subscribers/publishers created by this router will point to this project.
 # Unless, you set the subscriber/publisher to another project themselves.
@@ -43,6 +45,7 @@ alternative_project_publisher = broker.publisher(
 )
 
 broker.include_router(router=router)
+# --8<-- [end:router_with_project]
 app = FastPubSub(broker)
 
 
@@ -71,3 +74,6 @@ async def handler_on_broker(message: Message) -> None:
 @app.after_startup
 async def test_publish() -> None:
     await broker.publish("test-router-topic-mult-project", {"hello": "world"})
+
+
+# --8<-- [end:cross_project_router_full]

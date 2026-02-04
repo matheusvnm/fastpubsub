@@ -33,6 +33,7 @@ run_test_command := "docker compose exec fastpubsub python -m"
 # ENVIRONMENT VAR EXPORTS
 
 export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
+export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 
 [doc("All commands information")]
 @default:
@@ -86,6 +87,7 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 
 # ----------------------------------------------------------------------------
 # Linting Tools Commands
+# ----------------------------------------------------------------------------
 
 [doc("Execute all checks (lint, security and static analysis)")]
 [group("lint")]
@@ -257,17 +259,22 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
     find . -type f -name "*.pyc" -delete 2>/dev/null || true
     rm -rf .pytest_cache htmlcov .coverage .cov dist/ fastpubsub.egg-info/ 2>/dev/null || true
 
+# ----------------------------------------------------------------------------
+# Documentation Commands
+# ----------------------------------------------------------------------------
+
 [doc("Creates the Zensical static documentation")]
 [group('docs')]
 @build-docs:
     just _start_msg "Building documentation"
-    uv run zensical build docs/ -o docs/_site
+    uv run zensical build --clean docs/ -o docs/_build
 
 [doc("Creates the Zensical static documentation")]
 [group('docs')]
 @serve-docs:
     just _start_msg "Starting documentation server"
     uv run zensical serve -f {{ docs_dir }}/zensical.toml -a localhost:8001
+
 # ----------------------------------------------------------------------------
 # Private Commands
 # ----------------------------------------------------------------------------

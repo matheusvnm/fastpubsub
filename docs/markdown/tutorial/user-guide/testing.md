@@ -22,115 +22,29 @@ FastPubSub applications can be tested at multiple levels:
 
 `PubSubTestClient` is an in-memory testing utility. Test your message handlers without the emulator.
 
+### Step-by-Step
+
+1. Create a broker and register handlers.
+2. Open a `PubSubTestClient` context.
+3. Publish test messages.
+4. Assert side effects or captured messages.
+
 ### Basic Example
 
 ```python
-import pytest
-from fastpubsub import FastPubSub, PubSubBroker, Message
-from fastpubsub.testing import PubSubTestClient
-
-broker = PubSubBroker(project_id="test-project")
-app = FastPubSub(broker)
-
-@broker.subscriber(
-    alias="user-handler",
-    topic_name="user-events",
-    subscription_name="user-events-subscription",
-)
-async def handle_user_event(message: Message):
-    data = message.data.decode("utf-8")
-    return f"Processed: {data}"
-
-@pytest.mark.asyncio
-async def test_user_event_handler():
-    async with PubSubTestClient(broker) as client:
-        # Publish a test message
-        await client.publish("user-events", data=b"test-data")
-
-        # The subscriber automatically processes the message
-        # Add assertions on side effects (database, mocks, etc.)
+--8<-- "testing/e1_01_test_client.py:basic_test"
 ```
 
 ### Testing with Pydantic Models
 
 ```python
-import pytest
-from pydantic import BaseModel
-from fastpubsub import FastPubSub, PubSubBroker, Message
-from fastpubsub.testing import PubSubTestClient
-
-class User(BaseModel):
-    name: str
-    email: str
-    age: int
-
-broker = PubSubBroker(project_id="test-project")
-app = FastPubSub(broker)
-
-processed_users = []
-
-@broker.subscriber(
-    alias="user-processor",
-    topic_name="user-created",
-    subscription_name="user-created-subscription",
-)
-async def process_new_user(message: Message):
-    user = User.model_validate_json(message.data)
-    processed_users.append(user)
-
-@pytest.mark.asyncio
-async def test_process_new_user():
-    processed_users.clear()
-
-    async with PubSubTestClient(broker) as client:
-        test_user = User(name="Alice", email="alice@example.com", age=30)
-
-        # Publish using Pydantic model (auto-serialized)
-        await client.publish("user-created", data=test_user)
-
-        # Verify the user was processed
-        assert len(processed_users) == 1
-        assert processed_users[0].name == "Alice"
+--8<-- "testing/e2_02_pydantic_testing.py"
 ```
 
 ### Testing Exception Handling
 
 ```python
-import pytest
-from fastpubsub import FastPubSub, PubSubBroker, Message
-from fastpubsub.exceptions import Drop, Retry
-from fastpubsub.testing import PubSubTestClient
-
-broker = PubSubBroker(project_id="test-project")
-app = FastPubSub(broker)
-
-@broker.subscriber(
-    alias="validation-handler",
-    topic_name="events",
-    subscription_name="events-subscription",
-)
-async def validate_event(message: Message):
-    data = message.data.decode("utf-8")
-
-    if data == "invalid":
-        raise Drop("Invalid message format")
-
-    if data == "retry":
-        raise Retry("Temporary failure")
-
-    return "Success"
-
-@pytest.mark.asyncio
-async def test_drop_exception():
-    async with PubSubTestClient(broker) as client:
-        # This should not raise - Drop is handled gracefully
-        await client.publish("events", data=b"invalid")
-
-@pytest.mark.asyncio
-async def test_retry_exception():
-    async with PubSubTestClient(broker) as client:
-        # Retry exceptions are also handled
-        await client.publish("events", data=b"retry")
+--8<-- "testing/e2_03_exception_testing.py"
 ```
 
 ---
@@ -142,32 +56,7 @@ async def test_retry_exception():
 When testing code that publishes messages, mock the publisher to avoid actual publishing:
 
 ```python
-import pytest
-from unittest.mock import AsyncMock, patch
-from fastpubsub import PubSubBroker
-
-broker = PubSubBroker(project_id="test-project")
-
-class UserService:
-    def __init__(self, broker):
-        self.user_publisher = broker.publisher("user-events")
-
-    async def create_user(self, name: str, email: str):
-        user_data = {"name": name, "email": email}
-        await self.user_publisher.publish(data=user_data)
-        return user_data
-
-@pytest.mark.asyncio
-async def test_user_service_publishes_event():
-    mock_publisher = AsyncMock()
-
-    with patch.object(broker, 'publisher', return_value=mock_publisher):
-        service = UserService(broker)
-        await service.create_user("Bob", "bob@example.com")
-
-        mock_publisher.publish.assert_called_once()
-        call_kwargs = mock_publisher.publish.call_args.kwargs
-        assert call_kwargs["data"]["name"] == "Bob"
+--8<-- "testing/e2_04_mocking_publishers.py"
 ```
 
 ### Mocking External Dependencies
@@ -209,33 +98,7 @@ async def test_send_welcome_email():
 Routers are tested the same way as the main broker:
 
 ```python
-import pytest
-from fastpubsub import PubSubBroker, PubSubRouter, Message
-from fastpubsub.testing import PubSubTestClient
-
-broker = PubSubBroker(project_id="test-project")
-users_router = PubSubRouter(prefix="users")
-
-processed_events = []
-
-@users_router.subscriber(
-    alias="created",
-    topic_name="user-created",
-    subscription_name="user-created-subscription",
-)
-async def handle_user_created(message: Message):
-    processed_events.append("created")
-
-broker.include_router(users_router)
-
-@pytest.mark.asyncio
-async def test_router_subscriber():
-    processed_events.clear()
-
-    async with PubSubTestClient(broker) as client:
-        await client.publish("user-created", data=b"test")
-
-        assert "created" in processed_events
+--8<-- "testing/e2_05_testing_routers.py"
 ```
 
 ---
@@ -267,40 +130,39 @@ export PUBSUB_EMULATOR_HOST="localhost:8085"
 ### Integration Test Example
 
 ```python
-import pytest
 import asyncio
-from fastpubsub import FastPubSub, PubSubBroker, Message
+import os
+import pytest
+from fastpubsub import PubSubBroker, Message
 
-broker = PubSubBroker(project_id="test-project")
-app = FastPubSub(broker)
-
-received_messages = []
-
-@broker.subscriber(
-    alias="integration-handler",
-    topic_name="integration-test-topic",
-    subscription_name="integration-test-subscription",
-    autocreate=True,
-)
-async def handle_message(message: Message):
-    received_messages.append(message.data.decode("utf-8"))
+os.environ["PUBSUB_EMULATOR_HOST"] = "localhost:8085"
 
 @pytest.mark.asyncio
-async def test_end_to_end_message_flow():
-    received_messages.clear()
+async def test_integration_with_emulator():
+    broker = PubSubBroker(project_id="test-project")
+    processed = asyncio.Event()
+
+    @broker.subscriber(
+        alias="integration-handler",
+        topic_name="events",
+        subscription_name="events-subscription",
+    )
+    async def handle(message: Message):
+        processed.set()
 
     await broker.start()
-
     try:
-        await broker.publish("integration-test-topic", data=b"integration-test-data")
-
-        # Wait for message to be processed
-        await asyncio.sleep(1)
-
-        assert "integration-test-data" in received_messages
+        await broker.publish(topic_name="events", data={"hello": "world"})
+        await asyncio.wait_for(processed.wait(), timeout=5)
     finally:
         await broker.shutdown()
 ```
+
+---
+
+## Testing Middlewares
+
+Middlewares can be tested the same way as handlers. Register the middleware on the broker or router and assert it was invoked in your test.
 
 ---
 
@@ -309,51 +171,23 @@ async def test_end_to_end_message_flow():
 ### Use Fixtures for Common Setup
 
 ```python
-import pytest
-from fastpubsub import PubSubBroker
-from fastpubsub.testing import PubSubTestClient
+--8<-- "testing/e2_06_testing_fixtures.py:broker_fixture"
 
-@pytest.fixture
-async def test_broker():
-    broker = PubSubBroker(project_id="test-project")
-    yield broker
-    await broker.shutdown()
+--8<-- "testing/e2_06_testing_fixtures.py:client_fixture"
 
-@pytest.fixture
-async def test_client(test_broker):
-    async with PubSubTestClient(test_broker) as client:
-        yield client
-
-@pytest.mark.asyncio
-async def test_with_fixtures(test_client):
-    await test_client.publish("topic", data=b"test")
+--8<-- "testing/e2_06_testing_fixtures.py:fixture_test"
 ```
 
 ### Clear State Between Tests
 
 ```python
-processed_messages = []
-
-@pytest.fixture(autouse=True)
-def clear_state():
-    """Automatically clear state before each test."""
-    processed_messages.clear()
-    yield
-    processed_messages.clear()
+--8<-- "testing/e2_06_testing_fixtures.py:clear_state_fixture"
 ```
 
 ### Use Parametrized Tests
 
 ```python
-@pytest.mark.parametrize("message_data,expected_result", [
-    (b"valid", "processed"),
-    (b"invalid", "dropped"),
-    (b"retry", "retried"),
-])
-@pytest.mark.asyncio
-async def test_message_processing(test_client, message_data, expected_result):
-    await test_client.publish("events", data=message_data)
-    # Assert expected_result
+--8<-- "testing/e2_06_testing_fixtures.py:parametrized_test"
 ```
 
 ### Test Concurrent Processing

@@ -16,6 +16,15 @@ pip install fastpubsub
 
 ---
 
+## Prerequisites
+
+You need one of the following before running the app:
+
+- **Cloud Pub/Sub**: Set `GOOGLE_APPLICATION_CREDENTIALS` to a service-account JSON file.
+- **Emulator**: Set `PUBSUB_EMULATOR_HOST` to the emulator host/port.
+
+---
+
 ## Core Concepts
 
 FastPubSub has two main classes that form the backbone of every application:
@@ -28,10 +37,7 @@ FastPubSub has two main classes that form the backbone of every application:
 All Pub/Sub configuration attaches to the broker. The `FastPubSub` object takes a `PubSubBroker` instance as an argument. This separation lets you use all FastAPI features (middlewares, lifespan) with the application while integrating with the broker.
 
 ```python
-from fastpubsub import FastPubSub, PubSubBroker
-
-broker = PubSubBroker(project_id="your-project-id")
-app = FastPubSub(broker)
+--8<-- "basic_usage/e0_01_first_steps.py:broker_app"
 ```
 
 ---
@@ -41,36 +47,7 @@ app = FastPubSub(broker)
 Create a file named `basic.py`:
 
 ```python
-from pydantic import BaseModel, Field
-from fastpubsub import FastPubSub, PubSubBroker, Message
-from fastpubsub.logger import logger
-
-
-class Address(BaseModel):
-    street: str = Field(..., examples=["5th Avenue"])
-    number: str = Field(..., examples=["1548"])
-
-
-broker = PubSubBroker(project_id="your-project-id")
-app = FastPubSub(broker)
-
-
-@app.post("/addresses/")
-async def create_address(address: Address):
-    logger.info(f"Address received: {address}")
-    await broker.publish(topic_name="address-events", data=address)
-    return {"message": "Address published"}
-
-
-@broker.subscriber(
-    alias="address-handler",
-    topic_name="address-events",
-    subscription_name="address-events-subscription",
-)
-async def handle_message(message: Message):
-    logger.info(f"The message {message.id} arrived.")
-    address = Address.model_validate_json(message.data)
-    logger.info(f"Address: {address}")
+--8<-- "basic_usage/e0_01_first_steps.py"
 ```
 
 This application:
@@ -78,6 +55,16 @@ This application:
 1. Defines a Pydantic model for validation
 2. Creates a REST endpoint that publishes messages to a topic
 3. Defines a subscriber that processes messages from that topic
+
+---
+
+## Step-by-Step
+
+1. Create the broker and app.
+2. Define your message model.
+3. Add an API endpoint that publishes.
+4. Add a subscriber that consumes.
+5. Run the CLI and send a test request.
 
 ---
 
@@ -146,26 +133,22 @@ curl -X POST "http://127.0.0.1:8000/addresses/" \
 You should see output like this in your terminal:
 
 ```
-2025-10-17 11:37:30,363 | INFO | runner:run:55 | FastPubSub app starting...
-2025-10-17 11:37:30,650 | INFO | tasks:start:74 | The handle_message handler is waiting for messages.
-2025-10-17 11:37:33,791 | INFO | basic:create_address:15 | Address received: street='5th Avenue' number='1548'
-2025-10-17 11:37:33,821 | INFO | pubsub:publish:305 | Message published for topic projects/your-project-id/topics/address-events with id 1
-2025-10-17 11:37:33,832 | INFO | basic:handle_message:25 | The message 1 arrived. | name=address-handler message_id=1 topic_name=address-events
-2025-10-17 11:37:33,832 | INFO | basic:handle_message:27 | Address: street='5th Avenue' number='1548' | name=address-handler message_id=1 topic_name=address-events
-2025-10-17 11:37:33,851 | INFO | tasks:_consume:131 | Message successfully processed. | name=address-handler message_id=1 topic_name=address-events
+2026-02-04 21:14:08,423 | INFO     | 89994:8702897216 | runner:run:76 | FastPubSub app starting... 
+2026-02-04 21:14:08,502 | INFO     | 89994:8702897216 | tasks:start:80 | The handle_message handler is waiting for messages. 
+2026-02-04 21:14:15,585 | INFO     | 89994:8702897216 | e0_01_first_steps:create_address:22 | Address received: street='5th Avenue' number='1548' 
+2026-02-04 21:14:15,618 | INFO     | 89994:8702897216 | pubsub:publish:248 | Message published for topic projects/your-project-id/topics/address-events with id 19 
+2026-02-04 21:14:15,666 | INFO     | 89994:8702897216 | e0_01_first_steps:handle_message:35 | The message 19 arrived. | message_id=19 | topic_name=address-events | subscriber_name=handle_message 
+2026-02-04 21:14:15,667 | INFO     | 89994:8702897216 | e0_01_first_steps:handle_message:37 | Address: street='5th Avenue' number='1548' | message_id=19 | topic_name=address-events | subscriber_name=handle_message 
+2026-02-04 21:14:15,668 | INFO     | 89994:8702897216 | tasks:_consume:107 | The message successfully processed. | message_id=19 | topic_name=address-events | subscriber_name=handle_message 
 ```
 
-Notice how the logs include context like `message_id`, `topic_name`, and the handler `name`. FastPubSub automatically adds this information to help with debugging and monitoring.
+Notice how the logs include context like `message_id`, `topic_name`, and the handler `subscriber_name`. FastPubSub automatically adds this information to help with debugging and monitoring.
 
 ---
 
 ## Understanding the Code
 
 ### The Broker
-
-```python
-broker = PubSubBroker(project_id="your-project-id")
-```
 
 The broker manages all Pub/Sub connections. It handles:
 
@@ -174,10 +157,6 @@ The broker manages all Pub/Sub connections. It handles:
 - Coordinating publishers and subscribers
 
 ### The Application
-
-```python
-app = FastPubSub(broker)
-```
 
 The application is a FastAPI instance with Pub/Sub integration. You can use all FastAPI features like:
 
@@ -189,13 +168,7 @@ The application is a FastAPI instance with Pub/Sub integration. You can use all 
 ### The Subscriber
 
 ```python
-@broker.subscriber(
-    alias="address-handler",
-    topic_name="address-events",
-    subscription_name="address-events-subscription",
-)
-async def handle_message(message: Message):
-    ...
+--8<-- "basic_usage/e0_01_first_steps.py:subscriber"
 ```
 
 The `@broker.subscriber` decorator registers an async function as a message handler. Key parameters:
@@ -211,25 +184,13 @@ By default, `autocreate=True`, so FastPubSub creates the topic and subscription 
 ### Publishing
 
 ```python
-await broker.publish(topic_name="address-events", data=address)
+--8<-- "basic_usage/e0_01_first_steps.py:rest_endpoint"
 ```
 
 The broker's `publish` method sends messages to a topic. It automatically serializes:
 
-- Pydantic models to JSON
-- Dictionaries to JSON
-- Strings to UTF-8 bytes
-- Bytes are sent as-is
-
----
-
-## More Examples
-
-For additional examples and patterns, check the [examples directory](https://github.com/matheusvnm/fastpubsub/tree/master/examples) in the repository:
-
-- **Basic Usage**: Simple subscribers, publishers, and cross-project communication
-- **Routers**: Organizing subscribers with prefixes and nested hierarchies
-- **Middlewares**: Custom middleware implementations and hierarchy patterns
+- Pydantic, dictionaries, and strings to bytes.
+- Bytes are sent as-is.
 
 ---
 

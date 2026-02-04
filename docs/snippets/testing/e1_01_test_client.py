@@ -1,33 +1,21 @@
-"""Title: Basic PubSubTestClient Usage
-
-Demonstrates the basic usage of PubSubTestClient for testing subscriber handlers.
-
-This example shows:
-- Creating a test broker fixture for pytest
-- Using PubSubTestClient as an async context manager
-- Publishing messages and verifying subscriber receives them
-- Publishing dictionary data (JSON serialized automatically)
-- Inspecting all published messages with get_published_messages()
-
-PubSubTestClient enables fast, isolated unit tests without needing a real
-Google Cloud Pub/Sub emulator.
-
-Run with:
-    pytest examples/testing/e1_01_test_client.py -v
-"""
-
+# --8<-- [start:test_client_full]
 import pytest
 
 from fastpubsub import Message, PubSubBroker
 from fastpubsub.testing import PubSubTestClient
 
 
+# --8<-- [start:broker_fixture]
 @pytest.fixture
 def broker() -> PubSubBroker:
     """Create a fresh broker for each test."""
     return PubSubBroker(project_id="test")
 
 
+# --8<-- [end:broker_fixture]
+
+
+# --8<-- [start:basic_test]
 @pytest.mark.asyncio
 async def test_basic_publish_and_subscribe(broker: PubSubBroker) -> None:
     """Test that a message is received by a subscriber."""
@@ -46,6 +34,9 @@ async def test_basic_publish_and_subscribe(broker: PubSubBroker) -> None:
 
     assert len(received_messages) == 1
     assert received_messages[0].data == b"Hello"
+
+
+# --8<-- [end:basic_test]
 
 
 @pytest.mark.asyncio
@@ -95,3 +86,4 @@ async def test_inspect_published_messages(broker: PubSubBroker) -> None:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+# --8<-- [end:test_client_full]

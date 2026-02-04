@@ -41,21 +41,7 @@ sequenceDiagram
 Enable ordering on your subscriber:
 
 ```python
-from fastpubsub import FastPubSub, PubSubBroker, Message
-
-broker = PubSubBroker(project_id="your-project-id")
-app = FastPubSub(broker)
-
-@broker.subscriber(
-    alias="user-events-ordered",
-    topic_name="user-events",
-    subscription_name="user-events-ordered-subscription",
-    enable_message_ordering=True,  # (1)!
-    autocreate=True,
-)
-async def process_user_events(message: Message):
-    user_id = message.ordering_key  # (2)!
-    await update_user_state(user_id, message.data)
+--8<-- "advanced/e1_04_ordering.py:ordered_subscriber"
 ```
 
 1. Enables ordered delivery for this subscription
@@ -66,22 +52,7 @@ async def process_user_events(message: Message):
 The publisher must also have ordering enabled:
 
 ```python
-# Create an ordered publisher
-ordered_publisher = broker.publisher(
-    "user-events",
-    enable_message_ordering=True  # (1)!
-)
-
-# Publish messages with ordering keys
-await ordered_publisher.publish(
-    data={"action": "login", "user_id": "user-123"},
-    ordering_key="user-123"  # (2)!
-)
-
-await ordered_publisher.publish(
-    data={"action": "update_profile", "user_id": "user-123"},
-    ordering_key="user-123"  # (3)!
-)
+--8<-- "advanced/e1_04_ordering.py:ordered_publisher"
 ```
 
 1. Publisher must have ordering enabled to use ordering keys
@@ -90,6 +61,15 @@ await ordered_publisher.publish(
 
 !!! warning "Both Sides Must Enable Ordering"
     If the publisher sends messages with ordering keys but the subscriber doesn't have `enable_message_ordering=True`, messages may still arrive out of order.
+
+---
+
+## Step-by-Step
+
+1. Enable ordering on the subscriber (`enable_message_ordering=True`).
+2. Enable ordering on the publisher and send an `ordering_key`.
+3. Publish multiple messages with the same key.
+4. Verify the handler sees them in sequence.
 
 ## Choosing Good Ordering Keys
 
@@ -163,17 +143,7 @@ graph LR
 When a message fails, subsequent messages with the same ordering key are blocked until the failed message is resolved (retried successfully or moved to dead-letter).
 
 ```python
-@broker.subscriber(
-    alias="ordered-processor",
-    topic_name="events",
-    subscription_name="events-ordered-subscription",
-    enable_message_ordering=True,
-    dead_letter_topic="events-dlq",  # (1)!
-    max_delivery_attempts=5,
-    autocreate=True,
-)
-async def process_ordered(message: Message):
-    await process_event(message.data)
+--8<-- "advanced/e1_04_ordering.py:ordered_with_dlt"
 ```
 
 1. Failed messages go to DLT after max attempts, unblocking the queue
@@ -181,57 +151,29 @@ async def process_ordered(message: Message):
 !!! warning "Blocked Message Queues"
     If a message fails repeatedly without dead-letter handling, all subsequent messages with the same ordering key will be blocked indefinitely. Always configure dead-letter topics for ordered subscriptions.
 
+---
+
+## Common Pitfalls
+
+- Using a single global ordering key (kills parallelism).
+- Using a unique key per message (no ordering benefits).
+- Missing a dead-letter topic on ordered subscriptions.
+
 ## Use Cases
 
 === "User Sessions"
     ```python
-    # Track user session events in order
-    @broker.subscriber(
-        alias="session-tracker",
-        topic_name="session-events",
-        subscription_name="session-events-subscription",
-        enable_message_ordering=True,
-    )
-    async def track_session(message: Message):
-        user_id = message.ordering_key
-        event = message.data
-
-        # Events arrive in order: login → page_view → purchase → logout
-        await session_store.append_event(user_id, event)
+    --8<-- "advanced/e1_04_ordering.py:usecase_sessions"
     ```
 
 === "State Machines"
     ```python
-    # Process order state transitions in sequence
-    @broker.subscriber(
-        alias="order-state",
-        topic_name="order-events",
-        subscription_name="order-state-subscription",
-        enable_message_ordering=True,
-    )
-    async def process_order_state(message: Message):
-        order_id = message.ordering_key
-        transition = message.data["transition"]
-
-        # Transitions arrive in order: created → paid → shipped → delivered
-        await state_machine.transition(order_id, transition)
+    --8<-- "advanced/e1_04_ordering.py:usecase_state_machine"
     ```
 
 === "Inventory Updates"
     ```python
-    # Process inventory changes in order
-    @broker.subscriber(
-        alias="inventory-updater",
-        topic_name="inventory-events",
-        subscription_name="inventory-subscription",
-        enable_message_ordering=True,
-    )
-    async def update_inventory(message: Message):
-        sku = message.ordering_key
-        delta = message.data["quantity_change"]
-
-        # +10, -5, +3 applied in correct order
-        await inventory_db.update_quantity(sku, delta)
+    --8<-- "advanced/e1_04_ordering.py:usecase_inventory"
     ```
 
 ## Best Practices

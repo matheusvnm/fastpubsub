@@ -18,14 +18,17 @@ Requirements:
     - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
 """
 
+# --8<-- [start:gzip_middleware_full]
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
 from fastpubsub.logger import logger
 from fastpubsub.middlewares import GZipMiddleware
 
+# --8<-- [start:gzip_middleware_setup]
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 broker.include_middleware(GZipMiddleware, compresslevel=2)
+# --8<-- [end:gzip_middleware_setup]
 
 app = FastPubSub(broker)
 
@@ -43,3 +46,6 @@ async def broker_gzip_message(message: Message) -> None:
 async def test_publish() -> None:
     publisher = broker.publisher("gzipped_topic")
     await publisher.publish("Hi!")
+
+
+# --8<-- [end:gzip_middleware_full]

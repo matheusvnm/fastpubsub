@@ -17,10 +17,10 @@ You can create production applications with the latest version, but pay attentio
 Pin the version of FastPubSub you're using to a specific version that works correctly for your application.
 
 ```
-# Static pin: Only this exact version
+# Static pin: Replace 0.4.0 with your current version
 fastpubsub==0.4.0
 
-# Range pin: 0.4.0 or above, but less than 0.5.0
+# Range pin: Replace 0.4 with your current minor version
 fastpubsub>=0.4.0,<0.5.0
 ```
 

@@ -10,35 +10,31 @@ FastPubSub integrates with [Pydantic](https://docs.pydantic.dev/) for data valid
 
 FastPubSub leverages Pydantic in three ways:
 
-1. **Message Serialization** - Pydantic models are automatically converted to JSON when publishing
-2. **Push Message Handling** - Built-in models for HTTP push endpoints
-3. **Parameter Validation** - Public APIs use `@validate_call` for type checking
+1. **Message Serialization** - Pydantic models are automatically converted to JSON when publishing.
+2. **Push Message Handling** - Built-in models for HTTP push endpoints.
+3. **Parameter Validation** - Public APIs use `@validate_call` for type checking.
+
+---
+
+## Step-by-Step
+
+1. Define a Pydantic model for your message schema.
+2. Publish model instances with `broker.publish(...)`.
+3. Parse incoming bytes with `model_validate_json()` in handlers.
+4. Handle validation errors by raising `Drop`.
 
 ## Publishing Pydantic Models
 
 When you publish a Pydantic model, FastPubSub automatically serializes it to JSON:
 
 ```python
-from pydantic import BaseModel
-from fastpubsub import FastPubSub, PubSubBroker
-
-broker = PubSubBroker(project_id="your-project-id")
-app = FastPubSub(broker)
-
-class OrderEvent(BaseModel):
-    order_id: str
-    customer_id: str
-    total: float
-    items: list[str]
-
-@app.post("/create-order")
-async def create_order(order: OrderEvent):
-    # Pydantic model is automatically serialized to JSON
-    await broker.publish("orders", order)  # (1)!
-    return {"status": "created"}
+--8<-- "integrations/e1_02_pydantic.py:publish_model"
 ```
 
 1. FastPubSub calls `order.model_dump_json()` internally
+
+!!! note "Pydantic Version"
+    The examples use Pydantic v2 (`model_dump_json`, `model_validate_json`). We will not provide Pydantic v1 as it is already deprecated.
 
 ### Supported Data Types
 
@@ -64,30 +60,7 @@ await broker.publish("topic", OrderEvent(order_id="123", ...))
 Parse and validate incoming message data using Pydantic models in your handlers:
 
 ```python
-from pydantic import BaseModel, ValidationError
-from fastpubsub import Message
-from fastpubsub.exceptions import Drop
-
-class UserEvent(BaseModel):
-    user_id: str
-    email: str
-    action: str
-
-@broker.subscriber(
-    alias="user-handler",
-    topic_name="user-events",
-    subscription_name="user-events-subscription",
-)
-async def handle_user_event(message: Message):
-    try:
-        # Parse and validate the message data
-        event = UserEvent.model_validate_json(message.data)  # (1)!
-
-        await process_user_event(event)
-
-    except ValidationError as e:
-        # Invalid data - drop the message
-        raise Drop(f"Invalid user event: {e}")
+--8<-- "integrations/e1_02_pydantic.py:validate_incoming"
 ```
 
 1. Use `model_validate_json()` to parse bytes directly
@@ -96,46 +69,17 @@ async def handle_user_event(message: Message):
 
 === "Required Fields"
     ```python
-    from pydantic import BaseModel
-
-    class PaymentEvent(BaseModel):
-        payment_id: str
-        amount: float  # Required field
-
-    @broker.subscriber(...)
-    async def handle_payment(message: Message):
-        # Raises ValidationError if amount is missing
-        event = PaymentEvent.model_validate_json(message.data)
+    --8<-- "integrations/e1_02_pydantic.py:required_fields"
     ```
 
 === "Optional Fields"
     ```python
-    from pydantic import BaseModel
-
-    class NotificationEvent(BaseModel):
-        user_id: str
-        title: str
-        body: str | None = None  # Optional field
-
-    @broker.subscriber(...)
-    async def handle_notification(message: Message):
-        event = NotificationEvent.model_validate_json(message.data)
-        # body will be None if not provided
+    --8<-- "integrations/e1_02_pydantic.py:optional_fields"
     ```
 
 === "Field Constraints"
     ```python
-    from pydantic import BaseModel, Field
-
-    class OrderEvent(BaseModel):
-        order_id: str = Field(min_length=1)
-        quantity: int = Field(gt=0, le=1000)
-        email: str = Field(pattern=r"^[\w.-]+@[\w.-]+\.\w+$")
-
-    @broker.subscriber(...)
-    async def handle_order(message: Message):
-        # Validates constraints automatically
-        event = OrderEvent.model_validate_json(message.data)
+    --8<-- "integrations/e1_02_pydantic.py:field_constraints"
     ```
 
 ## Push Message Models
@@ -143,26 +87,7 @@ async def handle_user_event(message: Message):
 FastPubSub provides built-in Pydantic models for handling HTTP push subscriptions:
 
 ```python
-from fastpubsub import FastPubSub, PubSubBroker, PushMessage
-import base64
-
-broker = PubSubBroker(project_id="your-project-id")
-app = FastPubSub(broker)
-
-@app.post("/push-endpoint")
-async def receive_push(push_message: PushMessage):  # (1)!
-    # Access the nested message content
-    message_id = push_message.message.id
-    subscription = push_message.subscription
-
-    # Decode base64 data
-    raw_data = base64.b64decode(push_message.message.data)
-
-    # Parse as your domain model
-    event = OrderEvent.model_validate_json(raw_data)
-
-    await process_event(event)
-    return {"status": "ok"}
+--8<-- "integrations/e1_02_pydantic.py:push_endpoint"
 ```
 
 1. FastAPI automatically validates the incoming JSON against `PushMessage`
@@ -191,37 +116,13 @@ Handle message schema changes gracefully:
 ### Adding New Fields
 
 ```python
-from pydantic import BaseModel
-
-class OrderEventV2(BaseModel):
-    order_id: str
-    customer_id: str
-    total: float
-    # New field with default - backward compatible
-    priority: str = "normal"
-
-@broker.subscriber(...)
-async def handle_order(message: Message):
-    # Works with both old (no priority) and new messages
-    event = OrderEventV2.model_validate_json(message.data)
+--8<-- "integrations/e1_02_pydantic.py:schema_evolution"
 ```
 
 ### Handling Unknown Fields
 
 ```python
-from pydantic import BaseModel, ConfigDict
-
-class FlexibleEvent(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # (1)!
-
-    order_id: str
-    # Unknown fields are silently ignored
-
-class StrictEvent(BaseModel):
-    model_config = ConfigDict(extra="forbid")  # (2)!
-
-    order_id: str
-    # Unknown fields raise ValidationError
+--8<-- "integrations/e1_02_pydantic.py:extra_handling"
 ```
 
 1. Ignore extra fields from newer message versions
@@ -229,17 +130,10 @@ class StrictEvent(BaseModel):
 
 ## Best Practices
 
-!!! tip "Use Explicit Models"
-    Define Pydantic models for all message types. This documents your message schema and catches errors early.
-
-!!! tip "Handle Validation Errors"
-    Always wrap `model_validate_json()` in try/except. Invalid messages should be dropped, not retried forever.
-
-!!! tip "Version Your Schemas"
-    Use optional fields with defaults when evolving schemas. This maintains backward compatibility during deployments.
-
-!!! tip "Validate at Boundaries"
-    Validate incoming messages at the handler entry point. Trust your own Pydantic models when publishing.
+1. **Use Explicit Models:** Define Pydantic models for all message types. This documents your message schema and catches errors early.
+2. **Handle Validation Errors:** Always wrap `model_validate_json()` in try/except. Invalid messages should be dropped, not retried forever.
+3. **Version Your Schemas:** Use optional fields with defaults when evolving schemas. This maintains backward compatibility during deployments.
+4. **Validate at Boundaries:** Validate incoming messages at the handler entry point. Trust your own Pydantic models when publishing.
 
 ## Recap
 

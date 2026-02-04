@@ -18,11 +18,13 @@ Requirements:
     - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
 """
 
-from snippets.middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubRouterMiddleware
+# --8<-- [start:router_hierarchy_methods_full]
+from middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubRouterMiddleware
 
 from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
 from fastpubsub.logger import logger
 
+# --8<-- [start:include_middleware_pattern]
 child_router = PubSubRouter(prefix="subrouter")
 child_router.include_middleware(SubRouterMiddleware)
 
@@ -35,6 +37,7 @@ broker = PubSubBroker(
 )
 broker.include_middleware(BrokerMiddleware)
 broker.include_router(parent_router)
+# --8<-- [end:include_middleware_pattern]
 
 app = FastPubSub(broker)
 
@@ -71,3 +74,6 @@ async def subrouter_handle(_: Message) -> None:
 @app.after_startup
 async def after_started() -> None:
     await broker.publish(topic_name="some_test_topic", data={"A": "B"})
+
+
+# --8<-- [end:router_hierarchy_methods_full]

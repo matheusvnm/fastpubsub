@@ -11,33 +11,33 @@ A **subscriber** is a message handler attached to a Pub/Sub **subscription**. A 
 Use the `@broker.subscriber` decorator to register an async function as a message handler:
 
 ```python
-from fastpubsub import PubSubBroker, Message
+--8<-- "basic_usage/e1_01_basic_subscriber.py:basic_subscriber_setup"
 
-broker = PubSubBroker(project_id="your-project-id")
-
-@broker.subscriber(
-    alias="user-handler",
-    topic_name="user-events",
-    subscription_name="user-events-subscription",
-)
-async def handle_user_event(message: Message):
-    data = message.data.decode("utf-8")
-    print(f"Received: {data}")
+--8<-- "basic_usage/e1_01_basic_subscriber.py:basic_subscriber"
 ```
 
 The decorator automatically manages connection, message fetching, and acknowledgment.
-You only need to provide `alias`, `topic_name`, and `subscription_name` while rest of the configurations have sensible defaults.
+You only need to provide `alias`, `topic_name`, and `subscription_name` while the rest of the configuration has sensible defaults.
+
+---
+
+## Step-by-Step
+
+1. Create a `PubSubBroker`.
+2. Add a `@broker.subscriber(...)` handler.
+3. Set `topic_name` and `subscription_name` using your naming convention.
+4. Run the app with `fastpubsub run`.
+5. Publish a test message and confirm logs.
 
 ---
 
 ## Configuration Options
 
-The `subscriber` register function has a variety of different configuration you can set to fully control the message consumption behavior in case you still need to manipulate them.
+The `subscriber` register function has a variety of configuration you can set to fully control the message consumption behavior in case you still need to manipulate them.
 
 ```python
 
 @broker.subscriber(
-    self,
     alias: str,
     *,
     topic_name: str,
@@ -58,7 +58,7 @@ The `subscriber` register function has a variety of different configuration you 
 )
 ```
 
-Most of the configuration is directly mapped from the Google's PubSub Python SDK. The few exceptions are configuration used for lifecycle control and consumer behavior as we describe them below.
+Most of the configuration is directly mapped from the Google's Pub/Sub Python SDK. The few exceptions are configuration used for lifecycle control and consumer behavior as we describe them below.
 
 
 ### Lifecycle Control
@@ -72,7 +72,7 @@ These settings manage Pub/Sub resource creation on startup.
 
 !!! note "autoupdate Limitations"
 
-    **Remember:** Only updatable fields can be changed (see table below) and `autoupdate` won't create a missing topic.
+    **Remember:** `autoupdate` won't create a missing topic.
 
 ### Subscription Behavior (Server-Side)
 
@@ -102,13 +102,13 @@ These control how FastPubSub processes messages.
 
 ## The Importance of Async
 
-FastPubSub is an asyncio-native framework, which means your message handlers must be async def functions. This design is critical for performance. An asyncio application runs on a single thread managed by an event loop. This single thread juggles multiple tasks, such as handling incoming Pub/Sub messages and serving HTTP requests (if using the [FastAPI integration](../integrations/fastapi.md)).
+FastPubSub is an asyncio-native framework, which means your message handlers must be `async def` functions. This design is critical for performance. An asyncio application runs on a single thread managed by an event loop. This single thread juggles multiple tasks, such as handling incoming Pub/Sub messages and serving HTTP requests (if using the [FastAPI integration](../integrations/fastapi.md)).
 
 A task can only be paused when it encounters an await keyword, allowing the event loop to switch to another task. If you use a blocking operation like `time.sleep()` instead of `await asyncio.sleep()`, you freeze the entire thread. No other tasks can run, causing your application to become unresponsive.
 
 ### Blocking (Don't Do This)
 
-As mentioned blocking calls freezes the event loop. Any other tasks, like incoming HTTP requests, will be stalled until the blocking call finishes. The diagram below show an example of such occourence:
+As mentioned, blocking calls freeze the event loop. Any other tasks, like incoming HTTP requests, are stalled until the blocking call finishes. The diagram below shows an example of such occurrence:
 
 ```mermaid
 sequenceDiagram
@@ -172,20 +172,19 @@ While FastPubSub is designed for high-performance **pull-based** consumption, yo
 
 A push subscription sends messages via an HTTP `POST` request to a webhook endpoint. You can create a FastAPI endpoint to receive and process these messages. FastPubSub even provides a Pydantic model, `PushMessage`, to automatically parse the incoming request body.
 
-
 ```python
-from fastpubsub import FastPubSub, PubSubBroker, PushMessage
-from fastpubsub.logger import logger
-
-broker = PubSubBroker("your-project-id")
-app = FastPubSub(broker)
-
-@app.post("/push-handler/")
-async def handle_push_message(data: PushMessage):
-    logger.info(f"Received push message: {data.message}")
-    # Returning 2xx acknowledges the message
-    return {"status": "ok"}
+--8<-- "basic_usage/e1_04_push_subscriber.py"
 ```
+
+---
+
+## Push Subscription Checklist
+
+1. Create the push subscription in GCP with your HTTPS endpoint.
+2. Ensure the endpoint is publicly reachable or exposed via a gateway.
+3. Verify authentication and signature requirements for the push endpoint.
+4. Decode the base64 payload and validate it before processing.
+
 
 ---
 

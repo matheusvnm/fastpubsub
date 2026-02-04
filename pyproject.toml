@@ -94,7 +94,7 @@ docs = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = "."
+pythonpath = [".", "docs/snippets"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 python_files = ["test_*.py"]
@@ -111,6 +111,7 @@ markers = [
     "pubsub: Google PubSub specific tests",
     "connected: Tests requiring PubSub emulator connection",
     "slow: Long-running tests (>5 seconds)",
+    "docs: Documentation snippet tests",
 ]
 
 [tool.coverage.run]

@@ -38,16 +38,7 @@ The primary command is `run`, which takes one required argument: the path to you
 **Example application (`my_project/main.py`):**
 
 ```python
-from fastpubsub import FastPubSub, PubSubBroker
-
-broker = PubSubBroker("your-project-id")
-app = FastPubSub(broker)
-
-@broker.subscriber("process-orders", topic_name="orders", subscription_name="orders-sub")
-async def handle_orders(message): ...
-
-@broker.subscriber("send-notifications", topic_name="notifications", subscription_name="notifications-sub")
-async def handle_notifications(message): ...
+--8<-- "basic_usage/e8_01_cli_example.py"
 ```
 
 **Run with default settings:**
@@ -55,6 +46,15 @@ async def handle_notifications(message): ...
 ```bash
 fastpubsub run my_project.main:app
 ```
+
+---
+
+## Step-by-Step
+
+1. Set credentials or emulator host.
+2. Point to your app: `module.path:app`.
+3. Run `fastpubsub run`.
+4. Check logs for subscriber startup.
 
 ---
 
@@ -139,77 +139,13 @@ Available log levels: `debug`, `info`, `warning`, `error`, `critical`
 
 ---
 
-## CLI Options Reference
+## Future Development
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--host` | Bind to this host | `127.0.0.1` |
-| `--port` | Bind to this port | `8000` |
-| `--workers` | Number of worker processes | `1` |
-| `--reload` | Enable hot-reloading for development | `False` |
-| `-s`, `--subscribers` | Run only these subscribers (repeatable) | All |
-| `--log-level` | Application log level | `info` |
-| `--log-serialize` | Output logs as JSON | `False` |
-| `--server-log-level` | Uvicorn server log level | `info` |
+The framework is actively developed with planned features:
 
----
-
-## Uvicorn Integration
-
-The `fastpubsub` CLI is a wrapper around Uvicorn. These options map directly to Uvicorn parameters:
-
-| CLI Option | Uvicorn Parameter |
-|------------|-------------------|
-| `--host` | `host` |
-| `--port` | `port` |
-| `--workers` | `workers` |
-| `--reload` | `reload` |
-| `--server-log-level` | `log_level` |
-
-This unified approach provides a single interface for configuring both web and messaging aspects.
-
----
-
-## Environment Variables
-
-Many options can be set via environment variables:
-
-| Variable | Description |
-|----------|-------------|
-| `PUBSUB_EMULATOR_HOST` | Connect to emulator instead of cloud |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Path to service account key |
-| `FASTPUBSUB_ENABLE_LOG_SERIALIZE` | Enable JSON logging (`1` or `true`) |
-
----
-
-## Examples
-
-### Local Development
-
-```bash
-export PUBSUB_EMULATOR_HOST=localhost:8085
-fastpubsub run my_app.main:app --reload --log-level debug
-```
-
-### Production Single Machine
-
-```bash
-fastpubsub run my_app.main:app \
-  --host 0.0.0.0 \
-  --port 8000 \
-  --workers 4 \
-  --log-serialize
-```
-
-### Running Specific Subscribers
-
-```bash
-# Machine 1: Order processing
-fastpubsub run my_app.main:app -s order-handler --workers 4
-
-# Machine 2: Notification sending
-fastpubsub run my_app.main:app -s notification-handler --workers 2
-```
+- **Full Support for Uvicorn**: At the moment we only support a few set of basic configurations for uvicorn. We intend to support them all in the future.
+- **Publish Messages**: Publish messages locally to the configured emulator or directly sending to your handler.
+- **Listing FastPubSub Components**: Different strategies to list your routers, subscribers, publishers, etc.
 
 ---
 

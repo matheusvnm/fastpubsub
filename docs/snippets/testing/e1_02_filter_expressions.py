@@ -1,21 +1,3 @@
-"""Title: Filter Expression Testing
-
-Demonstrates testing subscribers with filter expressions using PubSubTestClient.
-
-This example shows:
-- Creating subscribers with filter_expression parameter
-- Testing attribute-based message routing (e.g., 'attributes.type = "order"')
-- Verifying messages are filtered correctly based on attributes
-- Testing scenarios where no messages match the filter
-- Testing messages with missing attributes
-
-Filter expressions allow subscribers to receive only messages that match
-specific attribute criteria, just like in Google Cloud Pub/Sub.
-
-Run with:
-    pytest examples/testing/e1_02_filter_expressions.py -v
-"""
-
 import pytest
 
 from fastpubsub import Message, PubSubBroker
@@ -28,6 +10,7 @@ def broker() -> PubSubBroker:
     return PubSubBroker(project_id="test")
 
 
+# --8<-- [start:filter_routing_test]
 @pytest.mark.asyncio
 async def test_filter_routes_to_correct_handler(broker: PubSubBroker) -> None:
     """Test that filter expressions route messages to the correct handlers."""
@@ -89,6 +72,9 @@ async def test_filter_routes_to_correct_handler(broker: PubSubBroker) -> None:
     assert len(all_messages) == 3  # Receives all events (no filter)
 
 
+# --8<-- [end:filter_routing_test]
+
+
 @pytest.mark.asyncio
 async def test_filter_with_no_matching_messages(broker: PubSubBroker) -> None:
     """Test that a subscriber with a filter receives nothing if no messages match."""
@@ -140,3 +126,4 @@ async def test_filter_with_missing_attributes(broker: PubSubBroker) -> None:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+

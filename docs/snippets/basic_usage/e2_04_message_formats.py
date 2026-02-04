@@ -1,35 +1,17 @@
-"""Title: Different Message Format Support
-
-Demonstrates publishing messages in various formats supported by FastPubSub.
-
-This example shows:
-- Publishing Pydantic models (automatically serialized to JSON)
-- Publishing dictionaries (serialized to JSON)
-- Publishing strings (encoded to bytes)
-- Publishing raw bytes
-
-FastPubSub automatically handles serialization for different data types,
-making it easy to work with structured data using Pydantic models while
-also supporting simple string and bytes payloads.
-
-Run with:
-    fastpubsub run examples.basic_usage.e2_04_message_formats:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
 from pydantic import BaseModel
 
 from fastpubsub import FastPubSub, Message, Publisher, PubSubBroker
 from fastpubsub.logger import logger
 
 
+# --8<-- [start:pydantic_model]
 class TestMessage(BaseModel):
     event: str
     source: str
     message: str
+
+
+# --8<-- [end:pydantic_model]
 
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
@@ -45,6 +27,7 @@ async def handle(message: Message) -> None:
     logger.info(f"Processed message: {message.data.decode()}")
 
 
+# --8<-- [start:publish_formats]
 @app.after_startup
 async def test_publish() -> None:
     message = TestMessage(
@@ -52,7 +35,10 @@ async def test_publish() -> None:
     )
 
     publisher: Publisher = broker.publisher("test-topic-pydantic")
-    await publisher.publish(message)
-    await publisher.publish({"some_dict": "dict_data"})
-    await publisher.publish("some_string_text")
-    await publisher.publish(b"some_byte_text")
+    await publisher.publish(message)  # Pydantic model
+    await publisher.publish({"some_dict": "dict_data"})  # Dictionary
+    await publisher.publish("some_string_text")  # String
+    await publisher.publish(b"some_byte_text")  # Bytes
+
+
+# --8<-- [end:publish_formats]

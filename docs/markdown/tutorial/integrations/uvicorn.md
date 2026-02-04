@@ -29,6 +29,15 @@ sequenceDiagram
 3. Your app's startup hooks run, starting subscriber background tasks
 4. Uvicorn runs the event loop, handling both HTTP and Pub/Sub
 
+---
+
+## Step-by-Step
+
+1. Set credentials or emulator host.
+2. Run `fastpubsub run module:app`.
+3. Use CLI flags to configure host, port, and workers.
+4. Confirm subscribers started in the logs.
+
 ## Server Configuration
 
 Control the HTTP server using CLI options:
@@ -224,33 +233,13 @@ spec:
 
 ## Direct Uvicorn Usage
 
-You can also run FastPubSub directly with Uvicorn (bypassing the CLI):
-
-```bash
-uvicorn myapp:app --host 0.0.0.0 --port 8080 --workers 4
-```
-
-!!! warning "CLI Recommended"
-    Using `fastpubsub run` is recommended because it:
-
-    - Validates credentials before starting
-    - Sets up logging properly
-    - Supports subscriber selection (`-s`)
-    - Handles FastPubSub-specific configuration
+FastPubSub applications must be started with the `fastpubsub run` CLI. The CLI wires in subscriber startup, validates credentials, and applies FastPubSub-specific configuration. Running `uvicorn` directly is not supported and will skip required FastPubSub initialization.
 
 ## Best Practices
 
-!!! tip "Use Multiple Workers in Production"
-    Running multiple workers improves reliability. If one worker crashes, others continue serving.
-
-!!! tip "Set Resource Limits"
-    In containers, limit CPU and memory. Uvicorn workers share the container's resources.
-
-!!! tip "Monitor Worker Health"
-    Use the built-in health endpoints (`/consumers/alive`, `/consumers/ready`) to monitor each worker.
-
-!!! tip "Match Workers to Resources"
-    Don't run more workers than you have CPU cores. Excess workers compete for resources.
+1. **Use Multiple Workers in Production:** Running multiple workers improves reliability. If one worker crashes, others continue serving.
+2. **Set Resource Limits:** In containers, limit CPU and memory. Uvicorn workers share the container's resources.
+3. **Monitor Worker Health:** Use the built-in health endpoints (`/consumers/alive`, `/consumers/ready`) to monitor each worker.
 
 ## Recap
 
