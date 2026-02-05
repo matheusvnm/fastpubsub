@@ -1,21 +1,3 @@
-"""Title: Latency Tracking Middleware
-
-Demonstrates performance monitoring with latency tracking.
-
-This example shows:
-- Calculating message age
-- Tracking processing time
-- Logging performance metrics
-
-Run with:
-    fastpubsub run docs.snippets.observability.e1_03_latency_middleware:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:latency_full]
 import time
 from datetime import UTC, datetime
 
@@ -74,4 +56,3 @@ async def handler(message: Message):
 
 
 # --8<-- [end:debug_handler]
-# --8<-- [end:latency_full]

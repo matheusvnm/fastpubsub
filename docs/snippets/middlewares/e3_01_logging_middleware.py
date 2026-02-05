@@ -1,8 +1,3 @@
-"""Title: Logging Middleware Example
-
-Demonstrates a complete logging middleware with timing and error handling.
-"""
-
 import time
 from typing import Any
 
@@ -10,7 +5,6 @@ from fastpubsub import BaseMiddleware, Message
 from fastpubsub.logger import logger
 
 
-# --8<-- [start:full_logging_middleware]
 class FullLoggingMiddleware(BaseMiddleware):
     async def on_message(self, message: Message) -> Any:
         start_time = time.monotonic()
@@ -37,6 +31,3 @@ class FullLoggingMiddleware(BaseMiddleware):
 
         attributes["x-trace-id"] = "some-trace-id"
         await super().on_publish(data, ordering_key, attributes)
-
-
-# --8<-- [end:full_logging_middleware]

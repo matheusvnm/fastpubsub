@@ -1,21 +1,3 @@
-"""Title: Message Ordering
-
-Demonstrates message ordering for sequential processing.
-
-This example shows:
-- Enabling message ordering on subscribers
-- Creating ordered publishers
-- Use cases for ordering (sessions, state machines, inventory)
-
-Run with:
-    fastpubsub run docs.snippets.advanced.e1_04_ordering:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:ordering_full]
 from fastpubsub import FastPubSub, Message, PubSubBroker
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
@@ -43,6 +25,8 @@ async def process_event(data: bytes) -> None:
 async def process_user_events(message: Message):
     user_id = message.ordering_key
     await update_user_state(user_id, message.data)
+
+
 # --8<-- [end:ordered_subscriber]
 
 
@@ -63,6 +47,8 @@ async def user_action():
         data={"action": "update_profile", "user_id": "user-123"},
         ordering_key="user-123",  # Guaranteed to be processed after the login message
     )
+
+
 # --8<-- [end:ordered_publisher]
 
 
@@ -78,6 +64,8 @@ async def user_action():
 )
 async def process_ordered(message: Message):
     await process_event(message.data)
+
+
 # --8<-- [end:ordered_with_dlt]
 
 
@@ -115,6 +103,8 @@ async def track_session(message: Message):
 
     # Events arrive in order: login → page_view → purchase → logout
     await session_store.append_event(user_id, event)
+
+
 # --8<-- [end:usecase_sessions]
 
 
@@ -133,6 +123,8 @@ async def process_order_state(message: Message):
 
     # Transitions arrive in order: created → paid → shipped → delivered
     await state_machine.transition(order_id, transition)
+
+
 # --8<-- [end:usecase_state_machine]
 
 
@@ -151,5 +143,6 @@ async def update_inventory(message: Message):
 
     # +10, -5, +3 applied in correct order
     await inventory_db.update_quantity(sku, delta)
+
+
 # --8<-- [end:usecase_inventory]
-# --8<-- [end:ordering_full]

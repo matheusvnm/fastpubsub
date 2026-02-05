@@ -32,11 +32,14 @@ async def handle_task(message: Message):
     """Consumes messages from the 'tasks' topic."""
     task = UserTask.model_validate_json(message.data)
     logger.info(f"Processing task for user {task.user_id}...")
+
+
 # --8<-- [end:hybrid_app]
 
 
 class MyData(BaseModel):
     value: str
+
 
 # --8<-- [start:async_endpoint]
 # Correct
@@ -44,6 +47,8 @@ class MyData(BaseModel):
 async def submit_data(data: MyData):
     await broker.publish(topic_name="events", data=data)
     return {"status": "ok"}
+
+
 # --8<-- [end:async_endpoint]
 
 
@@ -62,6 +67,8 @@ async def get_order(order_id: str, include_items: bool = False):
     if include_items:
         order["items"] = await fetch_items(order_id)
     return order
+
+
 # --8<-- [end:path_params]
 
 
@@ -70,15 +77,19 @@ class CreateOrder(BaseModel):
     product_id: str
     quantity: int = Field(gt=0)
 
+
 @app.post("/orders/")
 async def create_order(order: CreateOrder):
     await broker.publish("orders", data=order)
     return {"status": "queued"}
+
+
 # --8<-- [end:request_body]
 
 
 # --8<-- [start:fastapi_router]
 api_router = APIRouter(prefix="/api/v1")
+
 
 @api_router.get("/status")
 async def status():
@@ -98,8 +109,11 @@ class OrderResponse(BaseModel):
     order_id: str
     status: str
 
+
 @app.post("/new-orders/", response_model=OrderResponse)
 async def create_new_order(order: CreateOrder):
     order_id = await process_order(order)
     return OrderResponse(order_id=order_id, status="created")
+
+
 # --8<-- [end:response_model]

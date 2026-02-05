@@ -17,11 +17,14 @@ class MyAwesomeUseCase:
         # Then publish the event
         return await self.publisher.publish(data=data)
 
+
 # --8<-- [end:publisher_di_usecase]
 # --8<-- [start:publisher_di_model]
 class User(BaseModel):
     name: str
     age: int
+
+
 # --8<-- [end:publisher_di_model]
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
@@ -31,6 +34,7 @@ app = FastPubSub(broker)
 # Create a dedicated publisher for user events
 user_publisher = broker.publisher("new-users-topic")
 # --8<-- [end:publisher_di_setup]
+
 
 @broker.subscriber(
     "user-events-handler",
@@ -52,5 +56,6 @@ async def receive_new_user(user: User) -> dict[str, str]:
     await use_case.execute(user.model_dump())
 
     return {"message": "Use case executed successfully"}
+
 
 # --8<-- [end:publisher_di_endpoint]

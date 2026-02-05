@@ -12,6 +12,7 @@ from fastpubsub.logger import logger
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 
+
 class UserAuthMiddleware(BaseMiddleware):
     async def on_message(self, message: Message) -> Any:
         logger.info(f"[Users] Auth check for message: {message.id}")

@@ -133,13 +133,13 @@ curl -X POST "http://127.0.0.1:8000/addresses/" \
 You should see output like this in your terminal:
 
 ```
-2026-02-04 21:14:08,423 | INFO     | 89994:8702897216 | runner:run:76 | FastPubSub app starting... 
-2026-02-04 21:14:08,502 | INFO     | 89994:8702897216 | tasks:start:80 | The handle_message handler is waiting for messages. 
-2026-02-04 21:14:15,585 | INFO     | 89994:8702897216 | e0_01_first_steps:create_address:22 | Address received: street='5th Avenue' number='1548' 
-2026-02-04 21:14:15,618 | INFO     | 89994:8702897216 | pubsub:publish:248 | Message published for topic projects/your-project-id/topics/address-events with id 19 
-2026-02-04 21:14:15,666 | INFO     | 89994:8702897216 | e0_01_first_steps:handle_message:35 | The message 19 arrived. | message_id=19 | topic_name=address-events | subscriber_name=handle_message 
-2026-02-04 21:14:15,667 | INFO     | 89994:8702897216 | e0_01_first_steps:handle_message:37 | Address: street='5th Avenue' number='1548' | message_id=19 | topic_name=address-events | subscriber_name=handle_message 
-2026-02-04 21:14:15,668 | INFO     | 89994:8702897216 | tasks:_consume:107 | The message successfully processed. | message_id=19 | topic_name=address-events | subscriber_name=handle_message 
+2026-02-04 21:14:08,423 | INFO     | 89994:8702897216 | runner:run:76 | FastPubSub app starting...
+2026-02-04 21:14:08,502 | INFO     | 89994:8702897216 | tasks:start:80 | The handle_message handler is waiting for messages.
+2026-02-04 21:14:15,585 | INFO     | 89994:8702897216 | e0_01_first_steps:create_address:22 | Address received: street='5th Avenue' number='1548'
+2026-02-04 21:14:15,618 | INFO     | 89994:8702897216 | pubsub:publish:248 | Message published for topic projects/your-project-id/topics/address-events with id 19
+2026-02-04 21:14:15,666 | INFO     | 89994:8702897216 | e0_01_first_steps:handle_message:35 | The message 19 arrived. | message_id=19 | topic_name=address-events | subscriber_name=handle_message
+2026-02-04 21:14:15,667 | INFO     | 89994:8702897216 | e0_01_first_steps:handle_message:37 | Address: street='5th Avenue' number='1548' | message_id=19 | topic_name=address-events | subscriber_name=handle_message
+2026-02-04 21:14:15,668 | INFO     | 89994:8702897216 | tasks:_consume:107 | The message successfully processed. | message_id=19 | topic_name=address-events | subscriber_name=handle_message
 ```
 
 Notice how the logs include context like `message_id`, `topic_name`, and the handler `subscriber_name`. FastPubSub automatically adds this information to help with debugging and monitoring.

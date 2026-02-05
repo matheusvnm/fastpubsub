@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://github.com/matheusvnm/fastpubsub"><img src="https://github.com/matheusvnm/fastpubsub/blob/dev/docs/logo.png" alt="FastPubSub"></a>
+  <a href="https://github.com/matheusvnm/fastpubsub"><img src="https://raw.githubusercontent.com/matheusvnm/fastpubsub/main/docs/markdown/assets/images/logo.png" alt="FastPubSub"></a>
 </p>
 
 <p align="center">

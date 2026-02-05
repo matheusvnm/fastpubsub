@@ -26,6 +26,7 @@ broker = PubSubBroker(
 
 app = FastPubSub(broker)
 
+
 @broker.subscriber(
     "test-handler",
     topic_name="test-topic",

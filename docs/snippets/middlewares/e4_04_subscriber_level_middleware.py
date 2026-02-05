@@ -24,10 +24,10 @@ app = FastPubSub(broker)
 async def handle_message(message: Message):
     print(message)
 
+
 # --8<-- [end:subscriber_middleware]
 
 
 @app.after_startup
 async def publish_test():
     await broker.publish("events", {"event": "test"})
-# --8<-- [end:subscriber_level_full]

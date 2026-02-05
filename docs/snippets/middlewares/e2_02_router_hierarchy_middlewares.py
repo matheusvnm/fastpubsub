@@ -1,24 +1,3 @@
-"""Title: Router Middleware via include_middleware()
-
-Demonstrates adding middleware using the include_middleware() method.
-
-This example shows:
-- Adding middleware after router/broker creation using include_middleware()
-- Adding routers after creation using include_router()
-- Alternative approach to initialization-time middleware configuration
-
-This is functionally equivalent to e2_01 but uses method calls instead
-of constructor parameters, which can be more flexible for dynamic configuration.
-
-Run with:
-    fastpubsub run examples.middlewares.e2_02_router_hierarchy_middlewares:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:router_hierarchy_methods_full]
 from middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubRouterMiddleware
 
 from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
@@ -74,6 +53,3 @@ async def subrouter_handle(_: Message) -> None:
 @app.after_startup
 async def after_started() -> None:
     await broker.publish(topic_name="some_test_topic", data={"A": "B"})
-
-
-# --8<-- [end:router_hierarchy_methods_full]

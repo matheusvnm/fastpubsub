@@ -9,7 +9,7 @@ repo_name = "matheusvnm/fastpubsub"
 repo_url = "https://github.com/matheusvnm/fastpubsub"
 copyright = "Copyright &copy; 2026 FastPubSub"
 
-site_dir = "_build"
+site_dir = "site"
 docs_dir = "markdown"
 
 extra_css = ["stylesheets/extra.css"]
@@ -31,7 +31,7 @@ nav = [
             { "Middlewares" = "tutorial/user-guide/middlewares.md" },
             { "Message Lifecycle and Acknowledgement" = "tutorial/user-guide/lifecycle.md" },
             { "Command-Line Interface (CLI)" = "tutorial/user-guide/cli.md" },
-            { "Testing" = "tutorial/user-guide/testing.md" },
+            # { "Testing" = "tutorial/user-guide/testing.md" },
             { "Deployment" = "tutorial/user-guide/deployment.md"},
             { "Observability" = "tutorial/user-guide/observability.md"},
             { "Troubleshooting" = "tutorial/user-guide/troubleshooting.md"},
@@ -42,17 +42,17 @@ nav = [
             { "Uvicorn" = "tutorial/integrations/uvicorn.md" },
         ]},
     ]},
-    {"Advanced Topics" = [
-        {"User Guide" = [
-            { "Custom Middlewares" = "advanced/custom-middlewares.md"},
-            { "Dead-Letter Topics" = "advanced/dlt.md"},
-            { "Message Filtering" = "advanced/filters.md"},
-            { "Exactly-Once Delivery" = "advanced/delivery-guarantees.md"},
-            { "Message Ordering" = "advanced/ordering.md"},
-            { "Performance Tuning" = "advanced/tuning.md"},
-            { "Cross-Project Configuration" = "advanced/multiple-projects.md"},
-        ]},
-    ]},
+    #{"Advanced Topics" = [
+    #    {"User Guide" = [
+    #        { "Custom Middlewares" = "advanced/custom-middlewares.md"},
+    #        { "Dead-Letter Topics" = "advanced/dlt.md"},
+    #        { "Message Filtering" = "advanced/filters.md"},
+    #        { "Exactly-Once Delivery" = "advanced/delivery-guarantees.md"},
+    #        { "Message Ordering" = "advanced/ordering.md"},
+    #        { "Performance Tuning" = "advanced/tuning.md"},
+    #        { "Cross-Project Configuration" = "advanced/multiple-projects.md"},
+    #    ]},
+    #]},
     { "API Documentation" = [
         { "Overview" = "reference/index.md" },
         { "Core" = [
@@ -71,7 +71,7 @@ nav = [
             { "Versioning" = "about/versions.md"},
         ]},
     ]},
-    { "Release Notes" = "about/release-notes.md" },
+    #{ "Release Notes" = "about/release-notes.md" },
 ]
 
 

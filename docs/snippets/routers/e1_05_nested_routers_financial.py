@@ -39,6 +39,8 @@ async def handle_message_banking(message: Message):
 )
 async def handle_message_finance(message: Message):
     logger.info(f"FINANCE handler received message {message.id}")
+
+
 # --8<-- [end:nested_handlers]
 
 # --8<-- [start:nested_broker]
@@ -48,6 +50,7 @@ broker.include_router(core_router)
 
 app = FastPubSub(broker)
 # --8<-- [end:nested_broker]
+
 
 @app.after_startup
 async def publish_test_messages():

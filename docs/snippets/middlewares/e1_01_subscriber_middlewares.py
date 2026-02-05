@@ -1,27 +1,3 @@
-"""Title: Subscriber Middleware Hierarchy
-
-Demonstrates middleware execution at different levels: broker, router, and subscriber.
-
-This example shows:
-- Adding middleware to a broker (affects all handlers)
-- Adding middleware to a router (affects router handlers and children)
-- Adding middleware to a specific subscriber (affects only that handler)
-- How middleware cascades through the hierarchy
-
-The middleware execution order for messages going through the hierarchy:
-1. Broker middleware runs first
-2. Router middleware runs for router subscribers
-3. Subscriber middleware runs for specific handlers
-
-Run with:
-    fastpubsub run examples.middlewares.e1_01_subscriber_middlewares:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:subscriber_middlewares_full]
 from middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubcriberMiddleware
 
 from fastpubsub import FastPubSub, Message, Middleware, PubSubBroker, PubSubRouter
@@ -83,6 +59,3 @@ async def router_handle_with_middleware(_: Message) -> None:
 @app.after_startup
 async def after_started() -> None:
     await broker.publish(topic_name="topic_one_mid", data={"A": "B"})
-
-
-# --8<-- [end:subscriber_middlewares_full]

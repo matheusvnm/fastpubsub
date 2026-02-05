@@ -23,4 +23,6 @@ async def handle_orders(message: Message):
 async def handle_notifications(message: Message):
     """Process notification messages."""
     pass
+
+
 # --8<-- [end:multiple_subscribers]

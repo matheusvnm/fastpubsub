@@ -3,6 +3,7 @@ from fastpubsub.logger import logger
 
 posts_router = PubSubRouter(prefix="posts")
 
+
 @posts_router.subscriber(
     alias="published",
     topic_name="posts-topic",

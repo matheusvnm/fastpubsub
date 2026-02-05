@@ -19,5 +19,5 @@ async def handle(message: Message) -> None:
 async def test_publish() -> None:
     await broker.publish("test-topic", {"hello": "world"})
 
-# --8<-- [end:broker_publish]
 
+# --8<-- [end:broker_publish]

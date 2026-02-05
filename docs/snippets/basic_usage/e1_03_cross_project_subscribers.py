@@ -37,4 +37,3 @@ async def process_message_alternative_project(message: Message) -> None:
 async def test_publish() -> None:
     await broker.publish("test-topic", "hi!")
     await broker.publish("test-topic", "hi!", project_id=ALTERNATIVE_PROJECT_ID)
-

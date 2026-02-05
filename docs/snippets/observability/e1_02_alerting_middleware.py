@@ -1,21 +1,3 @@
-"""Title: Alerting Middleware
-
-Demonstrates error rate monitoring and alerting middleware.
-
-This example shows:
-- Tracking error rates
-- Sending alerts when thresholds are exceeded
-- Monitoring dead-letter queues
-
-Run with:
-    fastpubsub run docs.snippets.observability.e1_02_alerting_middleware:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:alerting_full]
 from fastpubsub import BaseMiddleware, FastPubSub, Message, Middleware, PubSubBroker
 from fastpubsub.logger import logger
 
@@ -83,4 +65,3 @@ async def monitor_dead_letters(message: Message):
 
 
 # --8<-- [end:dlq_monitoring]
-# --8<-- [end:alerting_full]

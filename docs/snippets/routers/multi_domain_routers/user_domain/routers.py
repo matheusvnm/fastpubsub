@@ -1,8 +1,8 @@
 from fastpubsub import Message, PubSubRouter
 from fastpubsub.logger import logger
 
-
 users_router = PubSubRouter(prefix="users")
+
 
 @users_router.subscriber(
     alias="created",

@@ -1,22 +1,3 @@
-"""Title: Performance Tuning
-
-Demonstrates performance tuning parameters and patterns.
-
-This example shows:
-- Concurrency control with max_messages
-- Processing time with ack_deadline_seconds
-- Retry backoff configuration
-- Complete tuned configuration
-
-Run with:
-    fastpubsub run docs.snippets.advanced.e1_06_tuning:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:tuning_full]
 from fastpubsub import FastPubSub, Message, Middleware, PubSubBroker
 from fastpubsub.middlewares import GZipMiddleware
 
@@ -53,6 +34,8 @@ async def handle_event(data: bytes) -> None:
 )
 async def high_throughput_handler(message: Message):
     await fast_async_operation(message.data)
+
+
 # --8<-- [end:high_concurrency]
 
 
@@ -75,6 +58,8 @@ http_client = HTTPClient()
 )
 async def call_external_api(message: Message):
     await http_client.post("/api/endpoint", json={"data": message.data})
+
+
 # --8<-- [end:io_bound]
 
 
@@ -99,6 +84,8 @@ async def save_result(result: dict) -> None:
 async def process_data(message: Message):
     result = compute_heavy_operation(message.data)
     await save_result(result)
+
+
 # --8<-- [end:cpu_bound]
 
 
@@ -121,6 +108,8 @@ rate_limited_client = RateLimitedClient()
 )
 async def call_rate_limited_api(message: Message):
     await rate_limited_client.call(message.data)
+
+
 # --8<-- [end:rate_limited]
 
 
@@ -134,6 +123,8 @@ async def call_rate_limited_api(message: Message):
 )
 async def slow_handler(message: Message):
     await complex_ml_inference(message.data)
+
+
 # --8<-- [end:ack_deadline]
 
 
@@ -149,6 +140,8 @@ async def slow_handler(message: Message):
 )
 async def handle_transient_event(message: Message):
     await send_notification(message.data)
+
+
 # --8<-- [end:transient_backoff]
 
 
@@ -173,6 +166,8 @@ external_service = ExternalService()
 )
 async def call_external_service(message: Message):
     await external_service.process(message.data)
+
+
 # --8<-- [end:external_backoff]
 
 
@@ -203,5 +198,6 @@ tuned_app = FastPubSub(tuned_broker)
 )
 async def process_optimized_event(message: Message):
     await handle_event(message.data)
+
+
 # --8<-- [end:complete_tuned]
-# --8<-- [end:tuning_full]

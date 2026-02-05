@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastpubsub import BaseMiddleware, FastPubSub, Message, Middleware, PubSubBroker
+from fastpubsub import BaseMiddleware, FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
 
 
@@ -39,4 +39,6 @@ async def handle_event(message: Message):
 @app.after_startup
 async def publish_with_trace():
     await my_publisher.publish(data={"hello": "world"})
+
+
 # --8<-- [end:publisher_usage]

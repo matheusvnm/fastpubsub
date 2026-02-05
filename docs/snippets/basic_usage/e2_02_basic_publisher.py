@@ -23,4 +23,5 @@ async def handle(message: Message) -> None:
 async def test_publish() -> None:
     await publisher.publish({"hello": "world"})
 
+
 # --8<-- [end:publisher_instance_publish]

@@ -48,6 +48,7 @@ async def process_message_third_project(message: Message) -> None:
 
 # --8<-- [end:cross_project_subscribers]
 
+
 @app.after_startup
 async def test_publish() -> None:
     await broker.publish("test-topic", "hi!")

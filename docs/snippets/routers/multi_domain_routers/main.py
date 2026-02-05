@@ -1,9 +1,7 @@
-from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
-from fastpubsub.logger import logger
+from fastpubsub import FastPubSub, PubSubBroker
 
-from .posts_domain import posts_router
-from .user_domain import users_router
-
+from .posts_domain.routers import posts_router
+from .user_domain.routers import users_router
 
 # --8<-- [start:main_app]
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
@@ -21,4 +19,6 @@ app = FastPubSub(broker)
 async def publish_test_messages():
     await users_router.publish("users-topic", data={"username": "Yugi"})
     await posts_router.publish("posts-topic", data={"title": "My New Post"})
+
+
 # --8<-- [end:router_publish]

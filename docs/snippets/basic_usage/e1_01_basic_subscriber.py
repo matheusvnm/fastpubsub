@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+
 from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
 
@@ -21,8 +22,10 @@ app = FastPubSub(broker)
     subscription_name="sub_name",
 )
 async def handle_message(message: Message):
-   logger.info(f"The message {message.id} is processed.")
-   await broker.publish(topic_name="out_topic", data="Hi!")
+    logger.info(f"The message {message.id} is processed.")
+    await broker.publish(topic_name="out_topic", data="Hi!")
+
+
 # --8<-- [end:basic_subscriber]
 
 
@@ -31,5 +34,6 @@ async def handle_message(message: Message):
 async def test_publish() -> None:
     address = Address(street="Av. Flores", number="213")
     await broker.publish(topic_name="in_topic", data=address)
+
 
 # --8<-- [end:basic_subscriber_startup]

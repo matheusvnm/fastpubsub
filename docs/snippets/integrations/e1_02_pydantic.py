@@ -42,6 +42,8 @@ async def create_order(order: OrderEvent):
     # Pydantic model is automatically serialized to JSON
     await broker.publish("orders", order)
     return {"status": "created"}
+
+
 # --8<-- [end:publish_model]
 
 
@@ -72,6 +74,8 @@ async def handle_user_event(message: Message):
     except ValidationError as e:
         # Invalid data - drop the message
         raise Drop(f"Invalid user event: {e}")
+
+
 # --8<-- [end:validate_incoming]
 
 
@@ -89,6 +93,8 @@ class PaymentEvent(BaseModel):
 async def handle_payment(message: Message):
     # Raises ValidationError if amount is missing
     event = PaymentEvent.model_validate_json(message.data)
+
+
 # --8<-- [end:required_fields]
 
 
@@ -107,6 +113,8 @@ class NotificationEvent(BaseModel):
 async def handle_notification(message: Message):
     event = NotificationEvent.model_validate_json(message.data)
     # body will be None if not provided
+
+
 # --8<-- [end:optional_fields]
 
 
@@ -125,6 +133,8 @@ class ConstrainedOrderEvent(BaseModel):
 async def handle_constrained_order(message: Message):
     # Validates constraints automatically
     event = ConstrainedOrderEvent.model_validate_json(message.data)
+
+
 # --8<-- [end:field_constraints]
 
 
@@ -148,6 +158,8 @@ async def receive_push(push_message: PushMessage):
 
     await process_event(event)
     return {"status": "ok"}
+
+
 # --8<-- [end:push_endpoint]
 
 
@@ -168,6 +180,8 @@ class OrderEventV2(BaseModel):
 async def handle_order_v2(message: Message):
     # Works with both old (no priority) and new messages
     event = OrderEventV2.model_validate_json(message.data)
+
+
 # --8<-- [end:schema_evolution]
 
 
@@ -184,5 +198,7 @@ class StrictEvent(BaseModel):
 
     order_id: str
     # Unknown fields raise ValidationError
+
+
 # --8<-- [end:extra_handling]
 # --8<-- [end:pydantic_full]

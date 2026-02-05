@@ -41,6 +41,8 @@ async def handle_orders(message: Message):
     # Only receives messages where event_type = "order"
     order_data = message.data
     await process_order(order_data)
+
+
 # --8<-- [end:basic_filter]
 
 
@@ -54,6 +56,8 @@ async def handle_orders(message: Message):
 async def handle_premium_urgent(message: Message):
     # Only receives high-priority tickets from premium customers
     await escalate_to_senior_support(message.data)
+
+
 # --8<-- [end:filter_and]
 
 
@@ -67,6 +71,8 @@ async def handle_premium_urgent(message: Message):
 async def handle_critical_alerts(message: Message):
     # Receives both critical and high severity alerts
     await page_on_call_engineer(message.data)
+
+
 # --8<-- [end:filter_or]
 
 
@@ -80,6 +86,8 @@ async def handle_critical_alerts(message: Message):
 async def handle_labeled(message: Message):
     # Receives any message that has a "label" attribute
     pass
+
+
 # --8<-- [end:filter_has_prefix]
 
 
@@ -114,4 +122,6 @@ async def handle_users(message: Message):
 )
 async def audit_all_events(message: Message):
     await log_to_audit_trail(message.data)
+
+
 # --8<-- [end:multiple_subscribers]

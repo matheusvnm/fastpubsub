@@ -44,7 +44,7 @@ await broker.publish(topic_name="my-topic", data={"hello": "world"})
 ### Example
 
 ```python
---8<-- "basic_usage/e2_01_basic_publisher.py:basic_publisher_full"
+--8<-- "basic_usage/e2_01_basic_publisher.py"
 ```
 
 ### When to Use
@@ -55,7 +55,7 @@ await broker.publish(topic_name="my-topic", data={"hello": "world"})
 - Topic name determined at runtime.
 
 ### Trade-offs
-- Flexible and simple, but can become repetitive if you frequently publish to the same topic. 
+- Flexible and simple, but can become repetitive if you frequently publish to the same topic.
 - The topic is specified every time, which can lead to typos caught only at runtime.
 - Dependency injection becomes harder.
 
@@ -99,7 +99,7 @@ This pattern works well with clean architecture and dependency injection:
 
 ### Trade-offs
 
-- It requires a minor, one-time setup for each dedicated topic. 
+- It requires a minor, one-time setup for each dedicated topic.
 - This might feel like boilerplate if you have dozens of topics being published from a single module.
 
 

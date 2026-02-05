@@ -22,4 +22,6 @@ async def handle_event(message: Message):
     # the message is nacked and redelivered
     data = json.loads(message.data)
     await process(data)
+
+
 # --8<-- [end:unhandled_handler]

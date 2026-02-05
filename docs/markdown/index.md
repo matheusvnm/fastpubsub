@@ -92,11 +92,11 @@ After running the command, you should see the following output:
 
 
 ```shell
-2026-02-04 21:00:07,469 | INFO     | 88674:8702897216 | runner:run:76 | FastPubSub app starting... 
-2026-02-04 21:00:07,999 | INFO     | 88674:8702897216 | tasks:start:80 | The handle_message handler is waiting for messages. 
-2026-02-04 21:00:08,028 | INFO     | 88674:8702897216 | pubsub:publish:248 | Message published for topic projects/fastpubsub-pubsub-local/topics/in_topic with id 17 
-2026-02-04 21:00:08,094 | INFO     | 88674:8702897216 | e1_01_basic_subscriber:handle_message:25 | The message 1 is processed. | message_id=17 | topic_name=in_topic | subscriber_name=handle_message 
-2026-02-04 21:00:08,125 | INFO     | 88674:8702897216 | pubsub:publish:248 | Message published for topic projects/fastpubsub-pubsub-local/topics/out_topic with id 18 | message_id=17 | topic_name=in_topic | subscriber_name=handle_message 
+2026-02-04 21:00:07,469 | INFO     | 88674:8702897216 | runner:run:76 | FastPubSub app starting...
+2026-02-04 21:00:07,999 | INFO     | 88674:8702897216 | tasks:start:80 | The handle_message handler is waiting for messages.
+2026-02-04 21:00:08,028 | INFO     | 88674:8702897216 | pubsub:publish:248 | Message published for topic projects/fastpubsub-pubsub-local/topics/in_topic with id 17
+2026-02-04 21:00:08,094 | INFO     | 88674:8702897216 | e1_01_basic_subscriber:handle_message:25 | The message 1 is processed. | message_id=17 | topic_name=in_topic | subscriber_name=handle_message
+2026-02-04 21:00:08,125 | INFO     | 88674:8702897216 | pubsub:publish:248 | Message published for topic projects/fastpubsub-pubsub-local/topics/out_topic with id 18 | message_id=17 | topic_name=in_topic | subscriber_name=handle_message
 2026-02-04 21:00:08,125 | INFO     | 88674:8702897216 | tasks:_consume:107 | The message successfully processed. | message_id=17 | topic_name=in_topic | subscriber_name=handle_message
 ```
 

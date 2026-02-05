@@ -22,4 +22,3 @@ async def test_publish() -> None:
 
 
 # --8<-- [end:publisher_in_startup]
-

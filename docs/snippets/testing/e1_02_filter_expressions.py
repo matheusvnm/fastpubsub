@@ -126,4 +126,3 @@ async def test_filter_with_missing_attributes(broker: PubSubBroker) -> None:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

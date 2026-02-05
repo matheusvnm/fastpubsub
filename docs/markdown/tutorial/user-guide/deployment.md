@@ -41,7 +41,7 @@ When you use `--workers N`, the CLI starts one master process managing N worker 
 
 !!! warning "Resource Scaling"
 
-    Be careful when increasing the number of workers. If one worker uses 100MB RAM, 4 workers use ~400MB total. 
+    Be careful when increasing the number of workers. If one worker uses 100MB RAM, 4 workers use ~400MB total.
 
 ---
 

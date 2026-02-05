@@ -1,20 +1,3 @@
-"""Title: Custom Middleware Implementations (Helper Module)
-
-Provides custom middleware classes used by other middleware examples.
-
-This module defines several middleware classes demonstrating different scopes:
-- BrokerMiddleware: Runs on all broker handlers and their children
-- RouterMiddleware: Runs on router handlers and their children
-- SubRouterMiddleware: Runs on sub-router handlers
-- SubcriberMiddleware: Runs only at subscriber level
-- PublisherMiddleware: Runs only on publish operations
-
-Each middleware implements both on_message (for receiving) and on_publish
-(for sending) methods to show the complete middleware interface.
-
-This is a helper module imported by other examples, not meant to be run directly.
-"""
-
 from typing import Any
 
 from fastpubsub import BaseMiddleware, Message

@@ -18,4 +18,6 @@ async def handle_events(message: Message):
         raise Drop("Schema version v1 is deprecated.")
 
     # Process v2+ events...
+
+
 # --8<-- [end:drop_handler]

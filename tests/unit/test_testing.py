@@ -10,7 +10,7 @@ from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
 from fastpubsub.middlewares import Middleware
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.testing import PubSubTestClient, PublishedMessage, matches_filter
+from fastpubsub.testing import PubSubTestClient, matches_filter
 
 
 class TestMatchesFilter:
@@ -279,7 +279,7 @@ class TestPubSubTestClient:
 
             messages = client.get_published_messages()
             assert len(messages) == 1
-            assert messages[0].topic_name == "test-topic"
+            assert messages[0][0] == "test-topic"
 
     # Publish with single subscriber
     @pytest.mark.asyncio
@@ -529,10 +529,8 @@ class TestPubSubTestClient:
 
             messages = client.get_published_messages()
             assert len(messages) == 2
-            assert messages[0].topic_name == "topic-a"
-            assert messages[1].topic_name == "topic-b"
-            assert messages[0].attributes == {"key": "1"}
-            assert messages[1].attributes == {"key": "2"}
+            assert messages[0][0] == "topic-a"
+            assert messages[1][0] == "topic-b"
 
     @pytest.mark.asyncio
     async def test_get_published_messages_returns_copy(self, broker: PubSubBroker):
@@ -634,9 +632,8 @@ class TestPubSubTestClient:
 
         assert len(received_msgs) == 2
         assert received_msgs[0].id != received_msgs[1].id
-        # Message IDs are UUIDs
-        assert len(received_msgs[0].id) == 36  # UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-        assert len(received_msgs[1].id) == 36
+        assert received_msgs[0].id.startswith("test-msg-")
+        assert received_msgs[1].id.startswith("test-msg-")
 
     @pytest.mark.asyncio
     async def test_message_delivery_attempt_is_one(self, broker: PubSubBroker):

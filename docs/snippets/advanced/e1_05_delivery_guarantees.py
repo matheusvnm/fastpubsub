@@ -1,22 +1,3 @@
-"""Title: Delivery Guarantees - Exactly-Once Delivery
-
-Demonstrates exactly-once delivery and idempotent handler patterns.
-
-This example shows:
-- Enabling exactly-once delivery
-- Idempotent handler patterns
-- Database and Redis idempotency checks
-- Combining exactly-once with other features
-
-Run with:
-    fastpubsub run docs.snippets.advanced.e1_05_delivery_guarantees:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:delivery_guarantees_full]
 from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
 
@@ -55,6 +36,8 @@ async def mark_as_processed(event_id: str) -> None:
 async def process_payment(message: Message):
     # Guaranteed to run exactly once per message
     await charge_customer(message.data)
+
+
 # --8<-- [end:exactly_once]
 
 
@@ -75,6 +58,8 @@ async def idempotent_handler(message: Message):
 
     await process_event(message.data)
     await mark_as_processed(event_id)
+
+
 # --8<-- [end:idempotent_handler]
 
 
@@ -114,6 +99,8 @@ async def db_idempotent_handler(message: Message):
         return  # Already processed
 
     await fulfill_order(message.data)
+
+
 # --8<-- [end:idempotent_database]
 
 
@@ -142,6 +129,8 @@ async def redis_idempotent_handler(message: Message):
         return  # Already processed
 
     await process_event(message.data)
+
+
 # --8<-- [end:idempotent_redis]
 
 
@@ -162,5 +151,6 @@ async def redis_idempotent_handler(message: Message):
 )
 async def process_critical_payment(message: Message):
     await charge_customer(message.data)
+
+
 # --8<-- [end:exactly_once_combined]
-# --8<-- [end:delivery_guarantees_full]

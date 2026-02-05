@@ -1,24 +1,3 @@
-"""Title: Built-in GZip Middleware
-
-Demonstrates using FastPubSub's built-in GZipMiddleware for message compression.
-
-This example shows:
-- Using the built-in GZipMiddleware
-- Adding middleware with configuration parameters (compresslevel)
-- How compressed messages automatically get 'content-encoding' attribute
-
-The GZipMiddleware compresses message data before publishing and adds
-a 'content-encoding' attribute. This reduces bandwidth usage for large messages.
-
-Run with:
-    fastpubsub run examples.middlewares.e1_03_common_middlewares:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:gzip_middleware_full]
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
@@ -46,6 +25,3 @@ async def broker_gzip_message(message: Message) -> None:
 async def test_publish() -> None:
     publisher = broker.publisher("gzipped_topic")
     await publisher.publish("Hi!")
-
-
-# --8<-- [end:gzip_middleware_full]

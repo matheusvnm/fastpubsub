@@ -24,4 +24,5 @@ async def handle_order(message: Message):
         # Service is slow, retry later
         raise Retry("Downstream service timed out.")
 
+
 # --8<-- [end:retry_handler]

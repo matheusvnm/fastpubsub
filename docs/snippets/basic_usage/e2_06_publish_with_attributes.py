@@ -53,6 +53,7 @@ async def publish_with_broker() -> None:
 # --8<-- [start:publish_attributes_publisher]
 event_publisher: Publisher = broker.publisher("events")
 
+
 @app.after_startup
 async def publish_with_publisher() -> None:
     await event_publisher.publish(

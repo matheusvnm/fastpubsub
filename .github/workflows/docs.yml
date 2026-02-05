@@ -1,9 +1,13 @@
 name: Documentation
 on:
+  workflow_dispatch:
   push:
     branches:
-      - master
       - main
+env:
+  UV_LINK_MODE: "copy"
+  UV_PYTHON_VERSION: "3.12"
+
 permissions:
   contents: read
   pages: write
@@ -15,15 +19,20 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/configure-pages@v5
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v5
+      - name: Setup just command
+        uses: extractions/setup-just@v3
         with:
-          python-version: 3.x
-      - run: pip install zensical
-      - run: zensical build --clean
+          just-version: '1.43.0'
+      - name: Install uv command
+        uses: astral-sh/setup-uv@v7
+      - name: Install base python with doc dependencies
+        run: just init-group $UV_PYTHON_VERSION docs
+      - name: Build docs
+        run: just build-docs
+      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: site
+          path: docs/site
       - uses: actions/deploy-pages@v4
         id: deployment

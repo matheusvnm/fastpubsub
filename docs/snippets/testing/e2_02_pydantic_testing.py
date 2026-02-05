@@ -56,4 +56,3 @@ async def test_process_new_user():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-

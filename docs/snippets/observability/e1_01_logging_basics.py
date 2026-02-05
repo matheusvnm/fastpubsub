@@ -1,21 +1,3 @@
-"""Title: Logging Basics
-
-Demonstrates FastPubSub's built-in logging features.
-
-This example shows:
-- Using the built-in logger
-- Context-aware logging
-- Custom context with contextualize()
-
-Run with:
-    fastpubsub run docs.snippets.observability.e1_01_logging_basics:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:logging_full]
 from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
 
@@ -91,4 +73,3 @@ async def handler(message: Message):
 
 
 # --8<-- [end:log_levels]
-# --8<-- [end:logging_full]

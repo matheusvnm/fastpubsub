@@ -143,7 +143,7 @@ readinessProbe:
 For Google Cloud Logging:
 
 ```python
---8<-- "observability/e1_04_cloud_logging.py:cloud_logging_full"
+--8<-- "observability/e1_04_cloud_logging.py"
 ```
 
 

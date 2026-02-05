@@ -6,9 +6,11 @@ pubsub_emulator_host := "localhost:8085"
 
 # DIRECTORIES
 
-target_dirs := "fastpubsub tests docs/snippets benchmarks"
-lint_dirs := "fastpubsub docs/snippets benchmarks"
-lint_extra_dirs := "fastpubsub docs/snippets tests benchmarks"
+lint_dirs := "fastpubsub benchmarks"
+# We should put docs/snippets, but let us not format/lint documentation code for now
+target_dirs := "fastpubsub tests benchmarks"
+lint_extra_dirs := "fastpubsub tests benchmarks"
+
 pre_commit_hook_path := ".git/hooks/pre-commit"
 docs_dir := "docs/"
 
@@ -243,6 +245,15 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
     just _start_msg "Setting up pre-commit hooks"
     uv run pre-commit install --install-hooks
 
+
+[doc("Initialize the environment with specific groups without extras")]
+[group('dev')]
+@init-group python=python_version group="dev":
+    just _start_msg "Setting up python {{ python }}"
+    uv python install {{ python }}
+    uv python pin {{ python }}
+    uv sync --group {{ group }}
+
 [doc("Cleans the environment from temporary files")]
 [group('dev')]
 [windows]
@@ -258,6 +269,8 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
     find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
     find . -type f -name "*.pyc" -delete 2>/dev/null || true
     rm -rf .pytest_cache htmlcov .coverage .cov dist/ fastpubsub.egg-info/ 2>/dev/null || true
+    rm -rf site/ docs/.cache .cache/ 2>/dev/null || true
+    rm -rf *.log 2>/dev/null || true
 
 # ----------------------------------------------------------------------------
 # Documentation Commands
@@ -267,7 +280,7 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 [group('docs')]
 @build-docs:
     just _start_msg "Building documentation"
-    uv run zensical build --clean docs/ -o docs/_build
+    uv run zensical build --clean -f docs/zensical.toml
 
 [doc("Creates the Zensical static documentation")]
 [group('docs')]

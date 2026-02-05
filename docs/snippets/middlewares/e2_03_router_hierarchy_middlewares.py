@@ -1,25 +1,3 @@
-"""Title: Middleware Order Independence
-
-Demonstrates that middleware and routers can be added in any order.
-
-This example shows:
-- Adding routers before adding middleware
-- Adding middleware after router relationships are established
-- The final middleware chain is the same regardless of configuration order
-
-FastPubSub resolves the middleware hierarchy at runtime, so you can configure
-brokers, routers, and middleware in whatever order is most convenient for
-your application structure.
-
-Run with:
-    fastpubsub run examples.middlewares.e2_03_router_hierarchy_middlewares:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:order_independence_full]
 from middlewares.middlewares import BrokerMiddleware, RouterMiddleware, SubRouterMiddleware
 
 from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
@@ -76,6 +54,3 @@ async def subrouter_handle(_: Message) -> None:
 @app.after_startup
 async def after_started() -> None:
     await broker.publish(topic_name="some_test_topic", data={"A": "B"})
-
-
-# --8<-- [end:order_independence_full]

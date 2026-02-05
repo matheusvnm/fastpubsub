@@ -1,20 +1,3 @@
-"""Title: Cloud Logging Integration
-
-Demonstrates integration with Google Cloud Logging.
-
-This example shows:
-- Setting up Cloud Logging client
-- Using FastPubSub logger with Cloud Logging
-- Automatic log forwarding
-
-Run with:
-    fastpubsub run docs.snippets.observability.e1_04_cloud_logging:app
-
-Requirements:
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-    - Install google-cloud-logging: pip install google-cloud-logging
-"""
-
 # --8<-- [start:cloud_logging_full]
 import google.cloud.logging
 
@@ -41,4 +24,3 @@ async def handler(message: Message):
 
 
 # --8<-- [end:cloud_logging_handler]
-# --8<-- [end:cloud_logging_full]

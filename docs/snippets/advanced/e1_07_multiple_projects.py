@@ -1,22 +1,3 @@
-"""Title: Cross-Project Configuration
-
-Demonstrates cross-project subscribers and publishers.
-
-This example shows:
-- Cross-project subscribers with project_id override
-- Cross-project publishers
-- Router-level cross-project configuration
-- Nested routers with project inheritance
-
-Run with:
-    fastpubsub run docs.snippets.advanced.e1_07_multiple_projects:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:multiple_projects_full]
 from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
 
 broker = PubSubBroker(project_id="project-a")
@@ -74,6 +55,8 @@ async def handle_local_events(message: Message):
 )
 async def handle_cross_project_events(message: Message):
     await process_shared_event(message.data)
+
+
 # --8<-- [end:cross_project_subscriber]
 
 
@@ -84,6 +67,7 @@ local_publisher = broker.publisher("local-events")
 # Publisher for a different project
 cross_project_publisher = broker.publisher("shared-events", project_id="project-b")
 
+
 @app.post("/send-event")
 async def send_event(data: dict):
     # Publish to local project
@@ -91,6 +75,8 @@ async def send_event(data: dict):
 
     # Publish to other project
     await cross_project_publisher.publish(data)
+
+
 # --8<-- [end:cross_project_publisher]
 
 
@@ -201,5 +187,6 @@ async def create_order(order: dict):
         {"order_id": order["id"], "action": "created"},
         project_id="shared-platform",
     )
+
+
 # --8<-- [end:complete_example]
-# --8<-- [end:multiple_projects_full]

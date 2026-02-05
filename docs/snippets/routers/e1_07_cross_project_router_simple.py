@@ -11,6 +11,7 @@ external_router = PubSubRouter(
     project_id="project-b",
 )
 
+
 @external_router.subscriber(
     alias="handler",
     topic_name="events",
@@ -25,6 +26,7 @@ broker.include_router(external_router)
 
 
 app = FastPubSub(broker)
+
 
 @app.after_startup
 async def publish_test():
