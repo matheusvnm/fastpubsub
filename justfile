@@ -6,10 +6,13 @@ pubsub_emulator_host := "localhost:8085"
 
 # DIRECTORIES
 
-target_dirs := "fastpubsub tests examples benchmarks"
-lint_dirs := "fastpubsub examples benchmarks"
-lint_extra_dirs := "fastpubsub examples tests benchmarks"
+lint_dirs := "fastpubsub benchmarks"
+# We should put docs/snippets, but let us not format/lint documentation code for now
+target_dirs := "fastpubsub tests benchmarks"
+lint_extra_dirs := "fastpubsub tests benchmarks"
+
 pre_commit_hook_path := ".git/hooks/pre-commit"
+docs_dir := "docs/"
 
 # COLORS
 
@@ -32,6 +35,7 @@ run_test_command := "docker compose exec fastpubsub python -m"
 # ENVIRONMENT VAR EXPORTS
 
 export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
+export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 
 [doc("All commands information")]
 @default:
@@ -85,6 +89,7 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 
 # ----------------------------------------------------------------------------
 # Linting Tools Commands
+# ----------------------------------------------------------------------------
 
 [doc("Execute all checks (lint, security and static analysis)")]
 [group("lint")]
@@ -240,6 +245,15 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
     just _start_msg "Setting up pre-commit hooks"
     uv run pre-commit install --install-hooks
 
+
+[doc("Initialize the environment with specific groups without extras")]
+[group('dev')]
+@init-group python=python_version group="dev":
+    just _start_msg "Setting up python {{ python }}"
+    uv python install {{ python }}
+    uv python pin {{ python }}
+    uv sync --group {{ group }}
+
 [doc("Cleans the environment from temporary files")]
 [group('dev')]
 [windows]
@@ -255,6 +269,24 @@ export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
     find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
     find . -type f -name "*.pyc" -delete 2>/dev/null || true
     rm -rf .pytest_cache htmlcov .coverage .cov dist/ fastpubsub.egg-info/ 2>/dev/null || true
+    rm -rf site/ docs/.cache .cache/ 2>/dev/null || true
+    rm -rf *.log 2>/dev/null || true
+
+# ----------------------------------------------------------------------------
+# Documentation Commands
+# ----------------------------------------------------------------------------
+
+[doc("Creates the Zensical static documentation")]
+[group('docs')]
+@build-docs:
+    just _start_msg "Building documentation"
+    uv run zensical build --clean -f docs/zensical.toml
+
+[doc("Creates the Zensical static documentation")]
+[group('docs')]
+@serve-docs:
+    just _start_msg "Starting documentation server"
+    uv run zensical serve -f {{ docs_dir }}/zensical.toml -a localhost:8001
 
 # ----------------------------------------------------------------------------
 # Private Commands

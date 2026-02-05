@@ -1,9 +1,9 @@
 <p align="center">
-  <a href="https://github.com/matheusvnm/fastpubsub"><img src="https://github.com/matheusvnm/fastpubsub/blob/dev/docs/logo.png" alt="FastPubSub"></a>
+  <a href="https://github.com/matheusvnm/fastpubsub"><img src="https://raw.githubusercontent.com/matheusvnm/fastpubsub/main/docs/markdown/assets/images/logo.png" alt="FastPubSub"></a>
 </p>
 
 <p align="center">
-    <em>A high performance FastAPI-based message consumer framework for Google PubSub</em>
+    <em>A high-performance, asyncio-native framework for Google Cloud Pub/Sub applications.</em>
 </p>
 
 
@@ -124,8 +124,7 @@ And multiprocessing horizontal scaling feature as well:
 fastpubsub run basic:app --workers 3
 ```
 
-You can learn more about CLI's features [here](https://github.com/matheusvnm/fastpubsub/wiki/Command-Line-Interface-(CLI)).
-
+We just scratched the surface, but you already get the idea of how a basic structure works. Everything developed into FastPubSub is though to improve software development experience and provide great productivity with high-performance garantees.
 
 ## Contact
 

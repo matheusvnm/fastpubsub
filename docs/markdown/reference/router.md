@@ -1,0 +1,3 @@
+# `PubSubRouter` class
+
+::: fastpubsub.PubSubRouter

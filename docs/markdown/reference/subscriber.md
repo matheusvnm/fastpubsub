@@ -1,0 +1,3 @@
+# `Subscriber` class
+
+::: fastpubsub.Subscriber
