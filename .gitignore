@@ -140,8 +140,12 @@ cython_debug/
 .vscode/
 .code/
 .tmp/
+tmp/
 .localstack/
 .poetry/
 .python-version/
 .secrets
 *.DS_Store
+
+# Local audio notes
+*.m4a
