@@ -1,9 +1,3 @@
----
-icon: lucide/zap
-hide:
-  - title
----
-
 <div class="home" markdown>
 
 # FastPubSub

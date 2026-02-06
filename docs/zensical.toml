@@ -16,8 +16,8 @@ extra_css = ["stylesheets/extra.css"]
 
 nav = [
     { "Home" = "index.md" },
-    { "Tutorial" = [
-        { "Tutorial" = "tutorial/index.md" },
+    { "Learn" = [
+        { "Learn" = "tutorial/index.md" },
         { "The Basis" = [
             { "Introduction to Google PubSub" = "tutorial/basis/intro-google-pubsub.md" },
             { "Introduction to Async/Await" = "tutorial/basis/intro-async-await.md"},
@@ -53,8 +53,8 @@ nav = [
     #        { "Cross-Project Configuration" = "advanced/multiple-projects.md"},
     #    ]},
     #]},
-    { "API Documentation" = [
-        { "Overview" = "reference/index.md" },
+    { "Reference" = [
+        { "Reference" = "reference/index.md" },
         { "Core" = [
             { "FastPubSub" = "reference/fastpubsub.md" },
             { "PubSubBroker" = "reference/broker.md" },
@@ -66,12 +66,11 @@ nav = [
         ]},
     ]},
     { "About" = [
-        { "About" = [
-            { "The Project" = "about/project.md"},
-            { "Versioning" = "about/versions.md"},
-        ]},
+        { "The Project" = "about/project.md"}, # TODO: Write me (No AI)
+        { "Inspirations" = "about/project.md"}, # TODO: Write me (No AI)
+        { "Story of FastPubSub" = "about/project.md"}, # TODO: Write me (No AI)
+        { "About FastPubSub Versions" = "about/versions.md"},
     ]},
-    #{ "Release Notes" = "about/release-notes.md" },
 ]
 
 
