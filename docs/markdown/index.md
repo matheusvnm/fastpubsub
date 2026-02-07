@@ -1,9 +1,3 @@
----
-icon: lucide/zap
-hide:
-  - title
----
-
 <div class="home" markdown>
 
 # FastPubSub
@@ -20,7 +14,7 @@ hide:
 ---
 
 
-**Documentation**: https://fastpubsub.github.io
+**Documentation**: https://docs.fastpubsub.dev
 
 **Source Code**: <a href="https://github.com/matheusvnm/fastpubsub" target="_blank">https://github.com/matheusvnm/fastpubsub</a>
 
