@@ -1,8 +1,8 @@
 [project]
 site_name = "FastPubSub"
-site_description = "FastPubSub: A high performance FastAPI-based message consumer framework for Google PubSub applications"
+site_description = "A high-performance, asyncio-native framework for Google Cloud Pub/Sub applications."
 site_author = "Sandro Matheus Vila Nova Marques"
-#site_url = "https://www.example.com/" TODO: Set as Github Pages URL
+site_url = "https://docs.fastpubsub.dev"
 
 repo = "fontawesome/brands/github"
 repo_name = "matheusvnm/fastpubsub"
@@ -76,7 +76,7 @@ nav = [
 
 [project.theme]
 logo = "assets/images/small_logo.png"
-favicon = "images/favicon.png"
+favicon = "assets/images/small_logo.png"
 language = "en"
 features = [
     "announce.dismiss",
