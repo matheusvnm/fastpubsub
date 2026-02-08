@@ -39,7 +39,7 @@ app = StarConsumers()
 app.attach_topic(topic_conn)
 
 
-topic_conn.subscriber("my_subscription")
+@topic_conn.subscriber("my_subscription")
 async def handler(message: Message):
     print("Hello, World")
 ```

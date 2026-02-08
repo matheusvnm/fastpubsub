@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://github.com/matheusvnm/fastpubsub"><img src="https://raw.githubusercontent.com/matheusvnm/fastpubsub/main/docs/markdown/assets/images/logo.png" alt="FastPubSub"></a>
+  <a href="https://docs.fastpubsub.dev"><img src="https://docs.fastpubsub.dev/assets/images/logo.png" alt="FastPubSub"></a>
 </p>
 
 <p align="center">
@@ -10,7 +10,7 @@
 ---
 
 
-**Documentation**: <a href="https://github.com/matheusvnm/fastpubsub/wiki" target="_blank">https://github.com/matheusvnm/fastpubsub/wiki</a>
+**Documentation**: <a href="https://docs.fastpubsub.dev" target="_blank">https://docs.fastpubsub.dev</a>
 
 **Source Code**: <a href="https://github.com/matheusvnm/fastpubsub" target="_blank">https://github.com/matheusvnm/fastpubsub</a>
 
