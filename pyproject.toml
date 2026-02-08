@@ -53,10 +53,16 @@ classifiers = [
     "Framework :: Pydantic :: 2",
 ]
 
+[project.urls]
+Homepage = "https://github.com/matheusvnm/fastpubsub"
+Documentation = "https://docs.fastpubsub.dev/"
+Repository = "https://github.com/matheusvnm/fastpubsub"
+Issues = "https://github.com/matheusvnm/fastpubsub/issues"
+Changelog = "https://github.com/matheusvnm/fastpubsub/releases"
+
 
 [project.scripts]
 fastpubsub = "fastpubsub.cli.main:app"
-
 
 [dependency-groups]
 lint = [
