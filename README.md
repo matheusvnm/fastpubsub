@@ -6,6 +6,20 @@
     <em>A high-performance, asyncio-native framework for Google Cloud Pub/Sub applications.</em>
 </p>
 
+<p align="center">
+<a href="https://github.com/matheusvnm/fastpubsub/actions/workflows/pr_tests.yaml?query=branch%3Adev" target="_blank">
+    <img src="https://github.com/matheusvnm/fastpubsub/actions/workflows/pr_tests.yaml/badge.svg?query=branch%3Adev" alt="Quality Checks">
+</a>
+<a href="https://pepy.tech/projects/fastpubsub">
+    <img src="https://static.pepy.tech/personalized-badge/fastpubsub?period=monthly&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=BRIGHTGREEN&left_text=Downloads" alt="PyPI Downloads">
+</a>
+<a href="https://pypi.org/project/fastpubsub" target="_blank">
+    <img src="https://img.shields.io/pypi/v/fastpubsub?color=%2334D058&label=pypi%20package" alt="PyPI">
+</a>
+<a href="https://pypi.org/project/fastpubsub" target="_blank">
+    <img src="https://img.shields.io/pypi/pyversions/fastpubsub.svg?color=%2334D058" alt="Supported Python versions">
+</a>
+</p>
 
 ---
 
