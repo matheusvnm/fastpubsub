@@ -439,7 +439,7 @@ standard-no-fastapi-cloud-cli = [
 
 [[package]]
 name = "fastpubsub"
-version = "0.8.2"
+version = "0.8.3"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
