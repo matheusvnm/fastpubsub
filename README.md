@@ -1,16 +1,30 @@
 <p align="center">
-  <a href="https://github.com/matheusvnm/fastpubsub"><img src="https://github.com/matheusvnm/fastpubsub/blob/dev/docs/logo.png" alt="FastPubSub"></a>
+  <a href="https://docs.fastpubsub.dev"><img src="https://docs.fastpubsub.dev/assets/images/logo.png" alt="FastPubSub"></a>
 </p>
 
 <p align="center">
-    <em>A high performance FastAPI-based message consumer framework for Google PubSub</em>
+    <em>A high-performance, asyncio-native framework for Google Cloud Pub/Sub applications.</em>
 </p>
 
+<p align="center">
+<a href="https://github.com/matheusvnm/fastpubsub/actions/workflows/pr_tests.yaml?query=branch%3Adev" target="_blank">
+    <img src="https://github.com/matheusvnm/fastpubsub/actions/workflows/pr_tests.yaml/badge.svg?query=branch%3Adev" alt="Quality Checks">
+</a>
+<a href="https://pepy.tech/projects/fastpubsub">
+    <img src="https://static.pepy.tech/personalized-badge/fastpubsub?period=monthly&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=BRIGHTGREEN&left_text=Downloads" alt="PyPI Downloads">
+</a>
+<a href="https://pypi.org/project/fastpubsub" target="_blank">
+    <img src="https://img.shields.io/pypi/v/fastpubsub?color=%2334D058&label=pypi%20package" alt="PyPI">
+</a>
+<a href="https://pypi.org/project/fastpubsub" target="_blank">
+    <img src="https://img.shields.io/pypi/pyversions/fastpubsub.svg?color=%2334D058" alt="Supported Python versions">
+</a>
+</p>
 
 ---
 
 
-**Documentation**: <a href="https://github.com/matheusvnm/fastpubsub/wiki" target="_blank">https://github.com/matheusvnm/fastpubsub/wiki</a>
+**Documentation**: <a href="https://docs.fastpubsub.dev" target="_blank">https://docs.fastpubsub.dev</a>
 
 **Source Code**: <a href="https://github.com/matheusvnm/fastpubsub" target="_blank">https://github.com/matheusvnm/fastpubsub</a>
 
@@ -124,8 +138,7 @@ And multiprocessing horizontal scaling feature as well:
 fastpubsub run basic:app --workers 3
 ```
 
-You can learn more about CLI's features [here](https://github.com/matheusvnm/fastpubsub/wiki/Command-Line-Interface-(CLI)).
-
+We just scratched the surface, but you already get the idea of how a basic structure works. Everything developed into FastPubSub is though to improve software development experience and provide great productivity with high-performance garantees.
 
 ## Contact
 

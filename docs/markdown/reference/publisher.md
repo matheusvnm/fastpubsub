@@ -1,0 +1,3 @@
+# `Publisher` class
+
+::: fastpubsub.Publisher

@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "fastpubsub"
-description = "FastPubSub: A high performance FastAPI-based message consumer framework for Google PubSub applications"
+description = "FastPubSub: A high-performance, asyncio-native framework for Google Cloud Pub/Sub applications"
 readme = "README.md"
 version = "0.8.2"
 requires-python = ">=3.12"
@@ -53,10 +53,16 @@ classifiers = [
     "Framework :: Pydantic :: 2",
 ]
 
+[project.urls]
+Homepage = "https://github.com/matheusvnm/fastpubsub"
+Documentation = "https://docs.fastpubsub.dev/"
+Repository = "https://github.com/matheusvnm/fastpubsub"
+Issues = "https://github.com/matheusvnm/fastpubsub/issues"
+Changelog = "https://github.com/matheusvnm/fastpubsub/releases"
+
 
 [project.scripts]
 fastpubsub = "fastpubsub.cli.main:app"
-
 
 [dependency-groups]
 lint = [
@@ -88,9 +94,13 @@ dev = [
     "pre-commit==4.3.0",
 ]
 
+docs = [
+    "mkdocstrings-python>=2.0.1",
+    "zensical==0.0.20",
+]
 
 [tool.pytest.ini_options]
-pythonpath = "."
+pythonpath = ["."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 python_files = ["test_*.py"]
@@ -107,6 +117,7 @@ markers = [
     "pubsub: Google PubSub specific tests",
     "connected: Tests requiring PubSub emulator connection",
     "slow: Long-running tests (>5 seconds)",
+    "docs: Documentation snippet tests",
 ]
 
 [tool.coverage.run]
@@ -156,7 +167,7 @@ docstring-code-format = true
 [tool.ruff.lint]
 select = ["E", "W", "D", "I", "C4", "UP", "F", "B", "ARG"]
 extend-ignore = ["B008", "B006", "ARG001", "ARG002"]
-per-file-ignores = { "tests/*" = ["D"], "examples/*" = ["D"], "benchmarks/*" = ["D"] }
+per-file-ignores = { "tests/*" = ["D"], "docs/*" = ["D"], "benchmarks/*" = ["D"] }
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

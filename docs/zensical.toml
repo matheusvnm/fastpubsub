@@ -1,0 +1,205 @@
+[project]
+site_name = "FastPubSub"
+site_description = "A high-performance, asyncio-native framework for Google Cloud Pub/Sub applications."
+site_author = "Sandro Matheus Vila Nova Marques"
+site_url = "https://docs.fastpubsub.dev"
+
+repo = "fontawesome/brands/github"
+repo_name = "matheusvnm/fastpubsub"
+repo_url = "https://github.com/matheusvnm/fastpubsub"
+copyright = "Copyright &copy; 2026 FastPubSub"
+
+site_dir = "site"
+docs_dir = "markdown"
+
+extra_css = ["stylesheets/extra.css"]
+
+nav = [
+    { "Home" = "index.md" },
+    { "Learn" = [
+        { "Learn" = "tutorial/index.md" },
+        { "The Basis" = [
+            { "Introduction to Google PubSub" = "tutorial/basis/intro-google-pubsub.md" },
+            { "Introduction to Async/Await" = "tutorial/basis/intro-async-await.md"},
+        ]},
+        {"User Guide" = [
+            { "First Steps" = "tutorial/user-guide/first-steps.md"},
+            { "Subscribers" = "tutorial/user-guide/subscribers.md" },
+            { "Publishers" = "tutorial/user-guide/publishers.md" },
+            { "Lifespan and Hooks" = "tutorial/user-guide/lifespan.md" },
+            { "Routers" = "tutorial/user-guide/routers.md" },
+            { "Middlewares" = "tutorial/user-guide/middlewares.md" },
+            { "Message Lifecycle and Acknowledgement" = "tutorial/user-guide/lifecycle.md" },
+            { "Command-Line Interface (CLI)" = "tutorial/user-guide/cli.md" },
+            # { "Testing" = "tutorial/user-guide/testing.md" },
+            { "Deployment" = "tutorial/user-guide/deployment.md"},
+            { "Observability" = "tutorial/user-guide/observability.md"},
+            { "Troubleshooting" = "tutorial/user-guide/troubleshooting.md"},
+        ]},
+        { "Integrations" = [
+            { "FastAPI" = "tutorial/integrations/fastapi.md" },
+            { "Pydantic" = "tutorial/integrations/pydantic.md" },
+            { "Uvicorn" = "tutorial/integrations/uvicorn.md" },
+        ]},
+    ]},
+    #{"Advanced Topics" = [
+    #    {"User Guide" = [
+    #        { "Custom Middlewares" = "advanced/custom-middlewares.md"},
+    #        { "Dead-Letter Topics" = "advanced/dlt.md"},
+    #        { "Message Filtering" = "advanced/filters.md"},
+    #        { "Exactly-Once Delivery" = "advanced/delivery-guarantees.md"},
+    #        { "Message Ordering" = "advanced/ordering.md"},
+    #        { "Performance Tuning" = "advanced/tuning.md"},
+    #        { "Cross-Project Configuration" = "advanced/multiple-projects.md"},
+    #    ]},
+    #]},
+    { "Reference" = [
+        { "Reference" = "reference/index.md" },
+        { "Core" = [
+            { "FastPubSub" = "reference/fastpubsub.md" },
+            { "PubSubBroker" = "reference/broker.md" },
+            { "PubSubRouter" = "reference/router.md" },
+            { "Publisher" = "reference/publisher.md" },
+            { "Subscriber" = "reference/subscriber.md" },
+            { "Middlewares" = "reference/middlewares.md" },
+            { "Message" = "reference/messages.md" },
+        ]},
+    ]},
+    { "About" = [
+        { "The Project" = "about/project.md"},
+        # { "Inspirations" = "about/project.md"}, # TODO: Write me
+        { "Story of FastPubSub" = "about/story.md"},
+        { "About FastPubSub Versions" = "about/versions.md"},
+    ]},
+]
+
+
+[project.theme]
+logo = "assets/images/small_logo.png"
+favicon = "assets/images/small_logo.png"
+language = "en"
+features = [
+    "announce.dismiss",
+    "content.code.annotate",
+    "content.code.copy",
+    "content.code.select",
+    "content.footnote.tooltips",
+    "content.tabs.link",
+    "content.tooltips",
+    "navigation.footer",
+    "navigation.indexes",
+    "navigation.instant",
+    "navigation.instant.prefetch",
+    "navigation.instant.progress",
+    "navigation.path",
+    "navigation.tabs",
+    "navigation.top",
+    "navigation.indexes",
+    "navigation.sections",
+    "navigation.tracking",
+    "search.highlight",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "material/brightness-7"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "material/brightness-4"
+toggle.name = "Switch to light mode"
+
+
+[project.theme.font]
+text = "Helvetica"
+code = "Jetbrains Mono"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/matheusvnm/fastpubsub"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/linkedin"
+link = "https://linkedin.com/in/matheusvnm"
+
+
+[project.plugins.mkdocstrings.handlers.python]
+inventories = ["https://docs.python.org/3/objects.inv"]
+paths = [".."]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "google"
+show_root_heading = true
+show_if_no_docstring = true
+inherited_members = true
+members_order = "source"
+separate_signature = true
+unwrap_annotated = true
+filters = ["!^_"]
+merge_init_into_class = true
+docstring_section_style = "spacy"
+signature_crossrefs = true
+show_symbol_type_heading = true
+show_symbol_type_toc = true
+
+# Markdown extensions
+# We must include all required extensions since one replaces the default configurations.
+[project.markdown_extensions]
+abbr = {}
+admonition = {}
+attr_list = {}
+def_list = {}
+footnotes = {}
+md_in_html = {}
+
+[project.markdown_extensions.toc]
+permalink = true
+
+[project.markdown_extensions.pymdownx.arithmatex]
+generic = true
+
+[project.markdown_extensions.pymdownx.betterem]
+
+[project.markdown_extensions.pymdownx.caret]
+
+[project.markdown_extensions.pymdownx.details]
+
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+
+[project.markdown_extensions.pymdownx.inlinehilite]
+
+[project.markdown_extensions.pymdownx.keys]
+
+[project.markdown_extensions.pymdownx.magiclink]
+
+[project.markdown_extensions.pymdownx.mark]
+
+[project.markdown_extensions.pymdownx.smartsymbols]
+
+[project.markdown_extensions.pymdownx.superfences]
+custom_fences = [{ name = "mermaid", class = "mermaid" }]
+
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+combine_header_slug = true
+
+[project.markdown_extensions.pymdownx.tasklist]
+custom_checkbox = true
+
+[project.markdown_extensions.pymdownx.tilde]
+
+# Snippets extension for including code from external files
+[project.markdown_extensions.pymdownx.snippets]
+base_path = ["docs/snippets", "docs/markdown"]
+check_paths = true
+dedent_subsections = true
