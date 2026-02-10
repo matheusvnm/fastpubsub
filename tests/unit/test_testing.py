@@ -10,7 +10,12 @@ from fastpubsub.broker import PubSubBroker
 from fastpubsub.datastructures import Message
 from fastpubsub.middlewares import Middleware
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.testing import PubSubTestClient, matches_filter
+from fastpubsub.testing import (
+    ProcessingResult,
+    PublishedMessage,
+    PubSubTestClient,
+    matches_filter,
+)
 
 
 class TestMatchesFilter:
@@ -279,7 +284,7 @@ class TestPubSubTestClient:
 
             messages = client.get_published_messages()
             assert len(messages) == 1
-            assert messages[0][0] == "test-topic"
+            assert messages[0].topic_name == "test-topic"
 
     # Publish with single subscriber
     @pytest.mark.asyncio
@@ -529,8 +534,8 @@ class TestPubSubTestClient:
 
             messages = client.get_published_messages()
             assert len(messages) == 2
-            assert messages[0][0] == "topic-a"
-            assert messages[1][0] == "topic-b"
+            assert messages[0].topic_name == "topic-a"
+            assert messages[1].topic_name == "topic-b"
 
     @pytest.mark.asyncio
     async def test_get_published_messages_returns_copy(self, broker: PubSubBroker):
@@ -734,3 +739,248 @@ class TestPubSubTestClient:
             await client.publish("test", topic="topic")  # No attributes
 
         assert len(received) == 0  # Should not match
+
+    # Published message dataclass tests
+    @pytest.mark.asyncio
+    async def test_published_message_has_project_id(self, broker: PubSubBroker):
+        async with PubSubTestClient(broker) as client:
+            await client.publish("test", topic="topic")
+
+            messages = client.get_published_messages()
+            assert len(messages) == 1
+            assert isinstance(messages[0], PublishedMessage)
+            assert messages[0].project_id == "test-project"
+
+    @pytest.mark.asyncio
+    async def test_published_message_with_explicit_project_id(self, broker: PubSubBroker):
+        async with PubSubTestClient(broker) as client:
+            await client.publish("test", topic="topic", project_id="other-project")
+
+            messages = client.get_published_messages()
+            assert len(messages) == 1
+            assert messages[0].project_id == "other-project"
+
+    # Cross-project tests
+    @pytest.mark.asyncio
+    async def test_cross_project_publish_matches_subscriber(self, broker: PubSubBroker):
+        received: list[Message] = []
+
+        @broker.subscriber(
+            alias="cross-sub",
+            topic_name="events",
+            subscription_name="cross-subscription",
+            project_id="other-project",
+        )
+        async def handler(msg: Message) -> None:
+            received.append(msg)
+
+        async with PubSubTestClient(broker) as client:
+            await client.publish("test", topic="events", project_id="other-project")
+
+        assert len(received) == 1
+        assert received[0].project_id == "other-project"
+
+    @pytest.mark.asyncio
+    async def test_default_project_does_not_match_cross_project_subscriber(
+        self, broker: PubSubBroker
+    ):
+        received: list[Message] = []
+
+        @broker.subscriber(
+            alias="cross-sub2",
+            topic_name="events",
+            subscription_name="cross-subscription2",
+            project_id="other-project",
+        )
+        async def handler(msg: Message) -> None:
+            received.append(msg)
+
+        async with PubSubTestClient(broker) as client:
+            await client.publish("test", topic="events")  # defaults to broker project
+
+        assert len(received) == 0
+
+    @pytest.mark.asyncio
+    async def test_same_topic_different_projects_isolated(self, broker: PubSubBroker):
+        received_default: list[Message] = []
+        received_other: list[Message] = []
+
+        @broker.subscriber(
+            alias="default-sub",
+            topic_name="events",
+            subscription_name="default-subscription",
+        )
+        async def default_handler(msg: Message) -> None:
+            received_default.append(msg)
+
+        @broker.subscriber(
+            alias="other-sub",
+            topic_name="events",
+            subscription_name="other-subscription",
+            project_id="other-project",
+        )
+        async def other_handler(msg: Message) -> None:
+            received_other.append(msg)
+
+        async with PubSubTestClient(broker) as client:
+            await client.publish("msg1", topic="events")  # default project
+            await client.publish("msg2", topic="events", project_id="other-project")
+
+        assert len(received_default) == 1
+        assert len(received_other) == 1
+
+    # Processing results tests
+    @pytest.mark.asyncio
+    async def test_processing_result_basic(self, broker: PubSubBroker):
+        @broker.subscriber(
+            alias="result-sub",
+            topic_name="events",
+            subscription_name="result-subscription",
+        )
+        async def handler(msg: Message) -> None:
+            pass
+
+        async with PubSubTestClient(broker) as client:
+            await client.publish("test", topic="events")
+
+            results = client.get_results()
+            assert len(results) == 1
+            assert isinstance(results[0], ProcessingResult)
+            assert results[0].message.subscriber_name == "handler"
+            assert results[0].message.topic_name == "events"
+            assert results[0].message.project_id == "test-project"
+            assert results[0].error is None
+
+    @pytest.mark.asyncio
+    async def test_processing_result_return_value(self, broker: PubSubBroker):
+        @broker.subscriber(
+            alias="return-sub",
+            topic_name="events",
+            subscription_name="return-subscription",
+        )
+        async def handler(msg: Message) -> str:
+            return "processed"
+
+        async with PubSubTestClient(broker) as client:
+            await client.publish("test", topic="events")
+
+            results = client.get_results()
+            assert len(results) == 1
+            assert results[0].return_value == "processed"
+
+    @pytest.mark.asyncio
+    async def test_processing_result_error_capture(self, broker: PubSubBroker):
+        @broker.subscriber(
+            alias="error-sub",
+            topic_name="events",
+            subscription_name="error-subscription",
+        )
+        async def failing_handler(msg: Message) -> None:
+            raise ValueError("handler failed")
+
+        @broker.subscriber(
+            alias="ok-sub",
+            topic_name="events",
+            subscription_name="ok-subscription",
+        )
+        async def ok_handler(msg: Message) -> str:
+            return "ok"
+
+        async with PubSubTestClient(broker) as client:
+            await client.publish("test", topic="events")
+
+            results = client.get_results()
+            assert len(results) == 2
+
+            error_results = [r for r in results if r.error is not None]
+            ok_results = [r for r in results if r.error is None]
+
+            assert len(error_results) == 1
+            assert isinstance(error_results[0].error, ValueError)
+            assert str(error_results[0].error) == "handler failed"
+
+            assert len(ok_results) == 1
+            assert ok_results[0].return_value == "ok"
+
+    @pytest.mark.asyncio
+    async def test_processing_results_multiple_subscribers(self, broker: PubSubBroker):
+        @broker.subscriber(
+            alias="sub-a2", topic_name="events", subscription_name="sub-a2-subscription"
+        )
+        async def handler_a(msg: Message) -> None:
+            pass
+
+        @broker.subscriber(
+            alias="sub-b2", topic_name="events", subscription_name="sub-b2-subscription"
+        )
+        async def handler_b(msg: Message) -> None:
+            pass
+
+        async with PubSubTestClient(broker) as client:
+            await client.publish("test", topic="events")
+
+            results = client.get_results()
+            assert len(results) == 2
+            names = {r.message.subscriber_name for r in results}
+            assert names == {"handler_a", "handler_b"}
+
+    @pytest.mark.asyncio
+    async def test_processing_results_cross_project(self, broker: PubSubBroker):
+        @broker.subscriber(
+            alias="proj-default-sub",
+            topic_name="events",
+            subscription_name="proj-default-subscription",
+        )
+        async def default_handler(msg: Message) -> None:
+            pass
+
+        @broker.subscriber(
+            alias="proj-other-sub",
+            topic_name="events",
+            subscription_name="proj-other-subscription",
+            project_id="other-project",
+        )
+        async def other_handler(msg: Message) -> None:
+            pass
+
+        async with PubSubTestClient(broker) as client:
+            await client.publish("test", topic="events")
+            await client.publish("test", topic="events", project_id="other-project")
+
+            results = client.get_results()
+            assert len(results) == 2
+            projects = {r.message.project_id for r in results}
+            assert projects == {"test-project", "other-project"}
+
+    @pytest.mark.asyncio
+    async def test_processing_results_returns_copy(self, broker: PubSubBroker):
+        @broker.subscriber(
+            alias="copy-sub", topic_name="events", subscription_name="copy-subscription"
+        )
+        async def handler(msg: Message) -> None:
+            pass
+
+        async with PubSubTestClient(broker) as client:
+            await client.publish("test", topic="events")
+
+            results1 = client.get_results()
+            results2 = client.get_results()
+            assert results1 is not results2
+            assert results1 == results2
+
+    @pytest.mark.asyncio
+    async def test_clear_processing_results(self, broker: PubSubBroker):
+        @broker.subscriber(
+            alias="clear-sub",
+            topic_name="events",
+            subscription_name="clear-subscription",
+        )
+        async def handler(msg: Message) -> None:
+            pass
+
+        async with PubSubTestClient(broker) as client:
+            await client.publish("test", topic="events")
+            assert len(client.get_results()) == 1
+
+            client.clear_processing_results()
+            assert len(client.get_results()) == 0
