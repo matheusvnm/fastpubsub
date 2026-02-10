@@ -680,6 +680,6 @@ class PubSubTestClient:
         """Clear all published messages."""
         self._published_messages.clear()
 
-    def clear_processing_results(self) -> None:
-        """Clear all processing results."""
+    def clear_results(self) -> None:
+        """Clear all results."""
         self._processing_results.clear()

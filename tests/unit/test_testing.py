@@ -982,5 +982,5 @@ class TestPubSubTestClient:
             await client.publish("test", topic="events")
             assert len(client.get_results()) == 1
 
-            client.clear_processing_results()
+            client.clear_results()
             assert len(client.get_results()) == 0
