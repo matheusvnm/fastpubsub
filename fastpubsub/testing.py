@@ -13,7 +13,30 @@ from fastpubsub.pubsub import Publisher
 if TYPE_CHECKING:
     from fastpubsub.broker import PubSubBroker
 
-__all__ = ["PubSubTestClient", "matches_filter"]
+__all__ = ["PubSubTestClient", "PublishedMessage", "ProcessingResult", "matches_filter"]
+
+
+@dataclass(frozen=True)
+class PublishedMessage:
+    """Record of a message published during testing."""
+
+    topic_name: str
+    data: bytes
+    attributes: dict[str, str] | None
+    project_id: str
+
+
+@dataclass(frozen=True)
+class ProcessingResult:
+    """Record of a subscriber handler invocation during testing.
+
+    The ``message`` field already carries ``subscriber_name``, ``topic_name``
+    and ``project_id``, so they are accessible via ``result.message.*``.
+    """
+
+    message: Message
+    return_value: Any
+    error: BaseException | None = None
 
 
 # =============================================================================
@@ -390,7 +413,8 @@ class PubSubTestClient:
         """
         self.broker = broker
         self._patchers: list[Any] = []
-        self._published_messages: list[tuple[str, bytes, dict[str, str] | None]] = []
+        self._published_messages: list[PublishedMessage] = []
+        self._processing_results: list[ProcessingResult] = []
         self._mock_client: MagicMock | None = None
 
     async def __aenter__(self) -> PubSubTestClient:
@@ -454,11 +478,12 @@ class PubSubTestClient:
         data: bytes,
         ordering_key: str | None = None,
         attributes: dict[str, str] | None = None,
+        project_id: str | None = None,
     ) -> str:
         """Fake publish that routes messages to matching subscribers.
 
-        Routes messages based on topic name AND filter expression matching.
-        If a subscriber has a filter expression, only messages matching
+        Routes messages based on topic name, project_id, AND filter expression
+        matching. If a subscriber has a filter expression, only messages matching
         that filter will be delivered to the subscriber.
 
         Args:
@@ -466,36 +491,61 @@ class PubSubTestClient:
             data: Message data.
             ordering_key: Ordering key (unused in test).
             attributes: Message attributes.
+            project_id: Target project ID. Defaults to broker's project_id.
 
         Returns:
             Fake message ID.
         """
-        self._published_messages.append((topic_name, data, attributes))
+        resolved_project_id = project_id or self.broker.project_id
+
+        self._published_messages.append(
+            PublishedMessage(
+                topic_name=topic_name,
+                data=data,
+                attributes=attributes,
+                project_id=resolved_project_id,
+            )
+        )
 
         subscribers = self.broker.router._get_subscribers()
         for subscriber in subscribers.values():
-            # Check topic match
             if subscriber.topic_name != topic_name:
                 continue
 
-            # Check filter expression match
+            subscriber_project_id = subscriber.project_id or self.broker.project_id
+            if subscriber_project_id != resolved_project_id:
+                continue
+
             filter_expr = subscriber.delivery_policy.filter_expression
             if not matches_filter(attributes or {}, filter_expr):
                 continue
 
             message = Message(
                 id=f"test-msg-{len(self._published_messages)}",
-                size=len(data),
                 data=data,
+                size=len(data),
                 attributes=attributes or {},
                 delivery_attempt=1,
-                project_id=self.broker.project_id,
+                project_id=resolved_project_id,
                 topic_name=topic_name,
                 subscriber_name=subscriber.name,
             )
 
             callstack = subscriber._build_callstack()
-            await callstack.on_message(message)
+            return_value = None
+            error = None
+            try:
+                return_value = await callstack.on_message(message)
+            except BaseException as exc:
+                error = exc
+
+            self._processing_results.append(
+                ProcessingResult(
+                    message=message,
+                    return_value=return_value,
+                    error=error,
+                )
+            )
 
         return f"test-msg-{len(self._published_messages)}"
 
@@ -505,6 +555,7 @@ class PubSubTestClient:
         topic: str,
         ordering_key: str | None = None,
         attributes: dict[str, str] | None = None,
+        project_id: str = "",
     ) -> None:
         """Publish a message for testing.
 
@@ -513,21 +564,122 @@ class PubSubTestClient:
             topic: Topic name.
             ordering_key: Ordering key.
             attributes: Message attributes.
+            project_id: Target project ID. Defaults to broker's project_id.
         """
+        resolved_project_id = project_id or self.broker.project_id
         encoded_data = await Publisher._serialize_message(data)
-        await self._fake_publish(topic, encoded_data, ordering_key, attributes)
+        await self._fake_publish(
+            topic, encoded_data, ordering_key, attributes, project_id=resolved_project_id
+        )
 
-    def get_published_messages(
-        self,
-    ) -> list[tuple[str, bytes, dict[str, str] | None]]:
+    def get_published_messages(self) -> list[PublishedMessage]:
         """Get all published messages for inspection.
 
         Returns:
-            A copy of the list of published messages. Each message is a tuple
-            of (topic_name, data, attributes).
+            A copy of the list of published messages.
+
+        Example:
+            ```python
+            from fastpubsub import PubSubBroker, Message
+            from fastpubsub.testing import PubSubTestClient
+
+            broker = PubSubBroker(project_id="my-project")
+
+
+            @broker.subscriber(
+                alias="orders",
+                topic_name="order-events",
+                subscription_name="orders-sub",
+            )
+            async def process_order(msg: Message) -> None: ...
+
+
+            async with PubSubTestClient(broker) as client:
+                await client.publish({"id": 1}, topic="order-events", attributes={"region": "us"})
+                await client.publish({"id": 2}, topic="order-events", project_id="other-project")
+
+                messages = client.get_published_messages()
+                assert len(messages) == 2
+                assert messages[0].topic_name == "order-events"
+                assert messages[0].data == b'{"id": 1}'
+                assert messages[0].attributes == {"region": "us"}
+                assert messages[0].project_id == "my-project"
+
+                assert messages[1].topic_name == "order-events"
+                assert messages[1].data == b'{"id": 2}'
+                assert messages[1].attributes == {}
+                assert messages[1].project_id == "other-project"
+            ```
         """
         return self._published_messages.copy()
+
+    def get_results(self) -> list[ProcessingResult]:
+        """Get all processing results recorded during this session.
+
+        Each result holds the ``message`` delivered to the subscriber,
+        the handler's ``return_value``, and any ``error`` that was raised.
+        Metadata like subscriber name, topic, and project are available
+        through ``result.message``.
+
+        Returns:
+            A copy of the list of processing results.
+
+        Example:
+            ```python
+            from fastpubsub import PubSubBroker, Message
+            from fastpubsub.testing import PubSubTestClient
+
+            broker = PubSubBroker(project_id="my-project")
+
+
+            @broker.subscriber(
+                alias="payments",
+                topic_name="payment-events",
+                subscription_name="payments-sub",
+            )
+            async def process_payment(msg: Message) -> str:
+                return "accepted"
+
+
+            @broker.subscriber(
+                alias="analytics",
+                topic_name="payment-events",
+                subscription_name="analytics-sub",
+                project_id="analytics-project",
+            )
+            async def track_payment(msg: Message) -> None:
+                raise ValueError("tracking failed")
+
+
+            async with PubSubTestClient(broker) as client:
+                # Publish to the default project: Only process_payment runs
+                await client.publish({"amount": 100}, topic="payment-events")
+
+                # Publish to the analytics project: Only track_payment runs
+                await client.publish(
+                    {"amount": 100},
+                    topic="payment-events",
+                    project_id="analytics-project",
+                )
+
+                results = client.get_results()
+                assert len(results) == 2
+
+                assert results[0].message.subscriber_name == "process_payment"
+                assert results[0].return_value == "accepted"
+                assert results[0].error is None
+
+                assert results[1].message.subscriber_name == "track_payment"
+                assert results[1].return_value is None
+                assert isinstance(errors[1].error, ValueError)
+            ```
+        """
+        return self._processing_results.copy()
 
     def clear_published_messages(self) -> None:
         """Clear all published messages."""
         self._published_messages.clear()
+
+    def clear_results(self) -> None:
+        """Clear all results."""
+        self._processing_results.clear()
