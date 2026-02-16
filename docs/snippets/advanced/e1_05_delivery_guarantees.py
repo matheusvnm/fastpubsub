@@ -1,5 +1,6 @@
 from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
+from fastpubsub.testing import PubSubTestClient
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 app = FastPubSub(broker)
@@ -50,6 +51,9 @@ async def process_payment(message: Message):
 )
 async def idempotent_handler(message: Message):
     event_id = message.attributes.get("event_id")
+    if not event_id:
+        logger.warning("Missing event_id attribute, skipping message")
+        return
 
     # Check if already processed
     if await is_already_processed(event_id):
@@ -121,6 +125,8 @@ redis = Redis()
 )
 async def redis_idempotent_handler(message: Message):
     event_id = message.attributes.get("event_id")
+    if not event_id:
+        return
 
     # Set with NX (only if not exists), expire after 24 hours
     was_set = await redis.set(f"processed:{event_id}", "1", nx=True, ex=86400)
@@ -154,3 +160,37 @@ async def process_critical_payment(message: Message):
 
 
 # --8<-- [end:exactly_once_combined]
+
+
+# --8<-- [start:idempotency_test_client]
+async def test_idempotent_handler_skips_duplicates() -> None:
+    test_broker = PubSubBroker(project_id="test-project")
+    processed: list[str] = []
+
+    @test_broker.subscriber(
+        alias="orders",
+        topic_name="orders",
+        subscription_name="orders-subscription",
+    )
+    async def handle(message: Message) -> None:
+        event_id = message.attributes.get("event_id", "")
+        if event_id in processed:
+            return
+        processed.append(event_id)
+
+    async with PubSubTestClient(test_broker) as client:
+        await client.publish(
+            topic="orders",
+            data={"order_id": "ord-1"},
+            attributes={"event_id": "e-1"},
+        )
+        await client.publish(
+            topic="orders",
+            data={"order_id": "ord-1"},
+            attributes={"event_id": "e-1"},
+        )
+
+    assert processed == ["e-1"]
+
+
+# --8<-- [end:idempotency_test_client]

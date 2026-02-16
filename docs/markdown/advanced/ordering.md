@@ -4,21 +4,17 @@ icon: lucide/list-ordered
 
 # Message Ordering
 
-Message ordering ensures that messages with the same ordering key are processed in the exact sequence they were published. This is essential when the order of operations matters, like processing a user's actions chronologically.
+Message ordering guarantees relative sequence for messages that share the same ordering key.
+This is essential for state-transition workflows where event chronology changes the final outcome.
 
-## Why Order Matters
+In FastPubSub, ordered delivery requires coordinated publisher and subscriber configuration.
 
-Consider a user updating their profile:
+## Conceptual Model
 
-1. User changes email to `new@example.com`
-2. User changes email to `final@example.com`
+Ordering is scoped by key, not by topic.
 
-Without ordering, message 2 might be processed before message 1, leaving the user with the wrong email. Message ordering prevents this.
-
-!!! info "Ordering Key Scope"
-    Ordering is guaranteed only for messages with the same ordering key. Messages with different keys can still be processed in parallel and out of order relative to each other.
-
-## How Ordering Works
+- Messages with the **same key** are processed in publish order.
+- Messages with **different keys** may be processed concurrently.
 
 ```mermaid
 sequenceDiagram
@@ -26,171 +22,134 @@ sequenceDiagram
     participant T as Topic
     participant S as Subscriber
 
-    P->>T: Message A (key: user-1)
-    P->>T: Message B (key: user-1)
-    P->>T: Message C (key: user-2)
+    P->>T: Event A (key=user-42)
+    P->>T: Event B (key=user-42)
+    P->>T: Event C (key=user-77)
 
-    Note over S: Processes A before B (same key)
-    Note over S: C can process anytime (different key)
+    Note over S: A then B must keep sequence
+    Note over S: C may run in parallel path
 ```
 
-## Enabling Message Ordering
-
-### Subscriber Configuration
-
-Enable ordering on your subscriber:
+## Subscriber Configuration
 
 ```python
 --8<-- "advanced/e1_04_ordering.py:ordered_subscriber"
 ```
 
-1. Enables ordered delivery for this subscription
-2. Access the ordering key from the message
+`enable_message_ordering=True` enables ordered delivery behavior for the subscription.
 
-### Publisher Configuration
-
-The publisher must also have ordering enabled:
+## Publisher Configuration
 
 ```python
 --8<-- "advanced/e1_04_ordering.py:ordered_publisher"
 ```
 
-1. Publisher must have ordering enabled to use ordering keys
-2. First message for user-123
-3. Guaranteed to be processed after the login message
+The publisher must send `ordering_key` for related events.
+For handler logic and observability, include the same business identifier in attributes (for example `user_id`).
 
-!!! warning "Both Sides Must Enable Ordering"
-    If the publisher sends messages with ordering keys but the subscriber doesn't have `enable_message_ordering=True`, messages may still arrive out of order.
+!!! warning "Both Ends Matter"
+    Ordering requires publisher intent (`ordering_key`) and subscriber ordering configuration.
+    Missing either side weakens sequence guarantees.
 
----
+## Choosing Ordering Keys
 
-## Step-by-Step
+Good ordering keys align with entity-level state boundaries.
 
-1. Enable ordering on the subscriber (`enable_message_ordering=True`).
-2. Enable ordering on the publisher and send an `ordering_key`.
-3. Publish multiple messages with the same key.
-4. Verify the handler sees them in sequence.
+| Domain | Recommended Key Pattern | Why |
+|--------|--------------------------|-----|
+| User lifecycle | `user-{id}` | Preserves per-user chronology |
+| Order state machine | `order-{id}` | Keeps transitions deterministic |
+| Inventory updates | `sku-{id}` | Preserves stock mutation order |
+| Account ledger | `account-{id}` | Prevents out-of-order balance effects |
 
-## Choosing Good Ordering Keys
+### Anti-Patterns
 
-The ordering key determines which messages are ordered together. Choose keys that group related operations:
+- Single global key such as `all-events` (destroys parallelism).
+- One key per message (provides no ordering value).
+- Ephemeral keys unrelated to state boundaries.
 
-=== "User-Scoped"
-    ```python
-    # All events for a user are ordered
-    await publisher.publish(
-        data={"action": "purchase", "item": "widget"},
-        ordering_key=f"user-{user_id}"
-    )
-    ```
+## Failure Behavior and Queue Blocking
 
-=== "Resource-Scoped"
-    ```python
-    # All updates to an order are ordered
-    await publisher.publish(
-        data={"status": "shipped"},
-        ordering_key=f"order-{order_id}"
-    )
-    ```
-
-=== "Account-Scoped"
-    ```python
-    # All transactions for an account are ordered
-    await publisher.publish(
-        data={"type": "credit", "amount": 100},
-        ordering_key=f"account-{account_id}"
-    )
-    ```
-
-### Good Ordering Keys
-
-| Use Case | Ordering Key | Why |
-|----------|--------------|-----|
-| User actions | `user-{id}` | Actions for one user are ordered |
-| Order updates | `order-{id}` | Status changes happen in sequence |
-| Inventory | `sku-{id}` | Stock updates for one item are ordered |
-| Account transactions | `account-{id}` | Balance updates are sequential |
-
-### Bad Ordering Keys
-
-!!! danger "Avoid These Patterns"
-    - **Single global key** (`"all-messages"`) - Forces sequential processing of everything
-    - **Too granular** (`"msg-{uuid}"`) - No messages share a key, ordering is useless
-    - **Time-based** (`"2024-01-15"`) - Too many messages per key
-
-## Performance Considerations
-
-Ordering reduces parallelism. Messages with the same ordering key are processed sequentially, not concurrently.
-
-```mermaid
-graph LR
-    subgraph "Without Ordering"
-        A1[Msg A] --> P1[Process]
-        B1[Msg B] --> P2[Process]
-        C1[Msg C] --> P3[Process]
-    end
-
-    subgraph "With Ordering (same key)"
-        A2[Msg A] --> P4[Process] --> B2[Msg B] --> P5[Process] --> C2[Msg C]
-    end
-```
-
-!!! tip "Balance Ordering and Throughput"
-    Use ordering only when necessary. If messages are independent, let them process in parallel for better throughput.
-
-## Handling Failures with Ordering
-
-When a message fails, subsequent messages with the same ordering key are blocked until the failed message is resolved (retried successfully or moved to dead-letter).
+With ordered delivery, a failed message blocks later messages with the same key.
 
 ```python
 --8<-- "advanced/e1_04_ordering.py:ordered_with_dlt"
 ```
 
-1. Failed messages go to DLT after max attempts, unblocking the queue
+For this reason, ordered subscriptions should be paired with dead-letter policy.
+Without bounded retries, one poison message can stall an entire entity stream.
 
-!!! warning "Blocked Message Queues"
-    If a message fails repeatedly without dead-letter handling, all subsequent messages with the same ordering key will be blocked indefinitely. Always configure dead-letter topics for ordered subscriptions.
+## Throughput Implications
 
----
+Ordering introduces serial execution within each key lane.
 
-## Common Pitfalls
+```mermaid
+graph LR
+    subgraph Unordered
+      A1[Msg A] --> P1[Process]
+      B1[Msg B] --> P2[Process]
+      C1[Msg C] --> P3[Process]
+    end
 
-- Using a single global ordering key (kills parallelism).
-- Using a unique key per message (no ordering benefits).
-- Missing a dead-letter topic on ordered subscriptions.
+    subgraph Ordered same key
+      A2[Msg A] --> P4[Process] --> B2[Msg B] --> P5[Process] --> C2[Msg C]
+    end
+```
 
-## Use Cases
+Plan capacity around key cardinality:
 
-=== "User Sessions"
-    ```python
-    --8<-- "advanced/e1_04_ordering.py:usecase_sessions"
-    ```
+- More keys usually increase effective parallelism.
+- Very hot keys create natural bottlenecks.
 
-=== "State Machines"
-    ```python
-    --8<-- "advanced/e1_04_ordering.py:usecase_state_machine"
-    ```
+## Representative Use Cases
 
-=== "Inventory Updates"
-    ```python
-    --8<-- "advanced/e1_04_ordering.py:usecase_inventory"
-    ```
+### Session Event Tracking
 
-## Best Practices
+```python
+--8<-- "advanced/e1_04_ordering.py:usecase_sessions"
+```
 
-1. **Combine with Dead-Letter Topics**: Always use dead-letter topics with ordered subscriptions to prevent blocked queues from stalled messages.
+### State Machine Transitions
 
-2. **Keep Processing Fast**: Slow processing of one message blocks all subsequent messages with the same key. Keep handlers fast or move heavy work to background tasks.
+```python
+--8<-- "advanced/e1_04_ordering.py:usecase_state_machine"
+```
 
-3. **Monitor Queue Depth**: Track how many messages are waiting per ordering key. A growing queue indicates processing bottlenecks.
+### Inventory Mutation Stream
 
-4. **Test Ordering Behavior**: Write tests that verify your handler processes messages in the correct order. Send multiple messages and check the final state.
+```python
+--8<-- "advanced/e1_04_ordering.py:usecase_inventory"
+```
+
+## Design Recommendations
+
+### Carry Business Keys in Attributes
+
+Even when `ordering_key` is used for transport sequencing, include a readable identifier in attributes for logs,
+test assertions, and incident diagnosis.
+
+### Keep Handler Latency Predictable
+
+Long-running handlers delay all subsequent messages for the same key.
+Move heavy side work to asynchronous downstream flows when possible.
+
+### Observe Per-Key Backlog
+
+Aggregate queue metrics can look healthy while a single key lane is blocked.
+Monitor key-level hotspots where operational tooling allows.
+
+## Common Failure Modes
+
+- Enabling ordering without dead-letter policy and bounded retries.
+- Using a global ordering key and unintentionally serializing all traffic.
+- Assuming ordering is global across keys instead of key-scoped.
+- Ignoring hot-key skew during capacity planning.
+
 
 ## Recap
 
-- **Message ordering** guarantees messages with the same ordering key are processed sequentially
-- Enable on **both publisher** (`enable_message_ordering=True`) and **subscriber**
-- Choose **meaningful ordering keys** (user_id, order_id, account_id)
-- **Trade-off**: Ordering reduces parallelism - use only when order matters
-- **Always use dead-letter topics** to prevent blocked queues
-- **Next**: Learn about [Performance Tuning](tuning.md) to optimize throughput
+- Ordering guarantees sequence only for messages that share a key.
+- Configure subscriber ordering and publish with `ordering_key`.
+- Design keys around entity state boundaries.
+- Pair ordering with dead-letter policy to avoid indefinite blocking.
+- Treat ordering as a correctness tool with explicit throughput trade-offs.

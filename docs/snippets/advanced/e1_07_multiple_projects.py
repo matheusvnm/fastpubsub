@@ -1,4 +1,5 @@
 from fastpubsub import FastPubSub, Message, PubSubBroker, PubSubRouter
+from fastpubsub.testing import PubSubTestClient
 
 broker = PubSubBroker(project_id="project-a")
 app = FastPubSub(broker)
@@ -190,3 +191,22 @@ async def create_order(order: dict):
 
 
 # --8<-- [end:complete_example]
+
+
+# --8<-- [start:cross_project_test_client]
+async def test_cross_project_publish_targets_expected_project() -> None:
+    test_broker = PubSubBroker(project_id="project-a")
+
+    async with PubSubTestClient(test_broker) as client:
+        await client.publish(
+            topic="shared-events",
+            data={"event": "cross-project"},
+            project_id="project-b",
+        )
+        published = client.get_published_messages()
+
+    assert len(published) == 1
+    assert published[0].project_id == "project-b"
+
+
+# --8<-- [end:cross_project_test_client]

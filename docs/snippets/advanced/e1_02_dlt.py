@@ -1,7 +1,10 @@
 from datetime import UTC, datetime
 
+import pytest
+
 from fastpubsub import FastPubSub, Message, PubSubBroker
 from fastpubsub.logger import logger
+from fastpubsub.testing import PubSubTestClient
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 app = FastPubSub(broker)
@@ -166,3 +169,29 @@ async def queue_for_review(message: Message):
 
 
 # --8<-- [end:dlq_pattern_review]
+
+
+# --8<-- [start:dlt_test_client]
+@pytest.mark.asyncio
+async def test_failed_message_reaches_error_result_stream() -> None:
+    test_broker = PubSubBroker(project_id="test-project")
+
+    @test_broker.subscriber(
+        alias="always-fails",
+        topic_name="orders",
+        subscription_name="orders-subscription",
+        dead_letter_topic="orders-dlq",
+        max_delivery_attempts=5,
+    )
+    async def always_fails(_: Message) -> None:
+        raise ValueError("invalid payload")
+
+    async with PubSubTestClient(test_broker) as client:
+        await client.publish(topic="orders", data={"order_id": "ord-1"})
+        results = client.get_results()
+
+    assert len(results) == 1
+    assert isinstance(results[0].error, ValueError)
+
+
+# --8<-- [end:dlt_test_client]

@@ -8,12 +8,14 @@ from fastpubsub.logger import logger
 # --8<-- [start:latency_middleware]
 class LatencyMiddleware(BaseMiddleware):
     async def on_message(self, message: Message):
-        # Calculate message age
-        if message.publish_time:
-            age_seconds = (datetime.now(UTC) - message.publish_time).total_seconds()
+        # Calculate message age from publisher-provided timestamp attribute.
+        published_at = message.attributes.get("published_at")
+        if published_at:
+            published_at_dt = datetime.fromisoformat(published_at)
+            age_seconds = (datetime.now(UTC) - published_at_dt).total_seconds()
             logger.info(f"Message age: {age_seconds:.2f}s")
 
-            if age_seconds > 300:  # 5 minutes
+            if age_seconds > 300:
                 logger.warning(f"Old message detected: {age_seconds:.2f}s old")
 
         # Track processing time
@@ -49,8 +51,7 @@ async def handler(message: Message):
             "message_id": message.id,
             "data": message.data.decode("utf-8"),
             "attributes": message.attributes,
-            "ordering_key": message.ordering_key,
-            "publish_time": message.publish_time.isoformat() if message.publish_time else None,
+            "published_at": message.attributes.get("published_at"),
         },
     )
 

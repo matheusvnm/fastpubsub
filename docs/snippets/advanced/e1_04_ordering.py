@@ -23,7 +23,7 @@ async def process_event(data: bytes) -> None:
     autocreate=True,
 )
 async def process_user_events(message: Message):
-    user_id = message.ordering_key
+    user_id = message.attributes.get("user_id", "unknown-user")
     await update_user_state(user_id, message.data)
 
 
@@ -41,11 +41,13 @@ async def user_action():
     await ordered_publisher.publish(
         data={"action": "login", "user_id": "user-123"},
         ordering_key="user-123",
+        attributes={"user_id": "user-123"},
     )
 
     await ordered_publisher.publish(
         data={"action": "update_profile", "user_id": "user-123"},
         ordering_key="user-123",  # Guaranteed to be processed after the login message
+        attributes={"user_id": "user-123"},
     )
 
 
@@ -98,7 +100,7 @@ inventory_db = InventoryDB()
     enable_message_ordering=True,
 )
 async def track_session(message: Message):
-    user_id = message.ordering_key
+    user_id = message.attributes.get("user_id", "unknown-user")
     event = message.data
 
     # Events arrive in order: login → page_view → purchase → logout
@@ -118,7 +120,7 @@ async def track_session(message: Message):
 async def process_order_state(message: Message):
     import json
 
-    order_id = message.ordering_key
+    order_id = message.attributes.get("order_id", "unknown-order")
     transition = json.loads(message.data)["transition"]
 
     # Transitions arrive in order: created → paid → shipped → delivered
@@ -138,7 +140,7 @@ async def process_order_state(message: Message):
 async def update_inventory(message: Message):
     import json
 
-    sku = message.ordering_key
+    sku = message.attributes.get("sku", "unknown-sku")
     delta = json.loads(message.data)["quantity_change"]
 
     # +10, -5, +3 applied in correct order

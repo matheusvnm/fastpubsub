@@ -4,199 +4,176 @@ icon: lucide/code
 
 # Custom Middlewares
 
-This guide covers advanced middleware patterns for FastPubSub. For middleware basics, see the [Middlewares](../tutorial/user-guide/middlewares.md) guide in the user tutorial.
+FastPubSub middlewares provide explicit interception points for cross-cutting concerns such as validation,
+rate control, telemetry, and lifecycle error mapping.
 
-## Middleware Lifecycle
+This page focuses on designing production-grade custom middlewares and composing them safely.
+For baseline usage, see [Middlewares](../tutorial/user-guide/middlewares.md).
 
-Understanding the middleware execution flow helps you write effective middlewares:
+## Execution Topology
+
+Middleware execution order follows registration hierarchy.
 
 ```mermaid
 sequenceDiagram
-    participant P as Pub/Sub
-    participant M1 as Middleware 1
-    participant M2 as Middleware 2
+    participant P as Pub/Sub Message
+    participant B as Broker Middleware
+    participant R as Router Middleware
+    participant S as Subscriber Middleware
     participant H as Handler
 
-    P->>M1: Message arrives
-    M1->>M2: on_message()
-    M2->>H: on_message()
-    H->>H: Process message
-    H-->>M2: Return
-    M2-->>M1: Return
-    M1-->>P: Ack/Nack
+    P->>B: on_message
+    B->>R: on_message
+    R->>S: on_message
+    S->>H: on_message
+    H-->>S: return
+    S-->>R: return
+    R-->>B: return
 ```
 
-!!! info "Execution Order"
-    Middlewares execute in registration order for incoming messages (broker → router → subscriber) and reverse order for the return path. For publishing, it's the opposite: publisher → router → broker middlewares.
+For publish flow, direction is inverted (publisher -> router -> broker).
 
-## Middleware with Configuration
+## Why Use Custom Middlewares
 
-Create reusable middlewares that accept configuration parameters:
+Custom middlewares are best when logic must be:
+
+- Applied consistently across many subscribers or publishers.
+- Independent from domain-specific business handlers.
+- Reusable and testable as an isolated unit.
+
+Typical examples include:
+
+- Structured validation gates.
+- Rate limiting and admission control.
+- Metadata enrichment and contract tagging.
+- Latency and status telemetry.
+
+## Configured Middleware (Stateless-First)
+
+A configured middleware instance is often preferable to hard-coded constants.
 
 ```python
 --8<-- "advanced/e1_01_custom_middlewares.py:rate_limit_middleware"
 ```
 
-1. Constructor receives configuration parameters
-
-### Applying Configured Middlewares
-
-Use the `Middleware` wrapper to pass configuration:
+Register configured middleware using the `Middleware(...)` wrapper:
 
 ```python
-from fastpubsub import PubSubBroker, Middleware
-
-broker = PubSubBroker(
-    project_id="your-project-id",
-    middlewares=[
-        Middleware(RateLimitMiddleware, requests_per_second=50),  # (1)!
-    ]
-)
+--8<-- "advanced/e1_01_custom_middlewares.py:configured_middleware_registration"
 ```
 
-1. Pass configuration as keyword arguments
+The wrapper keeps constructor arguments explicit while preserving declarative broker setup.
 
----
+!!! warning "Prefer Stateless Middlewares"
+    Middlewares should be stateless whenever possible.
+    If state is required (for example, rate limiting counters, distributed locks, dedup keys), store it in dedicated
+    external systems such as Redis or a persistence service. Do not keep mutable operational state inside middleware instances.
 
-## Step-by-Step
+## Directional Middlewares
 
-1. Create a middleware class and implement `on_message` or `on_publish`.
-2. Add configuration via the `Middleware(...)` wrapper if needed.
-3. Register it at the broker, router, or subscriber level.
-4. Test behavior using `PubSubTestClient`.
+Some middlewares should affect only one direction.
 
-## Subscriber-Only vs Publisher-Only Middlewares
+### Subscriber-Side Validation
 
-Create middlewares that only affect one direction:
+```python
+--8<-- "advanced/e1_01_custom_middlewares.py:validation_middleware"
+```
 
-=== "Subscriber Only"
-    ```python
-    --8<-- "advanced/e1_01_custom_middlewares.py:validation_middleware"
-    ```
+### Publisher-Side Metadata Enrichment
 
-=== "Publisher Only"
-    ```python
-    --8<-- "advanced/e1_01_custom_middlewares.py:compression_middleware"
-    ```
+```python
+--8<-- "advanced/e1_01_custom_middlewares.py:publisher_metadata_middleware"
+```
 
-## Error Handling in Middlewares
+!!! note "Use Built-In Compression Middleware"
+    For payload compression, prefer the built-in `GZipMiddleware`.
+    Custom middlewares should demonstrate behavior not already covered by the framework core.
 
-Handle errors gracefully and decide whether to retry or drop messages:
+## Error Classification Strategy
+
+Middleware is an appropriate location to convert broad exceptions into explicit message lifecycle intent (`Drop` vs `Retry`).
 
 ```python
 --8<-- "advanced/e1_01_custom_middlewares.py:error_handling_middleware"
 ```
 
-### Error Transformation
+This keeps domain handlers focused on business behavior while centralizing policy for transient and permanent errors.
 
-Transform external errors into appropriate FastPubSub exceptions:
-
-```python
-class ExternalServiceMiddleware(BaseMiddleware):
-    async def on_message(self, message: Message) -> Any:
-        try:
-            return await super().on_message(message)
-
-        except httpx.ConnectError:
-            # Network issue - retry
-            raise Retry("External service unreachable")
-
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
-                # Rate limited - retry with backoff
-                raise Retry("Rate limited by external service")
-            elif e.response.status_code >= 500:
-                # Server error - retry
-                raise Retry(f"External service error: {e.response.status_code}")
-            else:
-                # Client error (4xx) - don't retry
-                raise Drop(f"Client error: {e.response.status_code}")
-```
-
-## Metrics and Observability
-
-Create middlewares for monitoring:
+## Observability Middleware Pattern
 
 ```python
 --8<-- "advanced/e1_01_custom_middlewares.py:metrics_middleware"
 ```
 
+Even simple latency/status logging at middleware level can significantly reduce mean-time-to-diagnosis during incident response.
 
-### Integration Testing
+## Composition Strategy
 
-Test middleware with actual message flow:
-
-```python
-import pytest
-from fastpubsub import PubSubBroker, Message
-from fastpubsub.testing import PubSubTestClient
-
-@pytest.mark.asyncio
-async def test_middleware_integration():
-    processed_messages = []
-
-    class TrackingMiddleware(BaseMiddleware):
-        async def on_message(self, message: Message):
-            processed_messages.append(message.id)
-            return await super().on_message(message)
-
-    broker = PubSubBroker(project_id="test")
-    broker.include_middleware(TrackingMiddleware)
-
-    @broker.subscriber(
-        alias="test-handler",
-        topic_name="test-topic",
-        subscription_name="test-subscription",
-    )
-    async def handle(message: Message):
-        pass
-
-    async with PubSubTestClient(broker) as client:
-        await client.publish({"data": "test"}, topic="test-topic")
-
-    assert len(processed_messages) == 1
-```
-
-??? example "See middleware examples"
-    Check out complete middleware examples in [snippets/middlewares/](../../snippets/middlewares/).
-
-## Middleware Composition
-
-Combine multiple simple middlewares instead of one complex middleware:
+Prefer multiple single-responsibility middlewares over one monolithic middleware.
 
 ```python
 --8<-- "advanced/e1_01_custom_middlewares.py:middleware_composition"
 ```
 
-!!! tip "Single Responsibility"
-    Each middleware should do one thing well. This makes them easier to test, reuse, and reason about.
+Suggested order for inbound message handling:
 
----
+1. **Admission/validation** first.
+2. **Policy mapping** (error handling) next.
+3. **Metrics/logging** around the call boundary.
 
-## Common Pitfalls
+## Anti-Pattern: Cross-Middleware Dependencies
 
-- Forgetting to call `super()` in `on_message` or `on_publish`.
-- Doing slow I/O in middleware without `await`.
-- Mixing FastAPI middlewares with FastPubSub middlewares.
+Avoid designing middleware A to depend on side effects from middleware B.
+Middleware chains should remain composable and order-tolerant.
 
-## Best Practices
+Instead of hidden dependencies between middlewares:
 
-1. **Always Call Super**: Every middleware must call `await super().on_message()` or `await super().on_publish()` to continue the chain. Forgetting this breaks the middleware chain.
+- Place shared state in a dedicated service (cache, database, message store).
+- Inject that service into each middleware through `Middleware(...)` arguments.
+- Keep each middleware independently testable and replaceable.
 
-2. **Keep Middlewares Fast**: Middlewares run on every message. Heavy operations slow down all message processing. Offload slow work to background tasks.
+## Validation with `PubSubTestClient`
 
-3. **Handle Exceptions Carefully**: Unhandled exceptions in middlewares propagate up and cause message nacks. Decide explicitly whether to retry, drop, or re-raise.
+Use `PubSubTestClient` to assert middleware outcomes directly in tests.
 
-4. **Test in Isolation**: Write unit tests for middlewares independent of the message broker. This catches bugs early and makes debugging easier.
+```python
+--8<-- "advanced/e1_01_custom_middlewares.py:middleware_integration_test"
+```
 
-5. **Log Context**: Include message IDs and relevant context in logs. This helps trace issues across the middleware chain.
+This approach validates middleware chain behavior without emulator dependency.
+
+## Design Rules for Reliable Middleware
+
+### Always Continue the Chain
+
+Call `await super().on_message(...)` or `await super().on_publish(...)` unless the middleware intentionally terminates flow.
+
+### Keep Middleware Fast
+
+Middlewares execute on every message. Avoid blocking operations and unbounded in-memory state.
+
+### Preserve Determinism
+
+Any non-deterministic behavior (random waits, external side effects without safeguards) increases debugging complexity.
+
+### Emit Actionable Context
+
+Logs and metrics should include stable identifiers (`message_id`, subscriber alias, error class) to support cross-system correlation.
+
+## Common Failure Modes
+
+- Omitting `super()` and breaking the chain.
+- Mixing unrelated concerns into one middleware class.
+- Keeping mutable runtime state inside middleware instances.
+- Creating hidden dependencies between middleware classes.
+- Raising generic exceptions instead of `Drop`/`Retry` when policy is known.
 
 ## Recap
 
-- **Middleware lifecycle** follows registration order in, reverse order out
-- **Configured middlewares** use `Middleware` wrapper to pass parameters
-- **Subscriber/publisher-only** middlewares implement only the relevant method
-- **Resource management** uses `on_startup` and `on_shutdown` hooks
-- **Error handling** transforms exceptions into `Drop` or `Retry`
-- **Testing** can be done in isolation or with `PubSubTestClient`
-- **Composition** keeps middlewares simple and reusable
+- Custom middlewares are the primary extension point for cross-cutting runtime policy.
+- Use `Middleware(...)` for configured, reusable classes.
+- Keep middlewares stateless and externalize mutable state when needed.
+- Separate subscriber and publisher concerns when behavior differs by direction.
+- Avoid middleware-to-middleware dependencies; share state through explicit services.
+- Compose small middlewares in explicit order.
+- Validate middleware behavior with `PubSubTestClient` before production rollout.

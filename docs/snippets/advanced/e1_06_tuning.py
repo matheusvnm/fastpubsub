@@ -171,6 +171,23 @@ async def call_external_service(message: Message):
 # --8<-- [end:external_backoff]
 
 
+# --8<-- [start:retry_backoff]
+@broker.subscriber(
+    alias="api-with-backoff",
+    topic_name="api-calls",
+    subscription_name="api-calls-subscription",
+    min_backoff_delay_secs=10,
+    max_backoff_delay_secs=600,
+    max_delivery_attempts=10,
+    dead_letter_topic="api-calls-dlq",
+)
+async def call_api_with_backoff(message: Message):
+    await external_service.process(message.data)
+
+
+# --8<-- [end:retry_backoff]
+
+
 # --8<-- [start:complete_tuned]
 tuned_broker = PubSubBroker(
     project_id="fastpubsub-pubsub-local",
