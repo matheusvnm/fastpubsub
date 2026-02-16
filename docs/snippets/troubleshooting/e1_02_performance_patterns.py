@@ -103,7 +103,7 @@ async def process_in_order(user_id: str, data: bytes) -> None:
     enable_message_ordering=True,
 )
 async def ordered_handler(message: Message):
-    user_id = message.ordering_key
+    user_id = message.attributes.get("user_id", "unknown-user")
     await process_in_order(user_id, message.data)
 
 

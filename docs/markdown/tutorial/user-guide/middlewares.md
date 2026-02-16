@@ -40,6 +40,14 @@ Inherit from `BaseMiddleware` and implement one or both methods:
 --8<-- "middlewares/e4_01_full_logging_middleware.py:logging_middleware"
 ```
 
+### Example: Built-In GZip Middleware
+
+```python
+--8<-- "middlewares/e1_01_common_middlewares.py:gzip_middleware_setup"
+```
+
+Use this built-in middleware for payload compression instead of implementing custom compression logic.
+
 ---
 
 ## Step-by-Step
@@ -122,6 +130,16 @@ Use the `Middleware(...)` wrapper when you need to pass constructor arguments to
 - Forgetting to call `super()` breaks the chain.
 - Adding middleware at the wrong level (broker vs router vs subscriber).
 - Doing slow I/O inside middleware without `await`.
+- Keeping mutable runtime state inside middleware instances.
+- Creating implicit dependencies between middleware classes.
+
+!!! warning "Stateless-First Middleware Design"
+
+    Keep middlewares stateless by default. If you need mutable state (rate limiting counters, dedup markers, distributed locks), store it in dedicated external components and inject those dependencies into each middleware explicitly.
+
+!!! warning "Avoid Cross-Middleware Dependencies"
+
+    Do not rely on middleware A mutating data that middleware B requires to function. This coupling is an anti-pattern and makes chain order brittle. Share state through explicit services instead.
 
 ---
 

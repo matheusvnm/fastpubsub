@@ -31,6 +31,12 @@ The publisher automatically converts your data:
 | `str` | UTF-8 bytes (`"hello"` → `b'hello'`) |
 | `bytes` | Sent as-is (for custom formats like Protobuf or Avro) |
 
+```python
+--8<-- "basic_usage/e2_03_message_formats.py:pydantic_model"
+
+--8<-- "basic_usage/e2_03_message_formats.py:publish_formats"
+```
+
 ---
 
 ## Publishing with the Broker
@@ -86,7 +92,7 @@ The approach involves `Publisher` object that is pre-configured for a specific t
 This pattern works well with clean architecture and dependency injection:
 
 ```python
---8<-- "basic_usage/e2_05_publisher_dependency_injection.py"
+--8<-- "basic_usage/e2_04_publisher_dependency_injection.py"
 ```
 
 ### When to Use
@@ -117,13 +123,13 @@ Sometimes you need to add metadata to give context to your message events withou
 === "Via `broker.publish` function"
 
     ```python hl_lines="6"
-    --8<-- "basic_usage/e2_06_publish_with_attributes.py:publish_attributes_broker"
+    --8<-- "basic_usage/e2_05_publish_with_attributes.py:publish_attributes_broker"
     ```
 
 === "Via `Publisher` object"
 
     ```python hl_lines="7"
-    --8<-- "basic_usage/e2_06_publish_with_attributes.py:publish_attributes_publisher"
+    --8<-- "basic_usage/e2_05_publish_with_attributes.py:publish_attributes_publisher"
     ```
 
 ---
@@ -136,13 +142,13 @@ For ordered message delivery, enable the `enable_message_ordering` on the receiv
 === "Via `broker.publish` function"
 
     ```python hl_lines="6 12"
-    --8<-- "basic_usage/e2_07_publish_with_ordering.py:publish_ordering_broker"
+    --8<-- "basic_usage/e2_06_publish_with_ordering.py:publish_ordering_broker"
     ```
 
 === "Via `Publisher` object"
 
     ```python hl_lines="9 14"
-    --8<-- "basic_usage/e2_07_publish_with_ordering.py:publish_ordering_publisher"
+    --8<-- "basic_usage/e2_06_publish_with_ordering.py:publish_ordering_publisher"
     ```
 
 ---
@@ -155,13 +161,13 @@ In some scenarios, you may need to publish messages into projects that are not d
 === "Via `broker.publish` function"
 
     ```python hl_lines="6"
-    --8<-- "basic_usage/e2_08_cross_project_publish.py:cross_project_broker"
+    --8<-- "basic_usage/e2_07_cross_project_publish.py:cross_project_broker"
     ```
 
 === "Via `Publisher` object"
 
     ```python hl_lines="8"
-    --8<-- "basic_usage/e2_08_cross_project_publish.py:cross_project_publisher"
+    --8<-- "basic_usage/e2_07_cross_project_publish.py:cross_project_publisher"
     ```
 
 ---

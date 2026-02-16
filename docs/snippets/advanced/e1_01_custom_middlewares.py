@@ -1,63 +1,62 @@
-import asyncio
-import gzip
 import json
 import time
 from typing import Any
 
-from fastpubsub import BaseMiddleware, FastPubSub, Message, Middleware, PubSubBroker
+import pytest
+
+from fastpubsub import BaseMiddleware, Message, Middleware, PubSubBroker
 from fastpubsub.exceptions import Drop, Retry
 from fastpubsub.logger import logger
+from fastpubsub.testing import PubSubTestClient
 
 
 # --8<-- [start:rate_limit_middleware]
-class RateLimitMiddleware(BaseMiddleware):
-    def __init__(self, next_call: BaseMiddleware, requests_per_second: int = 100):
-        super().__init__(next_call)
+class RateLimiterService:
+    """External rate limiter contract (Redis, API gateway, etc.)."""
 
-        self.requests_per_second = requests_per_second
-        self.tokens = requests_per_second
-        self.last_update = time.monotonic()
+    async def acquire(self, key: str) -> None:
+        pass
+
+
+class RateLimitMiddleware(BaseMiddleware):
+    """Rate limiting middleware that delegates state to an external service."""
+
+    def __init__(self, next_call: BaseMiddleware, limiter: RateLimiterService):
+        super().__init__(next_call)
+        self.limiter = limiter
 
     async def on_message(self, message: Message) -> Any:
-        await self._acquire_token()
+        await self.limiter.acquire(key=message.subscriber_name)
         return await super().on_message(message)
-
-    async def _acquire_token(self):
-        # Token bucket implementation
-        now = time.monotonic()
-        elapsed = now - self.last_update
-        self.tokens = min(
-            self.requests_per_second, self.tokens + elapsed * self.requests_per_second
-        )
-        self.last_update = now
-
-        if self.tokens < 1:
-            await asyncio.sleep(1 / self.requests_per_second)
-            self.tokens = 1
-
-        self.tokens -= 1
 
 
 # --8<-- [end:rate_limit_middleware]
 
 
+# --8<-- [start:configured_middleware_registration]
+rate_limiter = RateLimiterService()
+
+broker = PubSubBroker(
+    project_id="fastpubsub-pubsub-local",
+    middlewares=[
+        Middleware(RateLimitMiddleware, limiter=rate_limiter),
+    ],
+)
+# --8<-- [end:configured_middleware_registration]
+
+
 # --8<-- [start:validation_middleware]
 class ValidationMiddleware(BaseMiddleware):
-    """Only validates incoming messages."""
+    """Rejects non-JSON payloads before they reach the handler."""
 
     async def on_message(self, message: Message) -> Any:
-        # Validate message data
-        if not self._is_valid(message.data):
-            raise Drop("Invalid message format")
+        if not self._is_valid_json(message.data):
+            raise Drop("Invalid payload: expected JSON bytes")
+
         return await super().on_message(message)
 
-    async def on_publish(
-        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
-    ) -> Any:
-        # Pass through without modification
-        return await super().on_publish(data, ordering_key, attributes)
-
-    def _is_valid(self, data: bytes) -> bool:
+    @staticmethod
+    def _is_valid_json(data: bytes) -> bool:
         try:
             json.loads(data)
             return True
@@ -68,65 +67,47 @@ class ValidationMiddleware(BaseMiddleware):
 # --8<-- [end:validation_middleware]
 
 
-# --8<-- [start:compression_middleware]
-class CompressionMiddleware(BaseMiddleware):
-    """Only compresses outgoing messages."""
-
-    async def on_message(self, message: Message) -> Any:
-        # Pass through without modification
-        return await super().on_message(message)
+# --8<-- [start:publisher_metadata_middleware]
+class PublisherMetadataMiddleware(BaseMiddleware):
+    """Adds delivery metadata to outgoing messages."""
 
     async def on_publish(
-        self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
+        self,
+        data: bytes,
+        ordering_key: str,
+        attributes: dict[str, str] | None,
     ) -> Any:
-        # Compress data before sending
-        compressed = gzip.compress(data)
-        if attributes is None:
-            attributes = {}
-        attributes["content-encoding"] = "gzip"
-        return await super().on_publish(compressed, ordering_key, attributes)
+        metadata = {} if attributes is None else dict(attributes)
+        metadata["schema-version"] = "v1"
+        metadata["source-service"] = "orders-service"
+        return await super().on_publish(data, ordering_key, metadata)
 
 
-# --8<-- [end:compression_middleware]
-
-
-# Custom exception types for demonstration
-class ValidationError(Exception):
-    pass
-
-
-class TemporaryError(Exception):
-    pass
+# --8<-- [end:publisher_metadata_middleware]
 
 
 # --8<-- [start:error_handling_middleware]
 class ErrorHandlingMiddleware(BaseMiddleware):
+    """Maps domain errors to explicit lifecycle outcomes."""
+
     async def on_message(self, message: Message) -> Any:
         try:
             return await super().on_message(message)
-
-        except ValidationError as e:
-            # Invalid data - don't retry, just drop
-            logger.warning(f"Dropping invalid message: {e}")
-            raise Drop(f"Validation failed: {e}")
-
-        except TemporaryError as e:
-            # Temporary issue - retry later
-            logger.info(f"Retrying message due to: {e}")
-            raise Retry(f"Temporary failure: {e}")
-
-        except Exception:
-            # Unexpected error - log and let it propagate
-            logger.exception(f"Unexpected error processing message {message.id}")
-            raise
+        except ValueError as error:
+            logger.warning("Dropping message due to validation error", extra={"error": str(error)})
+            raise Drop(str(error)) from error
+        except TimeoutError as error:
+            logger.info("Retrying message due to transient timeout", extra={"error": str(error)})
+            raise Retry(str(error)) from error
 
 
 # --8<-- [end:error_handling_middleware]
 
 
 # --8<-- [start:metrics_middleware]
-# Simulated Prometheus metrics (use prometheus_client in production)
 class MetricsMiddleware(BaseMiddleware):
+    """Records processing latency and status per subscriber."""
+
     def __init__(self, next_call: BaseMiddleware, subscriber_name: str):
         super().__init__(next_call)
         self.subscriber_name = subscriber_name
@@ -136,18 +117,19 @@ class MetricsMiddleware(BaseMiddleware):
         status = "success"
 
         try:
-            result = await super().on_message(message)
-            return result
+            return await super().on_message(message)
         except Exception:
             status = "error"
             raise
         finally:
-            duration = time.monotonic() - start
-            # In production, use prometheus_client:
-            # MESSAGES_PROCESSED.labels(subscriber=self.subscriber_name, status=status).inc()
-            # PROCESSING_TIME.labels(subscriber=self.subscriber_name).observe(duration)
+            elapsed = time.monotonic() - start
             logger.info(
-                f"Metrics: subscriber={self.subscriber_name} status={status} duration={duration:.3f}s"
+                "subscriber.metrics",
+                extra={
+                    "subscriber": self.subscriber_name,
+                    "status": status,
+                    "latency_seconds": f"{elapsed:.6f}",
+                },
             )
 
 
@@ -155,23 +137,42 @@ class MetricsMiddleware(BaseMiddleware):
 
 
 # --8<-- [start:middleware_composition]
-broker = PubSubBroker(
+broker_with_composition = PubSubBroker(
     project_id="fastpubsub-pubsub-local",
     middlewares=[
         Middleware(ErrorHandlingMiddleware),
-        Middleware(MetricsMiddleware, subscriber_name="orders"),
+        Middleware(MetricsMiddleware, subscriber_name="orders-handler"),
         Middleware(ValidationMiddleware),
     ],
 )
 # --8<-- [end:middleware_composition]
 
-app = FastPubSub(broker)
+
+# --8<-- [start:middleware_integration_test]
+@pytest.mark.asyncio
+async def test_validation_middleware_drops_invalid_payload() -> None:
+    test_broker = PubSubBroker(
+        project_id="test-project",
+        middlewares=[Middleware(ValidationMiddleware)],
+    )
+
+    @test_broker.subscriber(
+        alias="validator",
+        topic_name="events",
+        subscription_name="events-subscription",
+    )
+    async def handler(message: Message) -> str:
+        return message.data.decode("utf-8")
+
+    async with PubSubTestClient(test_broker) as client:
+        await client.publish(topic="events", data=b'{"valid":true}')
+        await client.publish(topic="events", data=b"{invalid-json")
+
+        results = client.get_results()
+
+    assert len(results) == 2
+    assert results[0].error is None
+    assert isinstance(results[1].error, Drop)
 
 
-@broker.subscriber(
-    alias="middleware-demo",
-    topic_name="middleware-demo",
-    subscription_name="middleware-demo-subscription",
-)
-async def handle_message(message: Message):
-    logger.info(f"Processing message: {message.id}")
+# --8<-- [end:middleware_integration_test]

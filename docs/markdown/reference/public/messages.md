@@ -1,9 +1,5 @@
-# `Message` class
+# Message Classes
 
 ::: fastpubsub.Message
-
----
-
-# `PushMessage` class
 
 ::: fastpubsub.PushMessage

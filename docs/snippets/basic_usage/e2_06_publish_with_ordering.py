@@ -13,7 +13,7 @@ app = FastPubSub(broker)
 )
 async def handle_user_event(message: Message) -> None:
     logger.info(f"Received: {message.data.decode()}")
-    logger.info(f"Ordering key: {message.ordering_key}")
+    logger.info(f"User ID attribute: {message.attributes.get('user_id')}")
 
 
 # --8<-- [start:publish_ordering_broker]
@@ -23,12 +23,14 @@ async def publish_with_broker() -> None:
         topic_name="user-events",
         data={"action": "login", "user_id": "user-123"},
         ordering_key="user-123",  # Same key ensures order
+        attributes={"user_id": "user-123"},
     )
 
     await broker.publish(
         topic_name="user-events",
         data={"action": "update_profile", "user_id": "user-123"},
         ordering_key="user-123",  # Same key ensures order
+        attributes={"user_id": "user-123"},
     )
 
 
@@ -45,11 +47,13 @@ async def publish_with_publisher() -> None:
     await ordered_publisher.publish(
         data={"action": "login", "user_id": "user-123"},
         ordering_key="user-123",  # Same key ensures order
+        attributes={"user_id": "user-123"},
     )
 
     await ordered_publisher.publish(
         data={"action": "update_profile", "user_id": "user-123"},
         ordering_key="user-123",  # Same key ensures order
+        attributes={"user_id": "user-123"},
     )
 
 

@@ -4,124 +4,128 @@ icon: lucide/shield-check
 
 # Exactly-Once Delivery
 
-Exactly-once delivery guarantees that each message is processed exactly one time, even when failures occur. This prevents duplicate processing but comes with trade-offs in latency and cost.
+Exactly-once delivery aims to eliminate duplicate processing for a subscription.
+In FastPubSub, it is configured through `enable_exactly_once_delivery=True` on the subscriber.
 
-## Understanding Delivery Semantics
+This capability should be treated as a domain-level decision, not a default optimization.
+It introduces additional coordination cost and changes throughput characteristics.
 
-Pub/Sub offers different delivery guarantees. Understanding them helps you choose the right approach for your use case:
+## Delivery Semantics in Context
 
-| Delivery Type | Guarantee | Use Case |
-|--------------|-----------|----------|
-| **At-least-once** | Message delivered one or more times | Default, good for idempotent handlers |
-| **Exactly-once** | Message delivered exactly one time | Financial transactions, non-idempotent operations |
+| Model | Guarantee | Typical Usage |
+|------|-----------|---------------|
+| At-least-once | Message may be delivered multiple times | Most event systems with idempotent handlers |
+| Exactly-once | Message is processed without duplicate delivery | Duplicate-sensitive operations |
 
-!!! info "At-Least-Once Is the Default"
-    By default, Pub/Sub uses at-least-once delivery. Messages may be delivered multiple times if acknowledgments are lost or your handler crashes mid-processing.
+By default, Pub/Sub uses at-least-once delivery.
+That default is usually sufficient when handlers are idempotent.
 
-## Enabling Exactly-Once Delivery
-
-Add `enable_exactly_once_delivery=True` to your subscriber:
+## Enabling Exactly-Once
 
 ```python
 --8<-- "advanced/e1_05_delivery_guarantees.py:exactly_once"
 ```
 
-1. Enables exactly-once delivery for this subscription
+The configuration is explicit and local to the subscriber.
+You can apply it selectively to critical flows rather than globally.
 
----
+## Decision Framework
 
-## Step-by-Step
+Enable exactly-once when all of the following are true:
 
-1. Decide if your handler is non-idempotent.
-2. Enable `enable_exactly_once_delivery=True` on the subscriber.
-3. Add idempotency keys to messages anyway for auditing.
-4. Load test to measure latency impact.
+- Duplicate side effects are expensive or unacceptable.
+- Handler idempotency is hard to guarantee for business reasons.
+- Added latency and cost are acceptable for that workflow.
 
-## When to Use Exactly-Once
+Avoid enabling exactly-once when:
 
-=== "Use It For"
-    - **Financial transactions** - Charging customers, transferring funds
-    - **Inventory updates** - Decrementing stock counts
-    - **Sending notifications** - Emails, SMS where duplicates annoy users
-    - **Non-idempotent operations** - Actions that can't safely be repeated
+- Handlers are naturally idempotent.
+- Throughput is more important than strict single-processing semantics.
+- The flow is observational (analytics, telemetry) and duplicates are tolerable.
 
-=== "Avoid It For"
-    - **Idempotent handlers** - If duplicates don't matter, skip the overhead
-    - **Low-latency requirements** - Adds coordination latency
-    - **High-volume processing** - Increases costs and reduces throughput
-    - **Analytics/logging** - Duplicate log entries are usually acceptable
+## Engineering Trade-offs
 
-!!! warning "Performance Impact"
-    Exactly-once delivery requires additional coordination between Pub/Sub and your subscriber. This adds latency and increases costs. Use it only when truly necessary.
+| Dimension | At-Least-Once | Exactly-Once |
+|----------|----------------|--------------|
+| Throughput | Higher | Lower |
+| Latency | Lower | Higher |
+| Cost | Lower | Higher |
+| Duplicate protection | Application concern | Broker-level guarantee |
 
-## Trade-offs Comparison
+!!! warning "Exactly-Once Is Not a Universal Default"
+    Use it for operations where duplicate effects are materially harmful.
+    For general event processing, idempotent handlers are often a better long-term baseline.
 
-| Aspect | At-Least-Once | Exactly-Once |
-|--------|---------------|--------------|
-| **Latency** | Lower | Higher (+10-50ms) |
-| **Throughput** | Higher | Lower |
-| **Cost** | Lower | Higher |
-| **Complexity** | Handler must be idempotent | Simpler handler logic |
-| **Reliability** | May process duplicates | No duplicates |
+## Idempotency as a Robust Alternative
 
-## The Idempotent Alternative
-
-Instead of relying on exactly-once delivery, you can make your handlers idempotent. An idempotent handler produces the same result whether called once or multiple times with the same input.
+FastPubSub supports straightforward idempotent designs without enabling exactly-once.
 
 ```python
 --8<-- "advanced/e1_05_delivery_guarantees.py:idempotent_handler"
 ```
 
-1. Use a unique identifier from the message
-2. Check your database/cache before processing
-3. Record that you've processed this event
+### Database Constraint Pattern
 
-### Idempotency Patterns
+```python
+--8<-- "advanced/e1_05_delivery_guarantees.py:idempotent_database"
+```
 
-=== "Database Check"
-    ```python
-    --8<-- "advanced/e1_05_delivery_guarantees.py:idempotent_database"
-    ```
+### Cache/Key Store Pattern
 
-=== "Redis Check"
-    ```python
-    --8<-- "advanced/e1_05_delivery_guarantees.py:idempotent_redis"
-    ```
+```python
+--8<-- "advanced/e1_05_delivery_guarantees.py:idempotent_redis"
+```
 
-!!! tip "Prefer Idempotency Over Exactly-Once"
-    Idempotent handlers are more robust than exactly-once delivery. They work correctly even if you need to replay messages or switch messaging systems.
+These patterns usually remain valid across brokers and replay workflows.
 
-## Combining with Other Features
+## Composition with Other Reliability Controls
 
-Exactly-once delivery works well with other FastPubSub features:
+Critical subscriptions normally combine delivery guarantees with dead-letter and retry policy:
 
 ```python
 --8<-- "advanced/e1_05_delivery_guarantees.py:exactly_once_combined"
 ```
 
-## Best Practices
+This prevents a strict delivery model from masking unresolved failure classes.
 
-1. **Include Idempotency Keys**: Even with exactly-once delivery, include unique identifiers in your messages. This helps with debugging and allows you to switch approaches later.
+## Validation with `PubSubTestClient`
 
-2. **Test Duplicate Handling**: Write tests that verify your handler behaves correctly when receiving the same message twice. This catches issues before production.
+For local validation, test idempotency behavior directly in the handler path.
 
-3. **Monitor Duplicate Rates**: Track how often duplicates would have occurred. If the rate is very low, you might not need exactly-once delivery at all.
+```python
+--8<-- "advanced/e1_05_delivery_guarantees.py:idempotency_test_client"
+```
 
-4. **Regional Considerations**: Exactly-once delivery is only available in certain regions. Check Google Cloud documentation for availability in your region.
+`PubSubTestClient` does not emulate full managed delivery internals.
+It is best used to verify deterministic application behavior when duplicate inputs occur.
 
----
 
-## Common Pitfalls
+## Design Recommendations
 
-- Enabling exactly-once for idempotent workloads with no benefit.
-- Assuming it removes the need for idempotency keys.
-- Ignoring regional availability.
+### Keep Idempotency Keys Even with Exactly-Once
+
+Include explicit identifiers such as `event_id` in message attributes or payload.
+They support diagnostics, replay logic, and broker migration scenarios.
+Exactly-once behavior in managed Pub/Sub has platform constraints and should be validated against current Google guidance.
+For details, see [Google Pub/Sub: Exactly-Once Delivery](https://docs.cloud.google.com/pubsub/docs/exactly-once-delivery).
+
+### Measure Before and After Enabling
+
+Track latency percentiles and throughput for the specific subscription.
+Exactly-once should be justified by measurable risk reduction.
+
+### Apply Selectively
+
+Use per-subscriber granularity:
+
+- Enable on billing, payment, and irreversible state transitions.
+- Keep at-least-once for high-volume, idempotent, or analytical streams.
+
 
 ## Recap
 
-- **Exactly-once delivery** guarantees each message is processed once, preventing duplicates
-- Enable with `enable_exactly_once_delivery=True` on your subscriber
-- **Trade-offs**: Higher latency, lower throughput, increased cost
-- **Alternative**: Make handlers idempotent using unique identifiers and database checks
-- **Prefer idempotency** when possible - it's more robust and works across systems
-- **Next**: Learn about [Message Ordering](ordering.md) to process messages in sequence
+- Exactly-once is a targeted reliability feature for duplicate-sensitive domains.
+- Enable it with `enable_exactly_once_delivery=True` on the subscriber.
+- Expect latency and cost trade-offs.
+- Prefer explicit idempotency where practical and portable.
+- Validate handler behavior early with `PubSubTestClient`; validate managed semantics in integration.

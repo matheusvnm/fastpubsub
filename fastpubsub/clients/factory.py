@@ -31,12 +31,10 @@ class PubSubClientFactory:
     recommendation to reuse Pub/Sub clients for better performance.
 
     The caching strategy:
-    - PublisherClient: Cached by (project_id, enable_ordering)
-    - SubscriberClient: Cached by project_id
-
-    Thread/async safety:
-    - Uses asyncio.Lock for async-safe double-checked locking
-    - Safe for concurrent access from multiple coroutines
+        - PublisherClient: Cached by (project_id, enable_ordering)
+        - SubscriberClient: Cached by project_id
+        - Uses asyncio.Lock for async-safe double-checked locking
+        - Safe for concurrent access from multiple coroutines
     """
 
     _publisher_cache: ClassVar[dict[tuple[str, bool], PublisherClient]] = {}

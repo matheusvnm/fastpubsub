@@ -4,67 +4,60 @@ icon: lucide/alert-triangle
 
 # Dead-Letter Topics
 
-Dead-letter topics (DLT) catch messages that fail processing after multiple attempts. They prevent problematic messages from blocking your queue and give you a chance to investigate and fix issues.
+Dead-letter topics (DLT) provide bounded failure handling for subscriptions that cannot process some messages successfully.
+Instead of retrying indefinitely, Pub/Sub redirects repeatedly failing messages to a separate topic after a configured number
+of delivery attempts.
 
-## Why Use Dead-Letter Topics?
+In production systems, this mechanism protects healthy traffic from poison messages and creates an explicit queue for
+operational triage.
 
-Sometimes messages fail repeatedly. Maybe the data is malformed, a required service is down, or there's a bug in your code. Without dead-letter topics, these "poison pill" messages keep retrying forever, consuming resources and blocking other messages.
+## Conceptual Model
 
-!!! info "What is a Poison Pill?"
-    A poison pill is a message that causes your handler to fail every time it tries to process it. Common causes include invalid JSON, missing required fields, or data that triggers edge-case bugs.
+A message follows this lifecycle:
 
-## How Dead-Letter Topics Work
+1. It is delivered to a subscription.
+2. The handler succeeds and acknowledges the message, or fails and triggers a retry.
+3. Retry continues until `max_delivery_attempts` is reached.
+4. Pub/Sub moves the message to `dead_letter_topic`.
 
-When a message fails processing, Pub/Sub tracks the delivery attempt count. After reaching the maximum attempts, the message moves to a dead-letter topic instead of being retried again.
+This means dead-letter routing is not a replacement for handler quality.
+It is a containment mechanism that prevents one pathological message class from degrading the full subscription.
 
 ```mermaid
-graph LR
-    A[Message Published] --> B[Subscription]
-    B --> C{Processing<br/>Successful?}
-    C -->|Yes| D[Ack & Remove]
-    C -->|No| E{Attempts <br/>Max?}
-    E -->|Yes| F[Move to DLT]
-    E -->|No| G[Nack & Retry]
-    G --> B
+flowchart LR
+    A[Message delivered] --> B{Handler success?}
+    B -->|Yes| C[Acked and removed]
+    B -->|No| D{Attempts < max?}
+    D -->|Yes| E[Retry with backoff]
+    E --> A
+    D -->|No| F[Move to dead-letter topic]
 ```
 
-## Basic Configuration
+## Baseline Configuration
 
-Configure a dead-letter topic by adding three parameters to your subscriber:
+Configure dead-letter routing directly in the subscriber declaration:
 
 ```python
 --8<-- "advanced/e1_02_dlt.py:basic_dlt_config"
 ```
 
-1. Your GCP project ID
-2. Topic where failed messages go (DLT = Dead Letter Topic)
-3. How many times to retry before moving to DLT
-4. Automatically creates the dead-letter topic if it doesn't exist
+### Parameters and Their Roles
 
-!!! tip "Choosing max_delivery_attempts"
-    Start with 5 attempts (the minimum). This gives transient failures (network issues, service restarts) time to resolve while catching persistent problems quickly.
+| Parameter | Role | Typical Decision Rule |
+|----------|------|-----------------------|
+| `dead_letter_topic` | Destination for failed messages | Use `{topic}-dlq` or `{topic}-dlt` naming convention. |
+| `max_delivery_attempts` | Retry ceiling before reroute | Start with `5` (the minimum), increase only if transient failures are common. |
+| `autocreate` | Creates resources at startup | Keep `True` in local or dev environment but decide by platform policy in prod. |
 
----
+## Retry Dynamics and Backoff
 
-## Step-by-Step
-
-1. Choose a dead-letter topic name (e.g., `orders-dlt`).
-2. Set `dead_letter_topic` and `max_delivery_attempts` on the subscriber.
-3. Create a handler for the dead-letter topic.
-4. Monitor the dead-letter topic for spikes.
-
-## Configuring Retry Backoff
-
-Control how long Pub/Sub waits between retry attempts using backoff settings:
+Dead-letter topics are most effective when paired with deliberate retry pacing.
 
 ```python
 --8<-- "advanced/e1_02_dlt.py:backoff_config"
 ```
 
-1. First retry waits 10 seconds
-2. Maximum wait between retries caps at 10 minutes
-
-The backoff follows an exponential pattern:
+With exponential backoff, transient outages receive time to recover while permanent failures are eventually quarantined.
 
 | Attempt | Approximate Wait |
 |---------|------------------|
@@ -73,58 +66,93 @@ The backoff follows an exponential pattern:
 | 3 | ~20 seconds |
 | 4 | ~40 seconds |
 | 5 | ~80 seconds |
-| 6+ | ~600 seconds (capped) |
+| 6+ | 600 seconds as maximum back-off period |
 
-## Handling Dead-Letter Messages
+## Handling Dead-Letter Traffic
 
-Create a subscriber for your dead-letter topic to log, alert, or store failed messages:
+A dead-letter topic should always have a dedicated consumer path.
+If not, failures become invisible operational debt.
 
 ```python
 --8<-- "advanced/e1_02_dlt.py:dlq_handler"
 ```
 
-1. Subscribe to the same topic specified in `dead_letter_topic`
+The handler should implement at least one of the following:
 
-!!! warning "Always Handle Your Dead-Letter Topics"
-    Don't just configure a DLT and forget about it. Unprocessed dead-letter messages indicate problems that need investigation. Set up alerts when messages arrive in your DLT.
+- **Alerting** for immediate operator awareness.
+- **Persistence** for forensic analysis and replay workflows.
+- **Enrichment** with diagnostic context (correlation IDs, tenant, source service).
 
----
+## Operational Patterns
 
-## Common Pitfalls
+### Alert + Persist Pattern
 
-- Not creating a handler for the dead-letter topic.
-- Setting `max_delivery_attempts` too high (slow feedback).
-- Using different naming conventions across services.
+```python
+--8<-- "advanced/e1_02_dlt.py:dlq_pattern_alert_store"
+```
 
-## Common Patterns
+### Fallback Execution Pattern
 
-=== "Alert and Store"
-    ```python
-    --8<-- "advanced/e1_02_dlt.py:dlq_pattern_alert_store"
-    ```
+```python
+--8<-- "advanced/e1_02_dlt.py:dlq_pattern_retry"
+```
 
-=== "Retry to Different Service"
-    ```python
-    --8<-- "advanced/e1_02_dlt.py:dlq_pattern_retry"
-    ```
+### Manual Review Queue Pattern
 
-=== "Manual Review Queue"
-    ```python
-    --8<-- "advanced/e1_02_dlt.py:dlq_pattern_review"
-    ```
+```python
+--8<-- "advanced/e1_02_dlt.py:dlq_pattern_review"
+```
 
-## Best Practices
+## Validation with `PubSubTestClient`
 
-1. **Naming Convention**: Name your dead-letter topics consistently. A common pattern is `{original-topic}-dlt` (e.g., `orders-dlt`, `payments-dlt`).
+`PubSubTestClient` is useful to verify local failure behavior (for example, that handler failures are observable in test results)
+without infrastructure dependency.
 
-2. **Monitor DLT Message Count**: Set up monitoring to alert when dead-letter topic message counts increase. A sudden spike often indicates a systemic issue.
+```python
+--8<-- "advanced/e1_02_dlt.py:dlt_test_client"
+```
 
-3. **Include Context in Messages**: When publishing messages, include attributes like `correlation_id` or `source_service`. This context helps debug failures in your DLT handler.
+Note that in-memory tests validate application behavior and error surfaces.
+Final validation of managed dead-letter routing itself should still be exercised in an integration environment.
+
+## Design Recommendations
+
+### Choosing `max_delivery_attempts`
+
+- Keep values low when failures are deterministic (schema errors, impossible states).
+- Increase values when downstream dependencies are known to recover quickly.
+- Prefer explicit tuning over high defaults; large values delay incident visibility.
+
+### Naming Strategy
+
+Use a consistent suffix and include bounded domain context:
+
+- `orders-dlq`
+- `payments-dlq`
+- `inventory-dlq`
+
+Consistent names simplify dashboards, alerts, and runbook lookup.
+
+### Monitoring Signals
+
+Track:
+
+- Dead-letter message ingress rate.
+- Most frequent failure class.
+- Time-to-resolution per dead-letter message.
+- Replay success rate after remediation.
+
+## Common Failure Modes
+
+- Configuring a dead-letter topic but never subscribing to it.
+- Setting `max_delivery_attempts` too high and delaying diagnosis.
+- Ignoring retry backoff, causing rapid failure loops.
+- Mixing naming conventions and losing traceability.
 
 ## Recap
 
-- **Dead-letter topics** catch messages that fail after `max_delivery_attempts` retries
-- **Backoff settings** control wait time between retries (`min_backoff_delay_secs`, `max_backoff_delay_secs`)
-- **Always create a DLT handler** to log, alert, or store failed messages
-- **Monitor your DLTs** - messages there indicate problems needing attention
-- **Next**: Learn about [Message Filtering](filters.md) to route messages efficiently
+- Dead-letter topics isolate persistent failures from healthy traffic.
+- Configure `dead_letter_topic` and `max_delivery_attempts` per subscriber.
+- Pair dead-letter routing with retry backoff for controlled failure pacing.
+- Always consume and monitor the dead-letter topic.
+- Validate handler failure behavior early with `PubSubTestClient`, then verify managed routing in integration.
