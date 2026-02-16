@@ -29,8 +29,8 @@ Override the broker's default project on individual subscribers using the `proje
 1. Default project for all subscribers
 2. Override for this specific subscriber
 
-!!! tip "Subscription Naming"
-    When subscribing across projects, name your subscription to indicate which project owns it (e.g., `project-a-subscription`). This helps identify which service is consuming events.
+!!! tip "Subscriber Alias"
+    When subscribing across projects, use the alias on your subscriber to indicate which project owns it (e.g., `cross-project-handler`). This helps identify which service is consuming events.
 
 ## Cross-Project Publishers
 

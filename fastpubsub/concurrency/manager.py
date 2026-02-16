@@ -53,9 +53,8 @@ class AsyncTaskManager:
     async def shutdown(self, timeout: float = 30.0) -> None:
         """Gracefully shuts down all tasks, waiting for message completion.
 
-        Two-step process:
-        1. Cancel all StreamingPullFutures to stop NEW messages from arriving
-        2. Wait for IN-FLIGHT messages to complete (or timeout)
+        First, we cancel all StreamingPullFutures to stop new messages from arriving.
+        Then, we wait for in-flight messages to complete (or timeout).
 
         Args:
             timeout: Maximum time to wait for in-flight messages per subscription (seconds).
