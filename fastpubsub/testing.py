@@ -433,18 +433,24 @@ class PubSubTestClient:
 
     async def _start_patches(self) -> None:
         """Start all mocking patches."""
-        # Mock PubSubClient to prevent real PubSub calls
-        client_patcher = patch("fastpubsub.clients.pubsub.PubSubClient")
-        mock_client_class = client_patcher.start()
-        self._patchers.append(client_patcher)
-
         # Configure mock client
         self._mock_client = MagicMock()
         self._mock_client.create_topic = AsyncMock()
         self._mock_client.create_subscription = AsyncMock()
         self._mock_client.update_subscription = AsyncMock()
         self._mock_client.publish = AsyncMock(side_effect=self._fake_publish)
-        mock_client_class.return_value = self._mock_client
+
+        # Mock PubSubClient at the source module and at every import site
+        # so that all publish paths (including broker.publish() from within
+        # handlers) are intercepted by _fake_publish.
+        for target in (
+            "fastpubsub.clients.pubsub.PubSubClient",
+            "fastpubsub.middlewares.di.PubSubClient",
+        ):
+            patcher = patch(target)
+            mock_class = patcher.start()
+            mock_class.return_value = self._mock_client
+            self._patchers.append(patcher)
 
         # Mock the builder to avoid real PubSub operations
         builder_patcher = patch("fastpubsub.builder.PubSubSubscriptionBuilder")
