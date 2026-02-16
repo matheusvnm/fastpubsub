@@ -105,7 +105,7 @@ For large applications, nest routers to create a hierarchical structures. When y
 ### Example: Financial Application
 
 ```python
---8<-- "routers/e1_05_nested_routers_financial.py"
+--8<-- "routers/e1_02_nested_routers_financial.py"
 ```
 
 ### Resulting Aliases
@@ -125,6 +125,35 @@ fastpubsub run main:app -s core.finance.finance_handler
 # Run both core and banking handlers
 fastpubsub run main:app -s core.core_handler -s core.banking.banking_handler
 ```
+
+---
+
+## Empty Prefix Routers and Alias Resolution
+
+Routers can be created with an empty prefix, but then alias uniqueness must be global.
+
+### Valid: Empty Prefix with Unique Aliases
+
+```python
+--8<-- "routers/e1_01_prefix_resolution.py:empty_prefix_routers"
+
+--8<-- "routers/e1_01_prefix_resolution.py:unique_aliases"
+```
+
+### Invalid: Duplicate Aliases Across Empty-Prefix Routers
+
+```python
+--8<-- "routers/e2_03_prefix_resolution_fails.py:duplicate_alias_error"
+```
+
+### Invalid: Duplicate Alias Between Broker and Empty-Prefix Router
+
+```python
+--8<-- "routers/e3_03_prefix_resolution_fails.py:cross_level_alias_error"
+```
+
+!!! warning "Prefer Explicit Prefixes"
+    Empty prefixes are valid but easier to misconfigure in larger systems. Prefer explicit router prefixes to keep alias spaces predictable.
 
 ---
 
@@ -148,7 +177,7 @@ You can publish messages directly from them:
 Configure a router to use a different GCP project:
 
 ```python
---8<-- "routers/e1_07_cross_project_router_simple.py:cross_project_router"
+--8<-- "routers/e1_04_cross_project_router_simple.py:cross_project_router"
 ```
 
 
@@ -158,7 +187,7 @@ Configure a router to use a different GCP project:
 Apply middlewares to all subscribers in a router:
 
 ```python
---8<-- "routers/e1_06_router_middlewares.py:router_with_middleware"
+--8<-- "routers/e1_03_router_middlewares.py:router_with_middleware"
 ```
 
 See the [Middlewares](middlewares.md) guide for more details on middleware hierarchy.

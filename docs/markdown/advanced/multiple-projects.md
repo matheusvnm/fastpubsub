@@ -38,7 +38,7 @@ Use this when only specific subscriptions belong to a foreign project.
 You can also publish with broker-level API where project is specified per call:
 
 ```python
---8<-- "basic_usage/e2_08_cross_project_publish.py:cross_project_broker"
+--8<-- "basic_usage/e2_07_cross_project_publish.py:cross_project_broker"
 ```
 
 ## Router-Scoped Project Mapping

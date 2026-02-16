@@ -166,6 +166,21 @@ sequenceDiagram
 
 ---
 
+## Chained Event Processing
+
+Some subscriber pipelines publish follow-up events to downstream topics after successful processing.
+This pattern is useful for decoupled workflows where one handler triggers the next stage.
+
+```python
+--8<-- "basic_usage/e3_01_linked_pubsub.py:chained_subscriber"
+```
+
+!!! warning "Avoid Recursive Loops"
+
+    When chaining topics, ensure routing does not create circular publish paths. Use clear topic boundaries and idempotent handlers.
+
+---
+
 ## Handling Push Subscriptions
 
 While FastPubSub is designed for high-performance **pull-based** consumption, you can easily handle messages from an existing **push** subscription using its FastAPI integration.
@@ -173,7 +188,7 @@ While FastPubSub is designed for high-performance **pull-based** consumption, yo
 A push subscription sends messages via an HTTP `POST` request to a webhook endpoint. You can create a FastAPI endpoint to receive and process these messages. FastPubSub even provides a Pydantic model, `PushMessage`, to automatically parse the incoming request body.
 
 ```python
---8<-- "basic_usage/e1_04_push_subscriber.py"
+--8<-- "basic_usage/e1_02_push_subscriber.py"
 ```
 
 ---

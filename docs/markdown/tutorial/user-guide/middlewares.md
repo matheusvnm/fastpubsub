@@ -40,6 +40,14 @@ Inherit from `BaseMiddleware` and implement one or both methods:
 --8<-- "middlewares/e4_01_full_logging_middleware.py:logging_middleware"
 ```
 
+### Example: Built-In GZip Middleware
+
+```python
+--8<-- "middlewares/e1_01_common_middlewares.py:gzip_middleware_setup"
+```
+
+Use this built-in middleware for payload compression instead of implementing custom compression logic.
+
 ---
 
 ## Step-by-Step

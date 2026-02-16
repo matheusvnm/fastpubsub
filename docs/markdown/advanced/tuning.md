@@ -34,6 +34,14 @@ Apply tuning in a controlled loop:
 --8<-- "advanced/e1_06_tuning.py:high_concurrency"
 ```
 
+A compact load-probe setup for this parameter:
+
+```python
+--8<-- "basic_usage/e3_02_subscribers_max_messages.py:subscriber_max_messages"
+
+--8<-- "basic_usage/e3_02_subscribers_max_messages.py:bulk_publish"
+```
+
 ### Workload-Specific Profiles
 
 #### I/O-Bound Workloads

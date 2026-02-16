@@ -37,7 +37,7 @@ The expression syntax follows Pub/Sub filter rules and is applied per subscripti
 Filtering only works if publishers consistently provide attributes.
 
 ```python
---8<-- "basic_usage/e2_06_publish_with_attributes.py:publish_attributes_broker"
+--8<-- "basic_usage/e2_05_publish_with_attributes.py:publish_attributes_broker"
 ```
 
 ### Engineering Implication
@@ -95,13 +95,13 @@ This pattern keeps publisher logic simple while allowing independent consumer pi
 Filter behavior can be validated in tests by asserting which handlers produced results.
 
 ```python
---8<-- "testing/e1_02_filter_expressions.py:test"
+--8<-- "testing/e1_03_filter_expressions.py:test"
 ```
 
 Reference application fixture:
 
 ```python
---8<-- "testing/e1_02_filter_expressions.py:app"
+--8<-- "testing/e1_03_filter_expressions.py:app"
 ```
 
 ## Design Recommendations

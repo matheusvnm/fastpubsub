@@ -113,7 +113,7 @@ Create a simple application (e.g., `test_published.py`) where a subscriber recei
 a confirmation to another topic:
 
 ```python
---8<-- "testing/e1_03_test_published_messages.py:app"
+--8<-- "testing/e1_04_test_published_messages.py:app"
 ```
 
 ### Step 2: Write the Test
@@ -121,7 +121,7 @@ a confirmation to another topic:
 Publish a test message and inspect what was sent downstream:
 
 ```python
---8<-- "testing/e1_03_test_published_messages.py:test"
+--8<-- "testing/e1_04_test_published_messages.py:test"
 ```
 
 Each element inside the array of elements returned from `get_published_messages()` is a `PublishedMessage` object. It has the
@@ -158,7 +158,7 @@ Create an application (e.g., `test_processed.py`) where a subscriber processes o
 On our examples, we will just return a string but it can be any data:
 
 ```python
---8<-- "testing/e1_04_test_processed_messages.py:app"
+--8<-- "testing/e1_05_test_processed_messages.py:app"
 ```
 
 ### Step 2: Write the Test
@@ -166,7 +166,7 @@ On our examples, we will just return a string but it can be any data:
 Publish test messages and inspect how each one was processed:
 
 ```python
---8<-- "testing/e1_04_test_processed_messages.py:test"
+--8<-- "testing/e1_05_test_processed_messages.py:test"
 ```
 
 Each element inside the array of elements returned from `get_results()` is a `ProcessingResult` object.
