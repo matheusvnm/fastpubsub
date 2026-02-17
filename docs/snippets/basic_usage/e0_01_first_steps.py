@@ -40,6 +40,7 @@ async def handle_message(message: Message):
     logger.info(f"The message {message.id} arrived.")
     address = Address.model_validate_json(message.data)
     logger.info(f"Address: {address}")
+    return {"status": "ok"}
 
 
 # --8<-- [end:subscriber]

@@ -63,6 +63,12 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
     just _start_msg "Running integration tests"
     {{ run_test_command }} pytest -m "connected" -n auto --tb=short --maxfail=5 {{ args }}
 
+[doc("Run doc snippets tests (fast, no emulator)")]
+[group("tests")]
+@test-docs *args: up && down
+    just _start_msg "Running the tests for doc snippets"
+    {{ run_test_command }} pytest -m "docs" -n auto --tb=short {{ args }}
+
 [doc("Run all tests in Docker")]
 [group("tests")]
 @test-all *args: up && down

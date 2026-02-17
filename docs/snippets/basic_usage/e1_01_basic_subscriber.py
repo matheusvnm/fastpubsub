@@ -28,7 +28,7 @@ async def handle_message(message: Message):
 
 # --8<-- [start:basic_subscriber_startup]
 @app.after_startup
-async def test_publish() -> None:
+async def publish_initial_message() -> None:
     address = Address(street="Av. Flores", number="213")
     await broker.publish(topic_name="in_topic", data=address)
 # --8<-- [end:basic_subscriber_startup]
