@@ -47,5 +47,5 @@ async def handle_user_created(message: Message) -> None:
 
 
 @app.after_startup
-async def publish_test():
+async def publish_first_message():
     await users_router.publish("users-topic", {"user": "test"})

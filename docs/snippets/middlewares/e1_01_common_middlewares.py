@@ -22,6 +22,6 @@ async def broker_gzip_message(message: Message) -> None:
 
 
 @app.after_startup
-async def test_publish() -> None:
+async def publish_first_message() -> None:
     publisher = broker.publisher("gzipped_topic")
     await publisher.publish("Hi!")
