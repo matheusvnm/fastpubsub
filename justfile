@@ -53,7 +53,7 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 
 [doc("Run unit tests (fast, no emulator)")]
 [group("tests")]
-@test-unit *args: up && down
+@test-unit *args: (up "--no-deps fastpubsub") && down
     just _start_msg "Running unit tests"
     {{ run_test_command }} pytest -m "not connected and not slow" -n auto --tb=short {{ args }}
 
@@ -65,7 +65,7 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 
 [doc("Run doc snippets tests (fast, no emulator)")]
 [group("tests")]
-@test-docs *args: up && down
+@test-docs *args: (up "--no-deps fastpubsub") && down
     just _start_msg "Running the tests for doc snippets"
     {{ run_test_command }} pytest -m "docs" -n auto --tb=short {{ args }}
 
@@ -149,9 +149,9 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 
 [doc("Run all containers")]
 [group("infra")]
-@up:
+@up *args:
     just _start_msg "Starting containers infrastructure"
-    docker compose up -d --wait
+    docker compose up -d --wait {{ args }}
     just _start_msg "Infrastructure ready!"
 
 [doc("Execute top command on executing containers")]
