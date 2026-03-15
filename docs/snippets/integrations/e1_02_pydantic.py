@@ -1,28 +1,9 @@
-"""Title: Pydantic Integration
-
-Demonstrates FastPubSub's integration with Pydantic.
-
-This example shows:
-- Publishing Pydantic models
-- Validating incoming messages
-- Validation patterns (required, optional, constraints)
-- Push message handling
-- Schema evolution
-
-Run with:
-    fastpubsub run docs.snippets.integrations.e1_02_pydantic:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:pydantic_full]
 import base64
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from fastpubsub import FastPubSub, Message, PubSubBroker, PushMessage
+from fastpubsub.logger import logger
 from fastpubsub.exceptions import Drop
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
@@ -150,6 +131,8 @@ async def receive_push(push_message: PushMessage):
     message_id = push_message.message.id
     subscription = push_message.subscription
 
+    logger.info(f"We received {message_id=} for {subscription=}")
+
     # Decode base64 data
     raw_data = base64.b64decode(push_message.message.data)
 
@@ -201,4 +184,3 @@ class StrictEvent(BaseModel):
 
 
 # --8<-- [end:extra_handling]
-# --8<-- [end:pydantic_full]
