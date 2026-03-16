@@ -1,29 +1,10 @@
-"""Title: Pydantic Integration
-
-Demonstrates FastPubSub's integration with Pydantic.
-
-This example shows:
-- Publishing Pydantic models
-- Validating incoming messages
-- Validation patterns (required, optional, constraints)
-- Push message handling
-- Schema evolution
-
-Run with:
-    fastpubsub run docs.snippets.integrations.e1_02_pydantic:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:pydantic_full]
 import base64
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from fastpubsub import FastPubSub, Message, PubSubBroker, PushMessage
 from fastpubsub.exceptions import Drop
+from fastpubsub.logger import logger
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 app = FastPubSub(broker)
@@ -73,7 +54,7 @@ async def handle_user_event(message: Message):
 
     except ValidationError as e:
         # Invalid data - drop the message
-        raise Drop(f"Invalid user event: {e}")
+        raise Drop(f"Invalid user event: {e}") from e
 
 
 # --8<-- [end:validate_incoming]
@@ -92,7 +73,7 @@ class PaymentEvent(BaseModel):
 )
 async def handle_payment(message: Message):
     # Raises ValidationError if amount is missing
-    event = PaymentEvent.model_validate_json(message.data)
+    _ = PaymentEvent.model_validate_json(message.data)
 
 
 # --8<-- [end:required_fields]
@@ -111,7 +92,7 @@ class NotificationEvent(BaseModel):
     subscription_name="notifications-subscription",
 )
 async def handle_notification(message: Message):
-    event = NotificationEvent.model_validate_json(message.data)
+    _ = NotificationEvent.model_validate_json(message.data)
     # body will be None if not provided
 
 
@@ -132,7 +113,7 @@ class ConstrainedOrderEvent(BaseModel):
 )
 async def handle_constrained_order(message: Message):
     # Validates constraints automatically
-    event = ConstrainedOrderEvent.model_validate_json(message.data)
+    _ = ConstrainedOrderEvent.model_validate_json(message.data)
 
 
 # --8<-- [end:field_constraints]
@@ -149,6 +130,8 @@ async def receive_push(push_message: PushMessage):
     # Access the nested message content
     message_id = push_message.message.id
     subscription = push_message.subscription
+
+    logger.info(f"We received {message_id=} for {subscription=}")
 
     # Decode base64 data
     raw_data = base64.b64decode(push_message.message.data)
@@ -179,7 +162,7 @@ class OrderEventV2(BaseModel):
 )
 async def handle_order_v2(message: Message):
     # Works with both old (no priority) and new messages
-    event = OrderEventV2.model_validate_json(message.data)
+    _ = OrderEventV2.model_validate_json(message.data)
 
 
 # --8<-- [end:schema_evolution]
@@ -201,4 +184,3 @@ class StrictEvent(BaseModel):
 
 
 # --8<-- [end:extra_handling]
-# --8<-- [end:pydantic_full]

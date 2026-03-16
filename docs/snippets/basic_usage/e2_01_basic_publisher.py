@@ -16,7 +16,7 @@ async def handle(message: Message) -> None:
 
 # --8<-- [start:broker_publish]
 @app.after_startup
-async def test_publish() -> None:
+async def publish_first_message() -> None:
     await broker.publish("test-topic", {"hello": "world"})
 
 

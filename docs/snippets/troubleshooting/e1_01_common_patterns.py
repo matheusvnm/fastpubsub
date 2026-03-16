@@ -22,10 +22,10 @@ class SomeModel(BaseModel):
 )
 async def validated_handler(message: Message):
     try:
-        data = SomeModel.model_validate_json(message.data)
+        _ = SomeModel.model_validate_json(message.data)
     except ValidationError as e:  # Any other error will nack the message
-        logger.error(f"Invalid message: {e}")
-        raise Drop("Invalid message format")
+        logger.exception("Invalid message format")
+        raise Drop("Invalid message format") from e
 
 
 # --8<-- [end:validation_error_handling]

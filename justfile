@@ -6,10 +6,9 @@ pubsub_emulator_host := "localhost:8085"
 
 # DIRECTORIES
 
-lint_dirs := "fastpubsub benchmarks"
-# We should put docs/snippets, but let us not format/lint documentation code for now
-target_dirs := "fastpubsub tests benchmarks"
-lint_extra_dirs := "fastpubsub tests benchmarks"
+typecheck_dirs := "fastpubsub benchmarks"
+target_dirs := "fastpubsub tests docs/snippets benchmarks"
+lint_dirs := "fastpubsub tests docs/snippets benchmarks"
 
 pre_commit_hook_path := ".git/hooks/pre-commit"
 docs_dir := "docs/"
@@ -53,7 +52,7 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 
 [doc("Run unit tests (fast, no emulator)")]
 [group("tests")]
-@test-unit *args: up && down
+@test-unit *args: (up "--no-deps fastpubsub") && down
     just _start_msg "Running unit tests"
     {{ run_test_command }} pytest -m "not connected and not slow" -n auto --tb=short {{ args }}
 
@@ -62,6 +61,12 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 @test-integration *args: up && down
     just _start_msg "Running integration tests"
     {{ run_test_command }} pytest -m "connected" -n auto --tb=short --maxfail=5 {{ args }}
+
+[doc("Run doc snippets tests (fast, no emulator)")]
+[group("tests")]
+@test-docs *args: (up "--no-deps fastpubsub") && down
+    just _start_msg "Running the tests for doc snippets"
+    {{ run_test_command }} pytest -m "docs" -n auto --tb=short {{ args }}
 
 [doc("Run all tests in Docker")]
 [group("tests")]
@@ -111,13 +116,13 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 [group("lint")]
 @lint:
     just _start_msg "Checking typing rules"
-    {{ run_command }} mypy {{ lint_dirs }}
+    {{ run_command }} mypy {{ typecheck_dirs }}
 
     just _start_msg "Checking linting rules"
-    {{ run_command }} ruff check {{ lint_extra_dirs }}
+    {{ run_command }} ruff check {{ lint_dirs }}
 
     just _start_msg "Checking formatting rules"
-    {{ run_command }} ruff format {{ lint_extra_dirs }} --check
+    {{ run_command }} ruff format {{ lint_dirs }} --check
 
 [doc("Checks misspellings with codespell")]
 [group("lint")]
@@ -143,9 +148,9 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 
 [doc("Run all containers")]
 [group("infra")]
-@up:
+@up *args:
     just _start_msg "Starting containers infrastructure"
-    docker compose up -d --wait
+    docker compose up -d --wait {{ args }}
     just _start_msg "Infrastructure ready!"
 
 [doc("Execute top command on executing containers")]

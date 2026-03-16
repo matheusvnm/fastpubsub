@@ -44,7 +44,7 @@ app = FastPubSub(broker)
     topic_name="test-router-topic",
     subscription_name="test-basic-router-subscription",
 )
-async def handle_on_first_unnamed_router(message: Message) -> None:
+async def unnamed_router_handler(message: Message) -> None:
     logger.info(f"Processed message on first unnamed router: {message}")
 
 
@@ -53,7 +53,7 @@ async def handle_on_first_unnamed_router(message: Message) -> None:
     topic_name="test-router-topic",
     subscription_name="test-basic-router-subscription",
 )
-async def handle_on_second_unnamed_router(message: Message) -> None:
+async def other_unnamed_router_handler(message: Message) -> None:
     logger.info(f"Processed message on second unnamed router: {message}")
 
 

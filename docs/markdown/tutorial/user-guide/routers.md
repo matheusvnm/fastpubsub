@@ -143,13 +143,13 @@ Routers can be created with an empty prefix, but then alias uniqueness must be g
 ### Invalid: Duplicate Aliases Across Empty-Prefix Routers
 
 ```python
---8<-- "routers/e2_03_prefix_resolution_fails.py:duplicate_alias_error"
+--8<-- "routers/e2_03_prefix_resolution_fails.py"
 ```
 
 ### Invalid: Duplicate Alias Between Broker and Empty-Prefix Router
 
 ```python
---8<-- "routers/e3_03_prefix_resolution_fails.py:cross_level_alias_error"
+--8<-- "routers/e3_03_prefix_resolution_fails.py"
 ```
 
 !!! warning "Prefer Explicit Prefixes"

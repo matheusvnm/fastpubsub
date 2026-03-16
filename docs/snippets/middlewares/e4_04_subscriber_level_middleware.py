@@ -29,5 +29,5 @@ async def handle_message(message: Message):
 
 
 @app.after_startup
-async def publish_test():
+async def publish_first_message():
     await broker.publish("events", {"event": "test"})

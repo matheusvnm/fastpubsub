@@ -61,5 +61,5 @@ async def handle_message(message: Message) -> None:
 
 
 @app.after_startup
-async def publish_test():
+async def publish_first_message():
     await broker.publish("test-topic", {"hello": "world"})
