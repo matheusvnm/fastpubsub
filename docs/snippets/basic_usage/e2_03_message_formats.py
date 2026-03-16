@@ -29,7 +29,7 @@ async def handle(message: Message) -> None:
 
 # --8<-- [start:publish_formats]
 @app.after_startup
-async def test_publish() -> None:
+async def publish_initial_messages() -> None:
     message = TestMessage(
         event="checkout", source="checkout-cart", message="the user put a item to the cart"
     )

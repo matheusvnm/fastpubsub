@@ -1,12 +1,8 @@
-**Title:** <type>: <summary>
+## Summary
 
-**Description:**
-<Summary of what and why>
+<Summary of your changes and why>
 
-**Key Changes:**
-*   <Change 1>
-*   <Change 2>
 
-**Testing:**
-- <Summary of what was tested and how>
-- <Summary of what was tested and how>
+## Changes
+
+<Your changes in details and why>

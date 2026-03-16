@@ -3,8 +3,8 @@ import base64
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from fastpubsub import FastPubSub, Message, PubSubBroker, PushMessage
-from fastpubsub.logger import logger
 from fastpubsub.exceptions import Drop
+from fastpubsub.logger import logger
 
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
 app = FastPubSub(broker)
@@ -54,7 +54,7 @@ async def handle_user_event(message: Message):
 
     except ValidationError as e:
         # Invalid data - drop the message
-        raise Drop(f"Invalid user event: {e}")
+        raise Drop(f"Invalid user event: {e}") from e
 
 
 # --8<-- [end:validate_incoming]
@@ -73,7 +73,7 @@ class PaymentEvent(BaseModel):
 )
 async def handle_payment(message: Message):
     # Raises ValidationError if amount is missing
-    event = PaymentEvent.model_validate_json(message.data)
+    _ = PaymentEvent.model_validate_json(message.data)
 
 
 # --8<-- [end:required_fields]
@@ -92,7 +92,7 @@ class NotificationEvent(BaseModel):
     subscription_name="notifications-subscription",
 )
 async def handle_notification(message: Message):
-    event = NotificationEvent.model_validate_json(message.data)
+    _ = NotificationEvent.model_validate_json(message.data)
     # body will be None if not provided
 
 
@@ -113,7 +113,7 @@ class ConstrainedOrderEvent(BaseModel):
 )
 async def handle_constrained_order(message: Message):
     # Validates constraints automatically
-    event = ConstrainedOrderEvent.model_validate_json(message.data)
+    _ = ConstrainedOrderEvent.model_validate_json(message.data)
 
 
 # --8<-- [end:field_constraints]
@@ -162,7 +162,7 @@ class OrderEventV2(BaseModel):
 )
 async def handle_order_v2(message: Message):
     # Works with both old (no priority) and new messages
-    event = OrderEventV2.model_validate_json(message.data)
+    _ = OrderEventV2.model_validate_json(message.data)
 
 
 # --8<-- [end:schema_evolution]

@@ -20,9 +20,9 @@ async def handle_order(message: Message):
     try:
         async with httpx.AsyncClient() as client:
             await client.post(f"https://downstream.service/process/{order_id}")
-    except httpx.TimeoutException:
+    except httpx.TimeoutException as e:
         # Service is slow, retry later
-        raise Retry("Downstream service timed out.")
+        raise Retry("Downstream service timed out.") from e
 
 
 # --8<-- [end:retry_handler]
