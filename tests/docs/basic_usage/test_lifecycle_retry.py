@@ -1,10 +1,13 @@
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 
-from docs.snippets.basic_usage import e7_02_lifecycle_retry as snippet
+from docs.snippets.basic_usage.e7_02_lifecycle_retry import broker
 from fastpubsub.exceptions import Retry
 from fastpubsub.testing import PubSubTestClient
+
+_SNIPPET = "docs.snippets.basic_usage.e7_02_lifecycle_retry"
 
 
 class _SuccessClient:
@@ -29,7 +32,7 @@ class _TimeoutClient:
         return None
 
     async def post(self, url: str) -> None:
-        raise snippet.httpx.TimeoutException(f"timeout for {url}")
+        raise httpx.TimeoutException(f"timeout for {url}")
 
 
 class TestLifecycleRetry:
@@ -38,9 +41,9 @@ class TestLifecycleRetry:
     async def test_timeout_error_raises_retry_exception(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setattr(snippet.httpx, "AsyncClient", _TimeoutClient)
+        monkeypatch.setattr(f"{_SNIPPET}.httpx.AsyncClient", _TimeoutClient)
 
-        async with PubSubTestClient(snippet.broker) as client:
+        async with PubSubTestClient(broker) as client:
             await client.publish(topic="orders", data={"order_id": "ord-1"})
             results = client.get_results()
 
@@ -54,9 +57,9 @@ class TestLifecycleRetry:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         post_mock = AsyncMock()
-        monkeypatch.setattr(snippet.httpx, "AsyncClient", lambda: _SuccessClient(post_mock))
+        monkeypatch.setattr(f"{_SNIPPET}.httpx.AsyncClient", lambda: _SuccessClient(post_mock))
 
-        async with PubSubTestClient(snippet.broker) as client:
+        async with PubSubTestClient(broker) as client:
             await client.publish(topic="orders", data={"order_id": "ord-200"})
             results = client.get_results()
 

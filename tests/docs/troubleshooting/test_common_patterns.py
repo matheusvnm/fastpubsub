@@ -4,9 +4,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from docs.snippets.troubleshooting import e1_01_common_patterns as snippet
+from docs.snippets.troubleshooting.e1_01_common_patterns import broker
 from fastpubsub.exceptions import Drop
 from fastpubsub.testing import PubSubTestClient
+
+_SNIPPET = "docs.snippets.troubleshooting.e1_01_common_patterns"
 
 
 class TestTroubleshootingCommonPatterns:
@@ -27,14 +29,13 @@ class TestTroubleshootingCommonPatterns:
 
         redis_set = AsyncMock(side_effect=_set)
 
-        monkeypatch.setattr(snippet, "do_work", do_work)
+        monkeypatch.setattr(f"{_SNIPPET}.do_work", do_work)
         monkeypatch.setattr(
-            snippet,
-            "redis",
+            f"{_SNIPPET}.redis",
             SimpleNamespace(exists=redis_exists, set=redis_set),
         )
 
-        async with PubSubTestClient(snippet.broker) as client:
+        async with PubSubTestClient(broker) as client:
             await client.publish(
                 topic="idempotent-events",
                 data={"value": "ok"},
@@ -60,7 +61,7 @@ class TestTroubleshootingCommonPatterns:
     @pytest.mark.asyncio
     @pytest.mark.docs
     async def test_validated_handler_drops_invalid_message(self) -> None:
-        async with PubSubTestClient(snippet.broker) as client:
+        async with PubSubTestClient(broker) as client:
             await client.publish(topic="validated-events", data={"wrong": "shape"})
             results = client.get_results()
 

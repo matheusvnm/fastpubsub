@@ -15,10 +15,10 @@ class TestBasicSubscriber:
             await publish_initial_message()
 
             forwarded_messages = broker_client.get_published_messages()
-            processed_messages = broker_client.get_results()
+            processing_results = broker_client.get_results()
 
             assert len(forwarded_messages) == 2
-            assert len(processed_messages) == 1
+            assert len(processing_results) == 1
 
             initial_message = forwarded_messages[0]
             assert initial_message.attributes is None
@@ -31,5 +31,5 @@ class TestBasicSubscriber:
             assert forwarded_message.project_id == "fastpubsub-pubsub-local"
             assert forwarded_message.data == b"Hi!"
 
-            processed_message = processed_messages[0]
-            assert processed_message.error is None
+            processing_message = processing_results[0]
+            assert processing_message.error is None

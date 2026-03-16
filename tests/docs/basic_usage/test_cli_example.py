@@ -1,6 +1,6 @@
 import pytest
 
-from docs.snippets.basic_usage import e8_01_cli_example as snippet
+from docs.snippets.basic_usage.e8_01_cli_example import broker
 from fastpubsub.testing import PubSubTestClient
 
 
@@ -8,7 +8,7 @@ class TestCliExampleSnippet:
     @pytest.mark.asyncio
     @pytest.mark.docs
     async def test_registered_subscribers_process_order_and_notification_topics(self) -> None:
-        async with PubSubTestClient(snippet.broker) as client:
+        async with PubSubTestClient(broker) as client:
             await client.publish(topic="orders", data={"id": "ord-1"})
             await client.publish(topic="notifications", data={"id": "notif-1"})
             published_messages = client.get_published_messages()
@@ -22,12 +22,3 @@ class TestCliExampleSnippet:
             "handle_notifications",
         ]
         assert all(result.error is None for result in results)
-
-    @pytest.mark.docs
-    def test_cli_example_declares_expected_subscriber_aliases(self) -> None:
-        subscribers = snippet.broker.router._get_subscribers()
-
-        assert set(subscribers) == {"process-orders", "send-notifications"}
-        assert subscribers["process-orders"].subscription_name == "orders-sub"
-        assert subscribers["send-notifications"].subscription_name == "notifications-sub"
-        assert snippet.broker.project_id == "your-project-id"

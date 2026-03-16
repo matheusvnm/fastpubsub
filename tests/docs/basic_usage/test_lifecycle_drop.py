@@ -1,6 +1,6 @@
 import pytest
 
-from docs.snippets.basic_usage import e7_01_lifecycle_drop as snippet
+from docs.snippets.basic_usage.e7_01_lifecycle_drop import broker
 from fastpubsub.exceptions import Drop
 from fastpubsub.testing import PubSubTestClient
 
@@ -9,7 +9,7 @@ class TestLifecycleDrop:
     @pytest.mark.asyncio
     @pytest.mark.docs
     async def test_v1_schema_is_dropped(self) -> None:
-        async with PubSubTestClient(snippet.broker) as client:
+        async with PubSubTestClient(broker) as client:
             await client.publish(
                 topic="events",
                 data={"event": "legacy"},
@@ -24,7 +24,7 @@ class TestLifecycleDrop:
     @pytest.mark.asyncio
     @pytest.mark.docs
     async def test_v2_schema_is_processed_without_errors(self) -> None:
-        async with PubSubTestClient(snippet.broker) as client:
+        async with PubSubTestClient(broker) as client:
             await client.publish(
                 topic="events",
                 data={"event": "current"},

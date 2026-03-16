@@ -1,6 +1,9 @@
 import pytest
 
-from docs.snippets.advanced import e1_01_custom_middlewares as snippet
+from docs.snippets.advanced.e1_01_custom_middlewares import (
+    PublisherMetadataMiddleware,
+    ValidationMiddleware,
+)
 from fastpubsub import Message, Middleware, PubSubBroker
 from fastpubsub.exceptions import Drop
 from fastpubsub.middlewares.base import BaseMiddleware
@@ -27,7 +30,7 @@ class TestAdvancedCustomMiddlewares:
     async def test_validation_middleware_drops_invalid_json(self) -> None:
         broker = PubSubBroker(
             project_id="test-project",
-            middlewares=[Middleware(snippet.ValidationMiddleware)],
+            middlewares=[Middleware(ValidationMiddleware)],
         )
 
         @broker.subscriber(alias="validator", topic_name="events", subscription_name="events-sub")
@@ -47,7 +50,7 @@ class TestAdvancedCustomMiddlewares:
     @pytest.mark.docs
     async def test_publisher_metadata_middleware_enriches_attributes(self) -> None:
         capture = _CapturePublishMiddleware()
-        middleware = snippet.PublisherMetadataMiddleware(next_call=capture)
+        middleware = PublisherMetadataMiddleware(next_call=capture)
 
         await middleware.on_publish(
             data=b"payload", ordering_key="order-1", attributes={"tenant": "acme"}
@@ -66,7 +69,7 @@ class TestAdvancedCustomMiddlewares:
     @pytest.mark.docs
     async def test_publisher_metadata_middleware_handles_missing_attributes(self) -> None:
         capture = _CapturePublishMiddleware()
-        middleware = snippet.PublisherMetadataMiddleware(next_call=capture)
+        middleware = PublisherMetadataMiddleware(next_call=capture)
 
         await middleware.on_publish(data=b"payload", ordering_key="", attributes=None)
 

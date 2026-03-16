@@ -2,8 +2,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from docs.snippets.basic_usage import e7_03_lifecycle_unhandled as snippet
+from docs.snippets.basic_usage.e7_03_lifecycle_unhandled import broker
 from fastpubsub.testing import PubSubTestClient
+
+_SNIPPET = "docs.snippets.basic_usage.e7_03_lifecycle_unhandled"
 
 
 class TestLifecycleUnhandled:
@@ -13,9 +15,9 @@ class TestLifecycleUnhandled:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         process = AsyncMock()
-        monkeypatch.setattr(snippet, "process", process)
+        monkeypatch.setattr(f"{_SNIPPET}.process", process)
 
-        async with PubSubTestClient(snippet.broker) as client:
+        async with PubSubTestClient(broker) as client:
             await client.publish(topic="events", data={"status": "ok"})
             results = client.get_results()
 
@@ -29,9 +31,9 @@ class TestLifecycleUnhandled:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         process = AsyncMock(side_effect=ValueError("bad payload"))
-        monkeypatch.setattr(snippet, "process", process)
+        monkeypatch.setattr(f"{_SNIPPET}.process", process)
 
-        async with PubSubTestClient(snippet.broker) as client:
+        async with PubSubTestClient(broker) as client:
             await client.publish(topic="events", data={"status": "bad"})
             results = client.get_results()
 

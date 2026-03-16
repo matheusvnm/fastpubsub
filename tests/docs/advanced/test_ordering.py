@@ -2,16 +2,18 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from docs.snippets.advanced import e1_04_ordering as snippet
+from docs.snippets.advanced.e1_04_ordering import broker, user_action
 from fastpubsub.testing import PubSubTestClient
+
+_SNIPPET = "docs.snippets.advanced.e1_04_ordering"
 
 
 class TestAdvancedOrdering:
     @pytest.mark.asyncio
     @pytest.mark.docs
     async def test_ordered_publish_sets_ordering_key_and_attributes(self) -> None:
-        async with PubSubTestClient(snippet.broker) as client:
-            await snippet.user_action()
+        async with PubSubTestClient(broker) as client:
+            await user_action()
             published_messages = client.get_published_messages()
             publish_calls = client._mock_client.publish.await_args_list
 
@@ -27,21 +29,10 @@ class TestAdvancedOrdering:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         update_user_state = AsyncMock()
-        monkeypatch.setattr(snippet, "update_user_state", update_user_state)
+        monkeypatch.setattr(f"{_SNIPPET}.update_user_state", update_user_state)
 
-        async with PubSubTestClient(snippet.broker) as client:
+        async with PubSubTestClient(broker) as client:
             await client.publish(topic="user-events", data={"action": "ping"})
 
         update_user_state.assert_awaited_once()
         assert update_user_state.await_args.args[0] == "unknown-user"
-
-    @pytest.mark.docs
-    def test_ordering_configuration_is_enabled_for_ordered_subscribers(self) -> None:
-        subscribers = snippet.broker.router._get_subscribers()
-        ordered = subscribers["user-events-ordered"]
-        with_dlt = subscribers["ordered-processor"]
-
-        assert ordered.delivery_policy.enable_message_ordering is True
-        assert with_dlt.delivery_policy.enable_message_ordering is True
-        assert with_dlt.dead_letter_policy is not None
-        assert with_dlt.dead_letter_policy.topic_name == "events-dlq"

@@ -1,6 +1,6 @@
 import pytest
 
-from docs.snippets.routers import e1_04_cross_project_router_simple as snippet
+from docs.snippets.routers.e1_04_cross_project_router_simple import broker
 from fastpubsub.testing import PubSubTestClient
 
 
@@ -8,7 +8,7 @@ class TestRoutersCrossProjectRouterSimple:
     @pytest.mark.asyncio
     @pytest.mark.docs
     async def test_cross_project_router_only_consumes_messages_for_router_project(self) -> None:
-        async with PubSubTestClient(snippet.broker) as client:
+        async with PubSubTestClient(broker) as client:
             await client.publish(topic="events", data={"event": "default-project"})
             await client.publish(
                 topic="events", data={"event": "project-b"}, project_id="project-b"
