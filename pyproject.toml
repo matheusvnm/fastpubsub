@@ -158,7 +158,7 @@ disallow_untyped_decorators = true
 disallow_any_unimported = false
 
 [tool.ruff]
-line-length = 100
+line-length = 79
 exclude = ["**/__about__.py"]
 
 [tool.ruff.format]

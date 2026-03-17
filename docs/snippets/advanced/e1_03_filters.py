@@ -47,11 +47,16 @@ async def handle_orders(message: Message):
 
 
 # --8<-- [start:filter_and]
+FILTER_EXP_PREMIUM = (
+    'attributes.priority = "high" AND attributes.customer_tier = "premium"'
+)
+
+
 @broker.subscriber(
     alias="premium-urgent",
     topic_name="tickets",
     subscription_name="premium-urgent-subscription",
-    filter_expression='attributes.priority = "high" AND attributes.customer_tier = "premium"',
+    filter_expression=FILTER_EXP_PREMIUM,
 )
 async def handle_premium_urgent(message: Message):
     # Only receives high-priority tickets from premium customers
@@ -62,11 +67,16 @@ async def handle_premium_urgent(message: Message):
 
 
 # --8<-- [start:filter_or]
+FILTER_EXP_ALERTS = (
+    'attributes.severity = "critical" OR attributes.severity = "high"'
+)
+
+
 @broker.subscriber(
     alias="critical-alerts",
     topic_name="alerts",
     subscription_name="critical-alerts-subscription",
-    filter_expression='attributes.severity = "critical" OR attributes.severity = "high"',
+    filter_expression=FILTER_EXP_ALERTS,
 )
 async def handle_critical_alerts(message: Message):
     # Receives both critical and high severity alerts

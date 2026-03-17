@@ -20,7 +20,9 @@ client = TestClient(app)
 class TestIntegrationsPydantic:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_create_order_publishes_model_and_returns_created(self) -> None:
+    async def test_create_order_publishes_model_and_returns_created(
+        self,
+    ) -> None:
         payload = {
             "order_id": "ord-1",
             "customer_id": "cust-1",
@@ -42,7 +44,10 @@ class TestIntegrationsPydantic:
         published_message = next(iter(published_messages))
 
         assert published_message.topic_name == "orders"
-        assert published_message.data.decode() == OrderEvent(**payload).model_dump_json()
+        assert (
+            published_message.data.decode()
+            == OrderEvent(**payload).model_dump_json()
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.docs
@@ -50,7 +55,9 @@ class TestIntegrationsPydantic:
         self,
     ) -> None:
         async with PubSubTestClient(broker) as broker_client:
-            await broker_client.publish(topic="user-events", data={"user_id": "u-1"})
+            await broker_client.publish(
+                topic="user-events", data={"user_id": "u-1"}
+            )
             processed_results = broker_client.get_results()
 
         assert len(processed_results) == 1
@@ -61,7 +68,9 @@ class TestIntegrationsPydantic:
         assert "Invalid user event" in str(processed_result.error)
 
     @pytest.mark.docs
-    def test_push_endpoint_decodes_base64_and_invokes_process_event(self) -> None:
+    def test_push_endpoint_decodes_base64_and_invokes_process_event(
+        self,
+    ) -> None:
         payload = {
             "order_id": "ord-2",
             "customer_id": "cust-2",
@@ -94,5 +103,7 @@ class TestIntegrationsPydantic:
         flexible = FlexibleEvent.model_validate(payload)
         assert flexible.model_dump() == {"order_id": "ord-3"}
 
-        with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        with pytest.raises(
+            ValidationError, match="Extra inputs are not permitted"
+        ):
             StrictEvent.model_validate(payload)

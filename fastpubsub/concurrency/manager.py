@@ -53,11 +53,9 @@ class AsyncTaskManager:
     async def shutdown(self, timeout: float = 30.0) -> None:
         """Gracefully shuts down all tasks, waiting for message completion.
 
-        First, we cancel all StreamingPullFutures to stop new messages from arriving.
-        Then, we wait for in-flight messages to complete (or timeout).
-
         Args:
-            timeout: Maximum time to wait for in-flight messages per subscription (seconds).
+            timeout: Maximum time towait for in-flight messages
+                per subscription in seconds.
         """
         logger.info(f"Starting graceful shutdown with {timeout}s timeout...")
 
@@ -68,7 +66,9 @@ class AsyncTaskManager:
                         if task.task_alive():
                             tg.create_task(task.shutdown(timeout=timeout))
         except TimeoutError as e:
-            logger.warning(f"A timeout happened while turning of a subscriber {e}")
+            logger.warning(
+                f"A timeout happened while turning of a subscriber {e}"
+            )
         finally:
             self._tasks.clear()
             await PubSubClientFactory.close_all()

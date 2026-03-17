@@ -1,25 +1,3 @@
-"""Title: Publishing with Attributes
-
-Demonstrates publishing messages with custom attributes for metadata.
-
-This example shows:
-- Adding attributes to messages via broker.publish()
-- Adding attributes via Publisher object
-- Using attributes for server-side filtering
-- Adding routing and context information to messages
-
-Attributes are key-value string pairs that appear in the message metadata,
-separate from the message payload. Useful for filtering and routing.
-
-Run with:
-    fastpubsub run docs.snippets.basic_usage.e2_06_publish_with_attributes:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:publish_attributes_full]
 from fastpubsub import FastPubSub, Message, Publisher, PubSubBroker
 from fastpubsub.logger import logger
 
@@ -63,4 +41,3 @@ async def publish_with_publisher() -> None:
 
 
 # --8<-- [end:publish_attributes_publisher]
-# --8<-- [end:publish_attributes_full]

@@ -40,20 +40,23 @@ class PubSubRouter:
 
         Args:
             prefix: A prefix to apply to all subscribers and publishers in the
-                router. If set, the subscriber alias will be: <prefix>.<alias>.
+                router. If set, the subscriber alias will be: {prefix}.{alias}.
                 Also, it affects the subscription name. A subscription will be
-                <prefix>.<subscription_name>.
-            project_id: An alternative project id to the broker's project id.
+                {prefix}.{subscription_name}.
+            project_id: An alternative project id to the router's project id.
                 All the publishers and subscriber created with this router
-                will use this attribute instead of the project id set at broker-level.
+                will use this attribute instead of the project id set at
+                router-level.
             routers: A sequence of children routers to include.
             middlewares: A sequence of middlewares to apply to all subscribers
                 in this router and its children.
         """
         if prefix and not _PREFIX_REGEX.match(prefix):
             raise FastPubSubException(
-                "Prefix must be a string that starts and ends with a letter or number, "
-                "and can only contain periods, slashes, or underscores in the middle."
+                "Prefix must be a string that starts and "
+                "ends with a letter or number, "
+                "and can only contain periods, "
+                "slashes, or underscores in the middle."
             )
 
         self.prefix = prefix
@@ -65,14 +68,18 @@ class PubSubRouter:
 
         if routers:
             if not isinstance(routers, Sequence):
-                raise FastPubSubException("Your routers should be passed as a sequence")
+                raise FastPubSubException(
+                    "Your routers should be passed as a sequence"
+                )
 
             for router in routers:
                 self.include_router(router)
 
         if middlewares:
             if not isinstance(middlewares, Sequence):
-                raise FastPubSubException("Your routers should be passed as a sequence")
+                raise FastPubSubException(
+                    "Your routers should be passed as a sequence"
+                )
 
             for middleware, args, kwargs in middlewares:
                 self.include_middleware(middleware, *args, **kwargs)
@@ -102,13 +109,17 @@ class PubSubRouter:
             router: The router to include.
         """
         if not (router and isinstance(router, PubSubRouter)):
-            raise FastPubSubException(f"Your routers must be of type {self.__class__.__name__}")
+            raise FastPubSubException(
+                f"Your routers must be of type {self.__class__.__name__}"
+            )
 
         if self == router:
             # V2: Create a algorithm to detect cycles on these routers.
             # For now, let us assume that the router is well configured
             # and this is the only error case.
-            raise FastPubSubException(f"There is a cyclical reference on router {self.prefix}.")
+            raise FastPubSubException(
+                f"There is a cyclical reference on router {self.prefix}."
+            )
 
         router._add_prefix(self.prefix)
         router._set_project_id(self.project_id)
@@ -118,7 +129,9 @@ class PubSubRouter:
 
         self.routers.append(router)
 
-    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    @validate_call(
+        config=ConfigDict(strict=True, arbitrary_types_allowed=True)
+    )
     def subscriber(
         self,
         alias: str,
@@ -145,25 +158,29 @@ class PubSubRouter:
             alias: A unique name for the subscriber. You can use this alias to
                 select which subscription to use on the CLI.
             topic_name: The name of the topic to subscribe to.
-            subscription_name: The name of the subscription attached to the topic.
+            subscription_name: The name of the subscription for the topic.
             project_id: An alternative project id to create a subscription
                 and consume messages from. If set the router project id
                 will be ignored.
-            autocreate: Whether to automatically create the topic and
+            autocreate: Automatically creates the topic and
                 subscription if they do not exists.
-            autoupdate: Whether to automatically update the subscription.
+            autoupdate: Automatically updates the subscription.
             filter_expression: A filter expression to apply to the
                 subscription to filter messages.
             dead_letter_topic: The name of the dead-letter topic.
             max_delivery_attempts: The maximum number of delivery attempts
                 before sending the message to the dead-letter.
             ack_deadline_seconds: The acknowledgment deadline in seconds.
-            enable_message_ordering: Whether the message must be delivered in order.
-            enable_exactly_once_delivery: Whether to enable exactly-once delivery.
+            enable_message_ordering: Enables message ordering.
+                It can only be set when creating the subscription.
+            enable_exactly_once_delivery: Enables exactly-once delivery.
+                It can only be set when creating the subscription.
             min_backoff_delay_secs: The minimum backoff delay in seconds.
             max_backoff_delay_secs: The maximum backoff delay in seconds.
-            max_messages: The maximum number of messages to fetch from the broker.
-            middlewares: A sequence of middlewares to apply **only to the subscriber**.
+            max_messages: The maximum number of messages to fetch from
+                the broker at a time.
+            middlewares: A sequence of middlewares to apply to the subscriber.
+                It is subscriber specific, not application-wide.
 
         Returns:
             A decorator that registers the function as a subscriber.
@@ -177,7 +194,9 @@ class PubSubRouter:
 
             if self.prefix and isinstance(self.prefix, str):
                 prefixed_alias = f"{self.prefix}.{prefixed_alias}"
-                prefixed_subscription_name = f"{self.prefix}.{prefixed_subscription_name}"
+                prefixed_subscription_name = (
+                    f"{self.prefix}.{prefixed_subscription_name}"
+                )
 
             if prefixed_alias in self.subscribers:
                 raise FastPubSubException(
@@ -188,7 +207,8 @@ class PubSubRouter:
             dead_letter_policy = None
             if dead_letter_topic:
                 dead_letter_policy = DeadLetterPolicy(
-                    topic_name=dead_letter_topic, max_delivery_attempts=max_delivery_attempts
+                    topic_name=dead_letter_topic,
+                    max_delivery_attempts=max_delivery_attempts,
                 )
 
             retry_policy = MessageRetryPolicy(
@@ -203,7 +223,9 @@ class PubSubRouter:
                 enable_exactly_once_delivery=enable_exactly_once_delivery,
             )
 
-            lifecycle_policy = LifecyclePolicy(autocreate=autocreate, autoupdate=autoupdate)
+            lifecycle_policy = LifecyclePolicy(
+                autocreate=autocreate, autoupdate=autoupdate
+            )
 
             control_flow_policy = MessageControlFlowPolicy(
                 max_messages=max_messages,
@@ -245,7 +267,9 @@ class PubSubRouter:
         """
         chosen_project_id = project_id or self.project_id
         publisher = Publisher(
-            topic_name=topic_name, project_id=chosen_project_id, middlewares=self.middlewares
+            topic_name=topic_name,
+            project_id=chosen_project_id,
+            middlewares=self.middlewares,
         )
         self.publishers.add(publisher)
         return publisher
@@ -269,11 +293,16 @@ class PubSubRouter:
                         If set the router project id will be ignored.
             ordering_key: The ordering key for the message.
             attributes: A dictionary of message attributes.
-            autocreate: Whether to automatically create the topic if it does not exists.
+            autocreate: Automatically creates the topic if it does not exists.
         """
-        publisher = self.publisher(topic_name=topic_name, project_id=project_id)
+        publisher = self.publisher(
+            topic_name=topic_name, project_id=project_id
+        )
         await publisher.publish(
-            data=data, ordering_key=ordering_key, attributes=attributes, autocreate=autocreate
+            data=data,
+            ordering_key=ordering_key,
+            attributes=attributes,
+            autocreate=autocreate,
         )
 
     @validate_call(config=ConfigDict(strict=True))
@@ -284,8 +313,8 @@ class PubSubRouter:
 
         Args:
             middleware: The middleware to include.
-            args: The positional arguments used on the middleware instantiation.
-            kwargs: The keyword  arguments used on the middleware instantiation.
+            args: The positional arguments used on middleware instantiation.
+            kwargs: The keyword  arguments used on middleware instantiation.
         """
         for publisher in self.publishers:
             publisher.include_middleware(middleware, *args, **kwargs)
@@ -310,9 +339,11 @@ class PubSubRouter:
                 if alias in subscribers:
                     existing_subscriber = subscribers[alias]
                     raise FastPubSubException(
-                        f"Conflict on subscribers {new_subscriber} and {existing_subscriber}. "
-                        f"The conflict occurs on alias={alias} and router prefix={self.prefix}. "
-                        f"Maybe you should use a different alias or prefix?"
+                        f"Conflict on subscribers {new_subscriber} "
+                        f"and {existing_subscriber}. The conflict "
+                        f"occurs on alias={alias} and router "
+                        f"prefix={self.prefix}. Maybe you "
+                        "should use a different alias or prefix?"
                     )
 
             subscribers.update(router_subscribers)

@@ -1,13 +1,18 @@
 import pytest
 
-from docs.snippets.middlewares.e4_03_router_level_middleware import broker, publish_first_message
+from docs.snippets.middlewares.e4_03_router_level_middleware import (
+    broker,
+    publish_first_message,
+)
 from fastpubsub.testing import PubSubTestClient
 
 
 class TestMiddlewaresRouterLevel:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_router_level_middleware_processes_router_subscriber_messages(self) -> None:
+    async def test_router_middleware_exclusive_to_router_children(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await publish_first_message()
             published_messages = client.get_published_messages()
@@ -22,4 +27,6 @@ class TestMiddlewaresRouterLevel:
         assert published_message.topic_name == "users-topic"
 
         assert processed_result.error is None
-        assert processed_result.message.subscriber_name == "handle_user_created"
+        assert (
+            processed_result.message.subscriber_name == "handle_user_created"
+        )

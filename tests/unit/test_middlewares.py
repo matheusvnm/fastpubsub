@@ -19,7 +19,10 @@ class MockMiddleware(BaseMiddleware):
         return await super().on_message(message)
 
     async def on_publish(
-        self, data: bytes, ordering_key: str | None, attributes: dict[str, str] | None
+        self,
+        data: bytes,
+        ordering_key: str | None,
+        attributes: dict[str, str] | None,
     ):
         self.published_message, self.published_attributes = data, attributes
         return await super().on_publish(data, ordering_key, attributes)

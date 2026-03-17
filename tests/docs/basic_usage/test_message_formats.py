@@ -1,13 +1,18 @@
 import pytest
 
-from docs.snippets.basic_usage.e2_03_message_formats import broker, publish_initial_messages
+from docs.snippets.basic_usage.e2_03_message_formats import (
+    broker,
+    publish_initial_messages,
+)
 from fastpubsub.testing import PubSubTestClient
 
 
 class TestMessageFormats:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_publish_supports_pydantic_dict_string_and_bytes(self) -> None:
+    async def test_publish_supports_pydantic_dict_string_and_bytes(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await publish_initial_messages()
             published_messages = client.get_published_messages()
@@ -22,5 +27,8 @@ class TestMessageFormats:
         assert published_messages[2].data == b"some_string_text"
         assert published_messages[3].data == b"some_byte_text"
 
-        assert all(message.topic_name == "test-topic-pydantic" for message in published_messages)
+        assert all(
+            message.topic_name == "test-topic-pydantic"
+            for message in published_messages
+        )
         assert all(result.error is None for result in processed_messages)

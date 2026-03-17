@@ -1,15 +1,4 @@
-"""Thread-safe factory for Pub/Sub clients with async-friendly singleton caching.
-
-This module provides a centralized factory for managing Google Cloud Pub/Sub
-client instances. It ensures efficient reuse of gRPC connections by caching
-clients based on project_id and configuration options.
-
-Key features:
-- Async-friendly locking using asyncio.Lock
-- Caches PublisherClient by (project_id, enable_ordering)
-- Caches SubscriberClient by project_id
-- Provides graceful shutdown via close_all()
-"""
+"""Factories for Pub/Sub clients."""
 
 from __future__ import annotations
 
@@ -24,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class PubSubClientFactory:
-    """Async-friendly factory for Pub/Sub clients with singleton caching.
+    """Async-safe factory for Pub/Sub clients with singleton caching.
 
     This factory ensures that only one client instance is created per unique
     combination of project_id and configuration. This follows Google's
@@ -84,8 +73,12 @@ class PubSubClientFactory:
                     f"Creating new PublisherClient for project={project_id}, "
                     f"ordering={enable_ordering}"
                 )
-                options = PublisherOptions(enable_message_ordering=enable_ordering)
-                cls._publisher_cache[key] = PublisherClient(publisher_options=options)
+                options = PublisherOptions(
+                    enable_message_ordering=enable_ordering
+                )
+                cls._publisher_cache[key] = PublisherClient(
+                    publisher_options=options
+                )
 
         return cls._publisher_cache[key]
 
@@ -107,7 +100,9 @@ class PubSubClientFactory:
         async with cls._get_lock():
             # Double-check after acquiring lock
             if project_id not in cls._subscriber_cache:
-                logger.debug(f"Creating new SubscriberClient for project={project_id}")
+                logger.debug(
+                    f"Creating new SubscriberClient for project={project_id}"
+                )
                 cls._subscriber_cache[project_id] = SubscriberClient()
 
         return cls._subscriber_cache[project_id]
@@ -127,14 +122,18 @@ class PubSubClientFactory:
                     client.transport.close()
                     logger.debug(f"Closed PublisherClient for {key}")
                 except Exception:
-                    logger.exception(f"Error closing PublisherClient for {key}")
+                    logger.exception(
+                        f"Error closing PublisherClient for {key}"
+                    )
 
             for project_id, client in cls._subscriber_cache.items():
                 try:
                     client.transport.close()
                     logger.debug(f"Closed SubscriberClient for {project_id}")
                 except Exception:
-                    logger.exception(f"Error closing SubscriberClient for {project_id}")
+                    logger.exception(
+                        f"Error closing SubscriberClient for {project_id}"
+                    )
 
             cls._publisher_cache.clear()
             cls._subscriber_cache.clear()

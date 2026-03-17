@@ -44,9 +44,10 @@ async def user_action():
         attributes={"user_id": "user-123"},
     )
 
+    # Guaranteed to be processed after the login message
     await ordered_publisher.publish(
         data={"action": "update_profile", "user_id": "user-123"},
-        ordering_key="user-123",  # Guaranteed to be processed after the login message
+        ordering_key="user-123",
         attributes={"user_id": "user-123"},
     )
 

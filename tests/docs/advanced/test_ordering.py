@@ -11,7 +11,9 @@ _SNIPPET = "docs.snippets.advanced.e1_04_ordering"
 class TestAdvancedOrdering:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_ordered_publish_sets_ordering_key_and_attributes(self) -> None:
+    async def test_ordered_publish_sets_ordering_key_and_attributes(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await user_action()
             published_messages = client.get_published_messages()

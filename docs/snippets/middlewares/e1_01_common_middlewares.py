@@ -18,7 +18,10 @@ app = FastPubSub(broker)
     subscription_name="gzipped_sub",
 )
 async def broker_gzip_message(message: Message) -> None:
-    logger.info(f"We received message with encoding {message.attributes['content-encoding']}")
+    logger.info(
+        "We received message with encoding "
+        f"{message.attributes['content-encoding']}"
+    )
 
 
 @app.after_startup

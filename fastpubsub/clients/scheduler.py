@@ -18,21 +18,21 @@ logger = logging.getLogger(__name__)
 
 
 class AsyncScheduler(Scheduler):  # type: ignore[misc]
-    """An asyncio-based scheduler for typical I/O-bound message processing.
+    """An asyncio-based scheduler for I/O-bound message processing.
 
     It must not be shared across different SubscriberClient objects.
     """
 
     def __init__(self, loop: AbstractEventLoop) -> None:
-        """Initializes an asyncio-based schedule for typical I/O-bound message processing."""
+        """Initializes the scheduler."""
         self._loop = loop
 
         self._queue: queue.Queue[Any] = queue.Queue()
 
         # Track scheduled handles (pending callbacks not yet executed)
-        self._pending_task_creations: WeakKeyDictionary[asyncio.Handle, PubSubMessage] = (
-            WeakKeyDictionary()
-        )
+        self._pending_task_creations: WeakKeyDictionary[
+            asyncio.Handle, PubSubMessage
+        ] = WeakKeyDictionary()
 
         # Track executing tasks (running coroutines)
         self._executing_tasks: dict[int, PubSubMessage] = {}
@@ -43,13 +43,20 @@ class AsyncScheduler(Scheduler):  # type: ignore[misc]
 
     @property
     def queue(self) -> queue.Queue[Any]:
-        """A thread-safe queue for communication between callbacks and the scheduling thread."""
+        """A thread-safe queue.
+
+        It is used for for communication between
+        callbacks and the scheduling thread.
+        """
         return self._queue
 
     def schedule(
-        self, callback: Callable[[PubSubMessage], Any], *args: list[Any], **kwargs: dict[str, Any]
+        self,
+        callback: Callable[[PubSubMessage], Any],
+        *args: list[Any],
+        **kwargs: dict[str, Any],
     ) -> None:
-        """Schedule the callback to be called asynchronously in the event loop thread.
+        """Schedule the callback to be called in the event loop thread async.
 
         Args:
             callback: The function to call.
@@ -77,7 +84,9 @@ class AsyncScheduler(Scheduler):  # type: ignore[misc]
             )
 
     def register_task_execution(
-        self, task: asyncio.Task[Callable[[PubSubMessage], Awaitable[Any]]], message: PubSubMessage
+        self,
+        task: asyncio.Task[Callable[[PubSubMessage], Awaitable[Any]]],
+        message: PubSubMessage,
     ) -> None:
         """Register a task for tracking.
 
@@ -132,25 +141,30 @@ class AsyncScheduler(Scheduler):  # type: ignore[misc]
             pending, executing = self.get_in_flight_count()
 
             if pending == 0 and executing == 0:
-                logger.debug("All asynchronous tasks were completed successfully.")
+                logger.debug(
+                    "All asynchronous tasks were completed successfully."
+                )
                 return True
 
-            logger.debug(
-                f"Waiting for {pending} pending and {executing} executing asynchronous tasks."
-            )
+            logger.debug(f"Waiting for {pending} pending asynchronous tasks.")
             await asyncio.sleep(0.5)
 
-        logger.warning(f"Timeout after {timeout}s waiting for messages completion")
+        logger.warning(
+            f"Timeout after {timeout}s waiting for messages completion"
+        )
         return False
 
-    def shutdown(self, await_msg_callbacks: bool = True) -> list[PubSubMessage]:
+    def shutdown(
+        self, await_msg_callbacks: bool = True
+    ) -> list[PubSubMessage]:
         """Shuts down the scheduler and cancels executing tasks.
 
         Args:
             await_msg_callbacks:
-                If ``True`` (default), the method will cancel the executing callbacks remaining.
-                This will allow a graceful termination of the messages execution.
-                If ``False``, the method will not cancel the callbacks.
+                If ``True`` (default), the method will cancel the executing
+                callbacks remaining. This will allow a graceful
+                termination of the messages execution. If ``False``,
+                the method will not cancel the callbacks.
 
         Returns:
             The messages dispatched to the asyncio loop that are currently
@@ -170,8 +184,10 @@ class AsyncScheduler(Scheduler):  # type: ignore[misc]
                 dropped_messages.append(message)
 
         if dropped_messages:
-            logger.warning(f"Scheduler shutdown: {len(dropped_messages)} messages will be nacked.")
+            logger.warning(
+                f"Scheduler shutdown: {len(dropped_messages)} messages nacked."
+            )
             return dropped_messages
 
-        logger.debug("Scheduler shutdown: All asynchronous tasks completed successfully.")
+        logger.debug("Scheduler shutdown: All asynchronous tasks completed.")
         return dropped_messages

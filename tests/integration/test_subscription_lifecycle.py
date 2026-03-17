@@ -43,8 +43,12 @@ class TestSubscriptionLifecycle:
             assert topic_obj.name == topic_path
 
             sub_client = SubscriberClient()
-            sub_path = sub_client.subscription_path(project_id, unique_subscription)
-            sub_obj = sub_client.get_subscription(request={"subscription": sub_path})
+            sub_path = sub_client.subscription_path(
+                project_id, unique_subscription
+            )
+            sub_obj = sub_client.get_subscription(
+                request={"subscription": sub_path}
+            )
             assert sub_obj.name == sub_path
 
     @pytest.mark.asyncio
@@ -106,7 +110,9 @@ class TestSubscriptionLifecycle:
             event_2.set()
 
         async with managed_broker(connected_broker):
-            await connected_broker.publish(topic_name=unique_topic, data="broadcast message")
+            await connected_broker.publish(
+                topic_name=unique_topic, data="broadcast message"
+            )
             await asyncio.wait_for(event_1.wait(), timeout=self.timeout)
             await asyncio.wait_for(event_2.wait(), timeout=self.timeout)
 

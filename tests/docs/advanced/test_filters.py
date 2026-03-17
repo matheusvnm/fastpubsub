@@ -18,15 +18,23 @@ class TestAdvancedFilters:
         process_user_event = AsyncMock()
         log_to_audit_trail = AsyncMock()
         monkeypatch.setattr(f"{_SNIPPET}.process_order", process_order)
-        monkeypatch.setattr(f"{_SNIPPET}.process_user_event", process_user_event)
-        monkeypatch.setattr(f"{_SNIPPET}.log_to_audit_trail", log_to_audit_trail)
+        monkeypatch.setattr(
+            f"{_SNIPPET}.process_user_event", process_user_event
+        )
+        monkeypatch.setattr(
+            f"{_SNIPPET}.log_to_audit_trail", log_to_audit_trail
+        )
 
         async with PubSubTestClient(broker) as client:
             await client.publish(
-                topic="multi-events", data="order", attributes={"event_type": "order"}
+                topic="multi-events",
+                data="order",
+                attributes={"event_type": "order"},
             )
             await client.publish(
-                topic="multi-events", data="user", attributes={"event_type": "user"}
+                topic="multi-events",
+                data="user",
+                attributes={"event_type": "user"},
             )
             results = client.get_results()
 
@@ -40,7 +48,9 @@ class TestAdvancedFilters:
 
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_filtered_subscriber_does_not_receive_message_without_attributes(self) -> None:
+    async def test_subscriber_does_not_receive_unfiltered_message(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await client.publish(topic="events", data="ignored")
             results = client.get_results()

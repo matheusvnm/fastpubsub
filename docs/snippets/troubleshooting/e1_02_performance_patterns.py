@@ -1,27 +1,12 @@
-"""Title: Performance Troubleshooting Patterns
-
-Demonstrates performance optimization patterns.
-
-This example shows:
-- Increasing max_messages for throughput
-- Profiling middleware
-- Limiting concurrent messages
-- Memory leak prevention
-- Shutdown timeout configuration
-- Message ordering
-
-Run with:
-    fastpubsub run docs.snippets.troubleshooting.e1_02_performance_patterns:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:performance_full]
 import time
 
-from fastpubsub import BaseMiddleware, FastPubSub, Message, Middleware, PubSubBroker
+from fastpubsub import (
+    BaseMiddleware,
+    FastPubSub,
+    Message,
+    Middleware,
+    PubSubBroker,
+)
 from fastpubsub.logger import logger
 
 
@@ -108,4 +93,3 @@ async def ordered_handler(message: Message):
 
 
 # --8<-- [end:ordered_handler]
-# --8<-- [end:performance_full]

@@ -64,7 +64,9 @@ def router_factory() -> Callable[..., PubSubRouter]:
     return _create
 
 
-def callstack_to_collection(callstack: BaseMiddleware) -> MutableSequence[BaseMiddleware]:
+def callstack_to_collection(
+    callstack: BaseMiddleware,
+) -> MutableSequence[BaseMiddleware]:
     """Receives a callstack and transform it into an ordered sequence.
 
     Args:
@@ -96,13 +98,16 @@ def callstack_matches(
         True if the callstack matches the expected output, False otherwise.
     """
     callstack_collection = callstack_to_collection(callstack)
-    assert len(callstack_collection) == len(expected_output), "The callstacks do not match in size"
+    assert len(callstack_collection) == len(expected_output), (
+        "The callstacks do not match in size"
+    )
 
     for i in range(len(callstack_collection)):
         existing_middleware = type(callstack_collection[i])
         expected_middlewares = expected_output[i]
         assert existing_middleware == expected_middlewares, (
-            f"The callstack on {i} is {existing_middleware} but should be {expected_middlewares}"
+            f"The callstack on {i} is {existing_middleware} "
+            f"but should be {expected_middlewares}"
         )
 
     return True

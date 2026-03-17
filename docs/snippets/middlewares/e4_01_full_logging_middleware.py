@@ -1,7 +1,13 @@
 import time
 from typing import Any
 
-from fastpubsub import BaseMiddleware, FastPubSub, Message, Middleware, PubSubBroker
+from fastpubsub import (
+    BaseMiddleware,
+    FastPubSub,
+    Message,
+    Middleware,
+    PubSubBroker,
+)
 from fastpubsub.logger import logger
 
 

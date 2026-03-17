@@ -32,18 +32,25 @@ class PubSubSubscriptionBuilder:
 
     async def _create_topics(self) -> None:
         target_topic = self.subscriber.topic_name
-        await self._new_topic(topic_name=target_topic, create_default_subscription=False)
+        await self._new_topic(
+            topic_name=target_topic, create_default_subscription=False
+        )
 
         if self.subscriber.dead_letter_policy:
             target_topic = self.subscriber.dead_letter_policy.topic_name
-            await self._new_topic(topic_name=target_topic, create_default_subscription=True)
+            await self._new_topic(
+                topic_name=target_topic, create_default_subscription=True
+            )
 
-    async def _new_topic(self, topic_name: str, create_default_subscription: bool = True) -> None:
+    async def _new_topic(
+        self, topic_name: str, create_default_subscription: bool = True
+    ) -> None:
         if topic_name in self.created_topics:
             return
 
         await self.client.create_topic(
-            topic_name=topic_name, create_default_subscription=create_default_subscription
+            topic_name=topic_name,
+            create_default_subscription=create_default_subscription,
         )
         self.created_topics.add(topic_name)
 

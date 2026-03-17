@@ -10,7 +10,9 @@ class TestAdvancedMultipleProjects:
     async def test_cross_project_publish_targets_project_b(self) -> None:
         async with PubSubTestClient(broker) as client:
             await client.publish(
-                topic="shared-events", data={"id": "evt-1"}, project_id="project-b"
+                topic="shared-events",
+                data={"id": "evt-1"},
+                project_id="project-b",
             )
             published_messages = client.get_published_messages()
 

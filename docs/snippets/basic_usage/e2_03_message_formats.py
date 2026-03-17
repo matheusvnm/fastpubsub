@@ -31,7 +31,9 @@ async def handle(message: Message) -> None:
 @app.after_startup
 async def publish_initial_messages() -> None:
     message = TestMessage(
-        event="checkout", source="checkout-cart", message="the user put a item to the cart"
+        event="checkout",
+        source="checkout-cart",
+        message="the user put a item to the cart",
     )
 
     publisher: Publisher = broker.publisher("test-topic-pydantic")

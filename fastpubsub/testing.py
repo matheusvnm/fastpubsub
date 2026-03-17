@@ -13,7 +13,12 @@ from fastpubsub.pubsub import Publisher
 if TYPE_CHECKING:
     from fastpubsub.broker import PubSubBroker
 
-__all__ = ["PubSubTestClient", "PublishedMessage", "ProcessingResult", "matches_filter"]
+__all__ = [
+    "PubSubTestClient",
+    "PublishedMessage",
+    "ProcessingResult",
+    "matches_filter",
+]
 
 
 @dataclass(frozen=True)
@@ -97,17 +102,23 @@ def _tokenize(expression: str) -> list[_Token]:
         remaining = expression[pos:]
 
         # Logical operators (must check before identifiers)
-        if remaining.startswith("AND") and (len(remaining) == 3 or not remaining[3].isalnum()):
+        if remaining.startswith("AND") and (
+            len(remaining) == 3 or not remaining[3].isalnum()
+        ):
             tokens.append(_Token(_TokenType.AND, "AND"))
             pos += 3
             continue
 
-        if remaining.startswith("OR") and (len(remaining) == 2 or not remaining[2].isalnum()):
+        if remaining.startswith("OR") and (
+            len(remaining) == 2 or not remaining[2].isalnum()
+        ):
             tokens.append(_Token(_TokenType.OR, "OR"))
             pos += 2
             continue
 
-        if remaining.startswith("NOT") and (len(remaining) == 3 or not remaining[3].isalnum()):
+        if remaining.startswith("NOT") and (
+            len(remaining) == 3 or not remaining[3].isalnum()
+        ):
             tokens.append(_Token(_TokenType.NOT, "NOT"))
             pos += 3
             continue
@@ -174,7 +185,8 @@ def _tokenize(expression: str) -> list[_Token]:
         if expression[pos].isalpha() or expression[pos] == "_":
             end_pos = pos
             while end_pos < length and (
-                expression[end_pos].isalnum() or expression[end_pos] in ("_", "-")
+                expression[end_pos].isalnum()
+                or expression[end_pos] in ("_", "-")
             ):
                 end_pos += 1
             identifier = expression[pos:end_pos]
@@ -182,7 +194,9 @@ def _tokenize(expression: str) -> list[_Token]:
             pos = end_pos
             continue
 
-        raise ValueError(f"Unexpected character '{expression[pos]}' at position {pos}")
+        raise ValueError(
+            f"Unexpected character '{expression[pos]}' at position {pos}"
+        )
 
     tokens.append(_Token(_TokenType.EOF, ""))
     return tokens
@@ -200,7 +214,9 @@ class _FilterParser:
     - Parentheses for grouping
     """
 
-    def __init__(self, tokens: list[_Token], attributes: dict[str, str]) -> None:
+    def __init__(
+        self, tokens: list[_Token], attributes: dict[str, str]
+    ) -> None:
         """Initialize the parser.
 
         Args:
@@ -246,7 +262,9 @@ class _FilterParser:
     def _expect(self, token_type: _TokenType) -> _Token:
         """Expect a specific token type, raise error if not found."""
         if self._current().type != token_type:
-            raise ValueError(f"Expected {token_type.name}, got {self._current().type.name}")
+            raise ValueError(
+                f"Expected {token_type.name}, got {self._current().type.name}"
+            )
         return self._advance()
 
     def _or_expr(self) -> bool:
@@ -272,7 +290,7 @@ class _FilterParser:
         return self._primary()
 
     def _primary(self) -> bool:
-        """Parse primary expressions (comparisons, existence, hasPrefix, parens)."""
+        """Parse primary expressions."""
         # Parenthesized expression
         if self._match(_TokenType.LPAREN):
             result = self._or_expr()
@@ -368,9 +386,9 @@ def matches_filter(attributes: dict[str, str], filter_expression: str) -> bool:
 class PubSubTestClient:
     """A test wrapper for PubSubBroker that enables in-memory message routing.
 
-    This allows testing subscriber handlers without needing a real PubSub emulator,
-    making tests fast and isolated. Supports filter expression evaluation to match
-    Google Pub/Sub behavior.
+    This allows testing subscriber handlers without needing a real PubSub
+    emulator,making tests fast and isolated. Supports filter expression
+    evaluation to match Google Pub/Sub behavior.
 
     Example:
         ```python
@@ -462,7 +480,9 @@ class PubSubTestClient:
         mock_builder_class.return_value = mock_builder
 
         # Mock the task manager to not actually start async tasks
-        task_manager_patcher = patch.object(self.broker.task_manager, "start", AsyncMock())
+        task_manager_patcher = patch.object(
+            self.broker.task_manager, "start", AsyncMock()
+        )
         task_manager_patcher.start()
         self._patchers.append(task_manager_patcher)
 
@@ -489,8 +509,8 @@ class PubSubTestClient:
         """Fake publish that routes messages to matching subscribers.
 
         Routes messages based on topic name, project_id, AND filter expression
-        matching. If a subscriber has a filter expression, only messages matching
-        that filter will be delivered to the subscriber.
+        matching. If a subscriber has a filter expression, only messages
+        matching that filter will be delivered to the subscriber.
 
         Args:
             topic_name: Target topic.
@@ -518,7 +538,9 @@ class PubSubTestClient:
             if subscriber.topic_name != topic_name:
                 continue
 
-            subscriber_project_id = subscriber.project_id or self.broker.project_id
+            subscriber_project_id = (
+                subscriber.project_id or self.broker.project_id
+            )
             if subscriber_project_id != resolved_project_id:
                 continue
 
@@ -575,7 +597,11 @@ class PubSubTestClient:
         resolved_project_id = project_id or self.broker.project_id
         encoded_data = await Publisher._serialize_message(data)
         await self._fake_publish(
-            topic, encoded_data, ordering_key, attributes, project_id=resolved_project_id
+            topic,
+            encoded_data,
+            ordering_key,
+            attributes,
+            project_id=resolved_project_id,
         )
 
     def get_published_messages(self) -> list[PublishedMessage]:
@@ -601,8 +627,14 @@ class PubSubTestClient:
 
 
             async with PubSubTestClient(broker) as client:
-                await client.publish({"id": 1}, topic="order-events", attributes={"region": "us"})
-                await client.publish({"id": 2}, topic="order-events", project_id="other-project")
+                await client.publish(
+                    {"id": 1},
+                    topic="order-events",
+                    attributes={"region": "us"},
+                )
+                await client.publish(
+                    {"id": 2}, topic="order-events", project_id="other-project"
+                )
 
                 messages = client.get_published_messages()
                 assert len(messages) == 2

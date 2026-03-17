@@ -1,7 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from docs.snippets.basic_usage.e2_04_publisher_dependency_injection import app, broker
+from docs.snippets.basic_usage.e2_04_publisher_dependency_injection import (
+    app,
+    broker,
+)
 from fastpubsub.testing import PubSubTestClient
 
 client = TestClient(app)
@@ -10,9 +13,13 @@ client = TestClient(app)
 class TestPublisherDependencyInjection:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_new_user_endpoint_runs_use_case_and_publishes_event(self) -> None:
+    async def test_new_user_endpoint_runs_use_case_and_publishes_event(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as broker_client:
-            response = client.post("/new-user", json={"name": "Alice", "age": 22})
+            response = client.post(
+                "/new-user", json={"name": "Alice", "age": 22}
+            )
             published_messages = broker_client.get_published_messages()
             results = broker_client.get_results()
 

@@ -19,7 +19,9 @@ class ContextStore:
 
     def __init__(self) -> None:
         """Initializes the ContextStore."""
-        self._context: ContextVar[dict[str, str] | None] = ContextVar("context_store", default=None)
+        self._context: ContextVar[dict[str, str] | None] = ContextVar(
+            "context_store", default=None
+        )
 
     def set(self, data: dict[str, Any]) -> Token[dict[str, str] | None]:
         """Sets or updates the context data.
@@ -96,11 +98,21 @@ class DefaultFormatter(logging.Formatter):
     """Default formatter for a human-readable string."""
 
     level_name_colors = {
-        logging.DEBUG: lambda level_name: click.style(str(level_name), fg="cyan"),
-        logging.INFO: lambda level_name: click.style(str(level_name), fg="green"),
-        logging.WARNING: lambda level_name: click.style(str(level_name), fg="yellow"),
-        logging.ERROR: lambda level_name: click.style(str(level_name), fg="red"),
-        logging.CRITICAL: lambda level_name: click.style(str(level_name), fg="bright_red"),
+        logging.DEBUG: lambda level_name: click.style(
+            str(level_name), fg="cyan"
+        ),
+        logging.INFO: lambda level_name: click.style(
+            str(level_name), fg="green"
+        ),
+        logging.WARNING: lambda level_name: click.style(
+            str(level_name), fg="yellow"
+        ),
+        logging.ERROR: lambda level_name: click.style(
+            str(level_name), fg="red"
+        ),
+        logging.CRITICAL: lambda level_name: click.style(
+            str(level_name), fg="bright_red"
+        ),
     }
 
     def __init__(
@@ -130,7 +142,9 @@ class DefaultFormatter(logging.Formatter):
         levelname = recordcopy.levelname
         separator = " " * (8 - len(recordcopy.levelname))
         if self.use_colors:
-            levelname = self._get_colored_levelname(recordcopy.levelno, recordcopy.levelname)
+            levelname = self._get_colored_levelname(
+                recordcopy.levelno, recordcopy.levelname
+            )
             if "color_message" in recordcopy.__dict__:
                 recordcopy.msg = recordcopy.__dict__["color_message"]
                 recordcopy.__dict__["message"] = recordcopy.getMessage()
@@ -185,7 +199,9 @@ def configure() -> FastPubSubLogger:
     """Enables and configures the FastPubSub logger."""
     LOGGING_LEVEL = os.getenv("FASTPUBSUB_LOG_LEVEL", "INFO")
     LOGGING_COLORIZE = bool(int(os.getenv("FASTPUBSUB_ENABLE_LOG_COLORS", 0)))
-    LOGGING_SERIALIZE = bool(int(os.getenv("FASTPUBSUB_ENABLE_LOG_SERIALIZE", 0)))
+    LOGGING_SERIALIZE = bool(
+        int(os.getenv("FASTPUBSUB_ENABLE_LOG_SERIALIZE", 0))
+    )
 
     LOGGING_CONFIG: dict[str, Any] = {
         "version": 1,
@@ -209,7 +225,9 @@ def configure() -> FastPubSubLogger:
         },
         "handlers": {
             "fastpubsub_default": {
-                "formatter": "fastpubsub_json" if LOGGING_SERIALIZE else "fastpubsub_default",
+                "formatter": "fastpubsub_json"
+                if LOGGING_SERIALIZE
+                else "fastpubsub_default",
                 "class": "logging.StreamHandler",
                 "stream": "ext://sys.stderr",
                 "filters": ["fastpubsub_filter"],

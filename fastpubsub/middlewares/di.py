@@ -11,7 +11,9 @@ from fastpubsub.types import AsyncCallable
 class HandleMessageSerializerMiddleware(BaseMiddleware):
     """A special middleware for handling incoming messages serialization."""
 
-    def __init__(self, next_call: BaseMiddleware | None, target: AsyncCallable):
+    def __init__(
+        self, next_call: BaseMiddleware | None, target: AsyncCallable
+    ):
         """Initializes the HandleMessageSerializerMiddleware.
 
         Args:
@@ -71,5 +73,8 @@ class PublishMessageSerializerMiddleware(BaseMiddleware):
             await client.create_topic(self.topic_name)
 
         return await client.publish(
-            topic_name=self.topic_name, data=data, ordering_key=ordering_key, attributes=attributes
+            topic_name=self.topic_name,
+            data=data,
+            ordering_key=ordering_key,
+            attributes=attributes,
         )

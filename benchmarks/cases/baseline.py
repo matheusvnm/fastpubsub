@@ -82,7 +82,9 @@ class BaselinePubSubTestCase:
         Returns:
             str: The subscription path.
         """
-        subscription_path: str = SubscriberClient.subscription_path(PROJECT_ID, SUBSCRIPTION_NAME)
+        subscription_path: str = SubscriberClient.subscription_path(
+            PROJECT_ID, SUBSCRIPTION_NAME
+        )
 
         with suppress(AlreadyExists):
             self._subscriber_client.create_subscription(  # type: ignore[union-attr]

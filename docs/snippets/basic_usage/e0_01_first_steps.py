@@ -12,7 +12,6 @@ class Address(BaseModel):
 
 # --8<-- [end:pydantic_model]
 
-
 # --8<-- [start:broker_app]
 broker = PubSubBroker(project_id="your-project-id")
 app = FastPubSub(broker)

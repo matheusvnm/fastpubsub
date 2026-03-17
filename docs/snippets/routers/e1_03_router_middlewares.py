@@ -1,21 +1,3 @@
-"""Title: Router with Middlewares
-
-Demonstrates applying middlewares to all subscribers in a router.
-
-This example shows:
-- Creating a router with middlewares
-- All subscribers in the router automatically get the middlewares applied
-- Using Middleware wrapper to pass configuration
-
-Run with:
-    fastpubsub run docs.snippets.routers.e1_06_router_middlewares:app
-
-Requirements:
-    - Set PUBSUB_EMULATOR_HOST for local testing, or
-    - Set GOOGLE_APPLICATION_CREDENTIALS for GCP
-"""
-
-# --8<-- [start:router_middlewares_full]
 from typing import Any
 
 from fastpubsub import (
@@ -76,6 +58,3 @@ app = FastPubSub(broker)
 @app.after_startup
 async def publish_test():
     await users_router.publish("users-topic", {"user": "test"})
-
-
-# --8<-- [end:router_middlewares_full]

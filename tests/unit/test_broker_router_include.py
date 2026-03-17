@@ -9,7 +9,8 @@ def test_router_inclusion_on_constructor():
     another_parent_router = PubSubRouter("another_parent")
 
     broker = PubSubBroker(
-        project_id="some_project_id", routers=(parent_router, another_parent_router)
+        project_id="some_project_id",
+        routers=(parent_router, another_parent_router),
     )
 
     assert len(another_parent_router.routers) == 0
@@ -18,7 +19,12 @@ def test_router_inclusion_on_constructor():
     assert len(parent_router.routers) == 1
     assert len(broker.router.routers) == 2
 
-    routers = (grandchild_router, child_router, parent_router, another_parent_router)
+    routers = (
+        grandchild_router,
+        child_router,
+        parent_router,
+        another_parent_router,
+    )
     for router in routers:
         assert broker.router.project_id == router.project_id
 
@@ -49,7 +55,12 @@ def test_router_inclusion_on_include_router():
     assert len(parent_router.routers) == 1
     assert len(broker.router.routers) == 2
 
-    routers = (grandchild_router, child_router, parent_router, another_parent_router)
+    routers = (
+        grandchild_router,
+        child_router,
+        parent_router,
+        another_parent_router,
+    )
     for router in routers:
         assert broker.router.project_id == router.project_id
 

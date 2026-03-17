@@ -12,9 +12,16 @@ from fastpubsub.router import PubSubRouter
 class TestPublishMessage:
     @pytest.mark.asyncio
     async def test_publish_with_all_fields_successfully(
-        self, router_a: PubSubRouter, broker: PubSubBroker, publisher: Publisher
+        self,
+        router_a: PubSubRouter,
+        broker: PubSubBroker,
+        publisher: Publisher,
     ):
-        data = {"data": b"data", "ordering_key": "key", "attributes": {"attr1": "val1"}}
+        data = {
+            "data": b"data",
+            "ordering_key": "key",
+            "attributes": {"attr1": "val1"},
+        }
 
         with patch.object(
             Publisher, "_build_callstack", return_value=AsyncMock()
@@ -43,7 +50,11 @@ class TestPublishMessage:
         [
             {"data": True},
             {"data": 101, "ordering_key": "key"},
-            {"data": "text", "ordering_key": {}, "attributes": {"key": "value"}},
+            {
+                "data": "text",
+                "ordering_key": {},
+                "attributes": {"key": "value"},
+            },
             {"data": "text", "attributes": {"key": object}},
             {"data": "text", "autocreate": None},
         ],

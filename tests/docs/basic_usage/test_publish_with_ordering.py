@@ -11,7 +11,9 @@ from fastpubsub.testing import PubSubTestClient
 class TestPublishWithOrdering:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_ordering_key_is_forwarded_for_broker_and_publisher(self) -> None:
+    async def test_ordering_key_is_forwarded_for_broker_and_publisher(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await publish_with_broker()
             await publish_with_publisher()
@@ -21,12 +23,18 @@ class TestPublishWithOrdering:
             results = client.get_results()
 
         assert len(published_messages) == 4
-        assert all(message.topic_name == "user-events" for message in published_messages)
+        assert all(
+            message.topic_name == "user-events"
+            for message in published_messages
+        )
         assert [call.kwargs["ordering_key"] for call in publish_calls] == [
             "user-123",
             "user-123",
             "user-123",
             "user-123",
         ]
-        assert all(call.kwargs["attributes"] == {"user_id": "user-123"} for call in publish_calls)
+        assert all(
+            call.kwargs["attributes"] == {"user_id": "user-123"}
+            for call in publish_calls
+        )
         assert all(result.error is None for result in results)

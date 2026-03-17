@@ -1,13 +1,18 @@
 import pytest
 
-from docs.snippets.middlewares.e4_01_full_logging_middleware import broker, publish_first_message
+from docs.snippets.middlewares.e4_01_full_logging_middleware import (
+    broker,
+    publish_first_message,
+)
 from fastpubsub.testing import PubSubTestClient
 
 
 class TestMiddlewaresFullLogging:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_full_logging_middleware_adds_trace_id_and_processes_message(self) -> None:
+    async def test_full_logging_middleware_adds_trace_id_and_processes_message(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await publish_first_message()
             published_messages = client.get_published_messages()

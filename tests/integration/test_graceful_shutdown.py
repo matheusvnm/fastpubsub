@@ -45,7 +45,9 @@ class TestGracefulShutdown:
         await connected_broker.start()
 
         # Publish a message
-        await connected_broker.publish(topic_name=unique_topic, data=b"test-message-1")
+        await connected_broker.publish(
+            topic_name=unique_topic, data=b"test-message-1"
+        )
 
         # Wait for processing to start
         await asyncio.wait_for(processing_started.wait(), timeout=5.0)
@@ -84,7 +86,9 @@ class TestGracefulShutdown:
         await connected_broker.start()
 
         # Publish first message
-        await connected_broker.publish(topic_name=unique_topic, data=b"message-1")
+        await connected_broker.publish(
+            topic_name=unique_topic, data=b"message-1"
+        )
 
         # Wait for first message to be received
         await asyncio.wait_for(first_message_received.wait(), timeout=5.0)
@@ -96,8 +100,12 @@ class TestGracefulShutdown:
         await asyncio.sleep(0.2)
 
         # Publish more messages (these should be nacked by closed scheduler)
-        await connected_broker.publish(topic_name=unique_topic, data=b"message-2")
-        await connected_broker.publish(topic_name=unique_topic, data=b"message-3")
+        await connected_broker.publish(
+            topic_name=unique_topic, data=b"message-2"
+        )
+        await connected_broker.publish(
+            topic_name=unique_topic, data=b"message-3"
+        )
 
         # Wait for shutdown to complete
         await shutdown_task
@@ -227,7 +235,9 @@ class TestGracefulShutdown:
         await connected_broker.start()
 
         # Publish a message
-        await connected_broker.publish(topic_name=unique_topic, data=b"test-message")
+        await connected_broker.publish(
+            topic_name=unique_topic, data=b"test-message"
+        )
 
         # Wait for message
         await asyncio.sleep(1.0)

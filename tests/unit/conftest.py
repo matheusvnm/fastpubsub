@@ -33,7 +33,9 @@ def first_middleware() -> type[BaseMiddleware]:
     """Create a FirstMiddleware class for testing."""
 
     class FirstMiddleware(BaseMiddleware):
-        def __init__(self, next_call: BaseMiddleware, arg_1: str = "", arg_2: str = ""):
+        def __init__(
+            self, next_call: BaseMiddleware, arg_1: str = "", arg_2: str = ""
+        ):
             super().__init__(next_call)
             self.arg_1 = arg_1
             self.arg_2 = arg_2
@@ -46,7 +48,9 @@ def second_middleware() -> type[BaseMiddleware]:
     """Create a SecondMiddleware class for testing."""
 
     class SecondMiddleware(BaseMiddleware):
-        def __init__(self, next_call: BaseMiddleware, arg_1: str = "", arg_2: str = ""):
+        def __init__(
+            self, next_call: BaseMiddleware, arg_1: str = "", arg_2: str = ""
+        ):
             super().__init__(next_call)
             self.arg_1 = arg_1
             self.arg_2 = arg_2
@@ -59,7 +63,9 @@ def third_middleware() -> type[BaseMiddleware]:
     """Create a ThirdMiddleware class for testing."""
 
     class ThirdMiddleware(BaseMiddleware):
-        def __init__(self, next_call: BaseMiddleware, arg_1: str = "", arg_2: str = ""):
+        def __init__(
+            self, next_call: BaseMiddleware, arg_1: str = "", arg_2: str = ""
+        ):
             super().__init__(next_call)
             self.arg_1 = arg_1
             self.arg_2 = arg_2
@@ -72,7 +78,9 @@ def final_middleware() -> type[BaseMiddleware]:
     """Create a FinalMiddleware class for testing."""
 
     class FinalMiddleware(BaseMiddleware):
-        def __init__(self, next_call: BaseMiddleware, arg_1: str = "", arg_2: str = ""):
+        def __init__(
+            self, next_call: BaseMiddleware, arg_1: str = "", arg_2: str = ""
+        ):
             super().__init__(next_call)
             self.arg_1 = arg_1
             self.arg_2 = arg_2

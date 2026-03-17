@@ -66,7 +66,9 @@ async def handle_cross_project_events(message: Message):
 local_publisher = broker.publisher("local-events")
 
 # Publisher for a different project
-cross_project_publisher = broker.publisher("shared-events", project_id="project-b")
+cross_project_publisher = broker.publisher(
+    "shared-events", project_id="project-b"
+)
 
 
 @app.post("/send-event")

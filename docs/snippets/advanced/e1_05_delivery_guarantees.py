@@ -98,7 +98,9 @@ async def db_idempotent_handler(message: Message):
 
     # Use database transaction with unique constraint
     try:
-        await db.execute("INSERT INTO processed_orders (order_id) VALUES (?)", [order_id])
+        await db.execute(
+            "INSERT INTO processed_orders (order_id) VALUES (?)", [order_id]
+        )
     except UniqueViolationError:
         return  # Already processed
 
@@ -110,7 +112,9 @@ async def db_idempotent_handler(message: Message):
 
 # Simulated Redis for idempotency
 class Redis:
-    async def set(self, key: str, value: str, nx: bool = False, ex: int = 0) -> bool:
+    async def set(
+        self, key: str, value: str, nx: bool = False, ex: int = 0
+    ) -> bool:
         return True
 
 

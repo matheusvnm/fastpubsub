@@ -94,10 +94,16 @@ class ErrorHandlingMiddleware(BaseMiddleware):
         try:
             return await super().on_message(message)
         except ValueError as error:
-            logger.warning("Dropping message due to validation error", extra={"error": str(error)})
+            logger.warning(
+                "Dropping message due to validation error",
+                extra={"error": str(error)},
+            )
             raise Drop(str(error)) from error
         except TimeoutError as error:
-            logger.info("Retrying message due to transient timeout", extra={"error": str(error)})
+            logger.info(
+                "Retrying message due to transient timeout",
+                extra={"error": str(error)},
+            )
             raise Retry(str(error)) from error
 
 

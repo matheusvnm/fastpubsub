@@ -16,7 +16,9 @@ class TestPubSubRouter:
     def test_realias_subscribers(self):
         router = PubSubRouter(prefix="api")
 
-        @router.subscriber(alias="test.alias", topic_name="topic", subscription_name="sub")
+        @router.subscriber(
+            alias="test.alias", topic_name="topic", subscription_name="sub"
+        )
         async def handler(msg):
             pass
 
@@ -39,11 +41,15 @@ class TestPubSubRouter:
     def test_get_subscribers(self):
         router = PubSubRouter()
 
-        @router.subscriber(alias="sub1", topic_name="topic1", subscription_name="sub1")
+        @router.subscriber(
+            alias="sub1", topic_name="topic1", subscription_name="sub1"
+        )
         async def handler1(msg):
             pass
 
-        @router.subscriber(alias="sub2", topic_name="topic2", subscription_name="sub2")
+        @router.subscriber(
+            alias="sub2", topic_name="topic2", subscription_name="sub2"
+        )
         async def handler2(msg):
             pass
 
@@ -59,11 +65,15 @@ class TestPubSubRouter:
         router.include_router(sub_router1)
         router.include_router(sub_router2)
 
-        @sub_router1.subscriber(alias="sub1", topic_name="topic1", subscription_name="sub1")
+        @sub_router1.subscriber(
+            alias="sub1", topic_name="topic1", subscription_name="sub1"
+        )
         async def handler1(msg):
             pass
 
-        @sub_router2.subscriber(alias="sub1", topic_name="topic2", subscription_name="sub2")
+        @sub_router2.subscriber(
+            alias="sub1", topic_name="topic2", subscription_name="sub2"
+        )
         async def handler2(msg):
             pass
 
@@ -77,11 +87,15 @@ class TestPubSubRouter:
         router.include_router(sub_router1)
         router.include_router(sub_router2)
 
-        @sub_router1.subscriber(alias="alias_a", topic_name="topic1", subscription_name="sub1")
+        @sub_router1.subscriber(
+            alias="alias_a", topic_name="topic1", subscription_name="sub1"
+        )
         async def handler1(msg):
             pass
 
-        @sub_router2.subscriber(alias="alias_b", topic_name="topic2", subscription_name="sub2")
+        @sub_router2.subscriber(
+            alias="alias_b", topic_name="topic2", subscription_name="sub2"
+        )
         async def handler2(msg):
             pass
 
@@ -112,14 +126,19 @@ class TestPubSubRouter:
     def test_nested_router_subscriber_retrieval(self):
         level2_router = PubSubRouter(prefix="level2")
 
-        @level2_router.subscriber(alias="alias", topic_name="topic", subscription_name="sub")
+        @level2_router.subscriber(
+            alias="alias", topic_name="topic", subscription_name="sub"
+        )
         async def handler(msg):
             pass
 
         level1_router = PubSubRouter(prefix="level1", routers=(level2_router,))
         subscribers = level1_router._get_subscribers()
         assert "level1.level2.alias" in subscribers
-        assert subscribers["level1.level2.alias"].subscription_name == "level1.level2.sub"
+        assert (
+            subscribers["level1.level2.alias"].subscription_name
+            == "level1.level2.sub"
+        )
 
     def test_error_on_basic_cyclical_router(self):
         router = PubSubRouter(prefix="")

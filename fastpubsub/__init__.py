@@ -1,4 +1,4 @@
-"""A high performance FastAPI-based message consumer framework for Google PubSub."""
+"""A high performance async message consumer framework for Google PubSub."""
 
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker

@@ -24,13 +24,21 @@ class TestMiddlewareHierarchy:
         router_a.include_middleware(middleware=second_middleware)
         broker.include_middleware(middleware=first_middleware)
 
-    def test_include_broker_middleware_only_once(self, first_middleware: type[BaseMiddleware]):
-        new_broker = PubSubBroker(project_id="id", middlewares=(Middleware(first_middleware),))
+    def test_include_broker_middleware_only_once(
+        self, first_middleware: type[BaseMiddleware]
+    ):
+        new_broker = PubSubBroker(
+            project_id="id", middlewares=(Middleware(first_middleware),)
+        )
         new_broker.include_middleware(middleware=first_middleware)
         assert len(new_broker.router.middlewares) == 1
 
-    def test_include_router_middleware_only_once(self, first_middleware: type[BaseMiddleware]):
-        router = PubSubRouter(prefix="core", middlewares=(Middleware(first_middleware),))
+    def test_include_router_middleware_only_once(
+        self, first_middleware: type[BaseMiddleware]
+    ):
+        router = PubSubRouter(
+            prefix="core", middlewares=(Middleware(first_middleware),)
+        )
         router.include_middleware(first_middleware)
 
         broker = PubSubBroker(project_id="id")
@@ -173,7 +181,9 @@ class TestSubscriberPublisherMiddlewareHierarchy(TestMiddlewareHierarchy):
 
         publisher_b: Publisher = router_b.publisher(topic_name="some_topic")
         publisher_a: Publisher = router_a.publisher(topic_name="another_topic")
-        publisher_broker: Publisher = broker.publisher(topic_name="final_ttoic")
+        publisher_broker: Publisher = broker.publisher(
+            topic_name="final_ttoic"
+        )
 
         publisher_b.include_middleware(final_middleware)
         publisher_a.include_middleware(final_middleware)

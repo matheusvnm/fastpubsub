@@ -83,7 +83,9 @@ class MeasureResult:
         return self.total_events / self.elapsed_time
 
 
-async def measure(case: BenchmarkCase, measure_time: int) -> AsyncGenerator[MeasureResult, None]:
+async def measure(
+    case: BenchmarkCase, measure_time: int
+) -> AsyncGenerator[MeasureResult, None]:
     """Run benchmark and yield results every second.
 
     Args:
@@ -98,10 +100,14 @@ async def measure(case: BenchmarkCase, measure_time: int) -> AsyncGenerator[Meas
             yield MeasureResult(-1, elapsed_time)
             await asyncio.sleep(1.0)
 
-    yield MeasureResult(case.get_total_processed_msgs(), time.time() - start_time)
+    yield MeasureResult(
+        case.get_total_processed_msgs(), time.time() - start_time
+    )
 
 
-async def run_benchmark(case: BenchmarkCase, measure_time: int) -> MeasureResult:
+async def run_benchmark(
+    case: BenchmarkCase, measure_time: int
+) -> MeasureResult:
     """Execute a benchmark with real-time progress display.
 
     Args:
@@ -185,7 +191,9 @@ def save_results(
         )
 
 
-def print_results(cases_results: list[tuple[BenchmarkCase, MeasureResult]]) -> None:
+def print_results(
+    cases_results: list[tuple[BenchmarkCase, MeasureResult]],
+) -> None:
     """Print formatted benchmark results table.
 
     Args:
@@ -206,7 +214,9 @@ def print_results(cases_results: list[tuple[BenchmarkCase, MeasureResult]]) -> N
     print("-" * 60)
 
     # Calculate overhead for each test case against baseline.
-    baseline_result = next((r for c, r in cases_results if c.case_name == "baseline"), None)
+    baseline_result = next(
+        (r for c, r in cases_results if c.case_name == "baseline"), None
+    )
     if not baseline_result or baseline_result.eps <= 0:
         return
 
@@ -251,7 +261,9 @@ Examples:
 
     args = parser.parse_args()
 
-    cases_cls: list[Any] = cast(list[Any], BENCH_CASE_IMPLEMENTATIONS.get(args.case, []))
+    cases_cls: list[Any] = cast(
+        list[Any], BENCH_CASE_IMPLEMENTATIONS.get(args.case, [])
+    )
     if not cases_cls:
         raise ValueError(f"No benchmark found for --case {args.case}")
 

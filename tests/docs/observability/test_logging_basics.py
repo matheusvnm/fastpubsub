@@ -9,7 +9,9 @@ from fastpubsub.testing import PubSubTestClient
 class TestObservabilityLoggingBasics:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_basic_logger_subscriber_processes_message_without_errors(self) -> None:
+    async def test_basic_logger_subscriber_processes_message_without_errors(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await client.publish(topic="tasks", data={"task": "send-email"})
             processed_results = client.get_results()

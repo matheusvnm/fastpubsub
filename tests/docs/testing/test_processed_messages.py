@@ -24,7 +24,9 @@ class TestTestingProcessedMessages:
 
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_processed_result_records_error_for_invalid_order(self) -> None:
+    async def test_processed_result_records_error_for_invalid_order(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await client.publish(
                 {"id": "order-2", "amount": -5},

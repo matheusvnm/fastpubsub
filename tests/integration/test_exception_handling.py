@@ -86,7 +86,9 @@ class TestExceptionHandling:
             )
 
             await asyncio.sleep(7.0)
-            assert received.qsize() == 1, "Message should only be processed once"
+            assert received.qsize() == 1, (
+                "Message should only be processed once"
+            )
 
     @pytest.mark.asyncio
     @pytest.mark.slow
@@ -112,5 +114,7 @@ class TestExceptionHandling:
             completed.set()
 
         async with managed_broker(connected_broker):
-            await connected_broker.publish(topic_name=unique_topic, data="test")
+            await connected_broker.publish(
+                topic_name=unique_topic, data="test"
+            )
             await asyncio.wait_for(completed.wait(), timeout=self.timeout)

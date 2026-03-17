@@ -39,7 +39,9 @@ class AppConfiguration:
 class ApplicationRunner:
     """Runs a FastPubSub application."""
 
-    def __init__(self, app_config: AppConfiguration, server_config: ServerConfiguration) -> None:
+    def __init__(
+        self, app_config: AppConfiguration, server_config: ServerConfiguration
+    ) -> None:
         """Initialized a FastPubSub application runner.
 
         Args:
@@ -52,9 +54,15 @@ class ApplicationRunner:
     def setup(self) -> None:
         """Setup a FastPubSub application environment."""
         os.environ["FASTPUBSUB_LOG_LEVEL"] = self.app_config.log_level
-        os.environ["FASTPUBSUB_ENABLE_LOG_SERIALIZE"] = str(int(self.app_config.log_serialize))
-        os.environ["FASTPUBSUB_ENABLE_LOG_COLORS"] = str(int(self.app_config.log_colorize))
-        os.environ["FASTPUBSUB_SUBSCRIBERS"] = ",".join(self.app_config.subscribers)
+        os.environ["FASTPUBSUB_ENABLE_LOG_SERIALIZE"] = str(
+            int(self.app_config.log_serialize)
+        )
+        os.environ["FASTPUBSUB_ENABLE_LOG_COLORS"] = str(
+            int(self.app_config.log_colorize)
+        )
+        os.environ["FASTPUBSUB_SUBSCRIBERS"] = ",".join(
+            self.app_config.subscribers
+        )
         configure()
 
     def validate(self) -> None:
@@ -62,7 +70,9 @@ class ApplicationRunner:
         from fastpubsub.applications import FastPubSub
         from fastpubsub.exceptions import FastPubSubCLIException
 
-        posix_path = self._translate_pypath_to_posix(pypath=self.app_config.app)
+        posix_path = self._translate_pypath_to_posix(
+            pypath=self.app_config.app
+        )
         self._resolve_application_posix_path(posix_path=posix_path)
 
         app = uvicorn.importer.import_from_string(self.app_config.app)
@@ -92,7 +102,8 @@ class ApplicationRunner:
             return Path(posix_text_path)
         except Exception as e:
             raise uvicorn.importer.ImportFromStringError(
-                f'The application path "{pypath}" must be in format "<module>:<attribute>".'
+                f'The application path "{pypath}" '
+                'must be in format "<module>:<attribute>".'
             ) from e
 
     def _resolve_application_posix_path(self, posix_path: Path) -> None:

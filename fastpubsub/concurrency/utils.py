@@ -20,7 +20,9 @@ T = TypeVar("T")
 
 
 def ensure_async_callable_function(
-    callable_object: Callable[[], Any] | AsyncCallable | AsyncDecoratedCallable,
+    callable_object: Callable[[], Any]
+    | AsyncCallable
+    | AsyncDecoratedCallable,
 ) -> None:
     """Ensures that a callable is an async function.
 
@@ -28,7 +30,9 @@ def ensure_async_callable_function(
         callable_object: The callable to check.
     """
     if not isinstance(callable_object, FunctionType):
-        raise TypeError(f"The object must be a function type but it is {callable_object}.")
+        raise TypeError(
+            f"The object must be a function type but it is {callable_object}."
+        )
 
     if not inspect.iscoroutinefunction(callable_object):
         raise TypeError(f"The function {callable_object} must be async.")
@@ -43,16 +47,24 @@ def ensure_async_middleware(middleware: type["BaseMiddleware"]) -> None:
     from fastpubsub.middlewares.base import BaseMiddleware
 
     if not issubclass(middleware, BaseMiddleware):
-        raise TypeError(f"The object {middleware} must be a {BaseMiddleware.__name__}.")
+        raise TypeError(
+            f"The object {middleware} must be a {BaseMiddleware.__name__}."
+        )
 
     if not inspect.iscoroutinefunction(middleware.on_message):
-        raise TypeError(f"The on_message method must be async on {middleware}.")
+        raise TypeError(
+            f"The on_message method must be async on {middleware}."
+        )
 
     if not inspect.iscoroutinefunction(middleware.on_publish):
-        raise TypeError(f"The on_publish method must be async on {middleware}.")
+        raise TypeError(
+            f"The on_publish method must be async on {middleware}."
+        )
 
 
-async def apply_async(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+async def apply_async(
+    func: Callable[P, T], *args: P.args, **kwargs: P.kwargs
+) -> T:
     """Transforms a blocking sync callable into a async callable.
 
     Args:
@@ -68,8 +80,10 @@ async def apply_async(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -
     return await anyio.to_thread.run_sync(func, abandon_on_cancel=False)
 
 
-async def apply_async_cancellable(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
-    """Transforms a blocking sync callable into a async callable that can be cancelled.
+async def apply_async_cancellable(
+    func: Callable[P, T], *args: P.args, **kwargs: P.kwargs
+) -> T:
+    """Transforms a blocking sync callable into a async cancellable callable.
 
     Args:
         func: The sync callable to be transformed.

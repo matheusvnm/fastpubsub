@@ -7,11 +7,17 @@ from fastpubsub.testing import PubSubTestClient
 class TestRoutersCrossProjectRouterSimple:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_cross_project_router_only_consumes_messages_for_router_project(self) -> None:
+    async def test_cross_project_message_consumption_isolation(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
-            await client.publish(topic="events", data={"event": "default-project"})
             await client.publish(
-                topic="events", data={"event": "project-b"}, project_id="project-b"
+                topic="events", data={"event": "default-project"}
+            )
+            await client.publish(
+                topic="events",
+                data={"event": "project-b"},
+                project_id="project-b",
             )
             published_messages = client.get_published_messages()
             processed_results = client.get_results()
@@ -28,5 +34,7 @@ class TestRoutersCrossProjectRouterSimple:
         ]
 
         assert processed_result.error is None
-        assert processed_result.message.subscriber_name == "handle_external_event"
+        assert (
+            processed_result.message.subscriber_name == "handle_external_event"
+        )
         assert processed_result.message.project_id == "project-b"

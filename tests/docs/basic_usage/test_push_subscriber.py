@@ -30,4 +30,7 @@ class TestPushSubscription:
 
         assert response_content["status"] == "ok"
         assert response_content["processed_data"] == message_content["data"]
-        assert response_content["processed_attributes"] == message_content["attributes"]
+        assert (
+            response_content["processed_attributes"]
+            == message_content["attributes"]
+        )

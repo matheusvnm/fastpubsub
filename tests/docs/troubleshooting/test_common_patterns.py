@@ -62,7 +62,9 @@ class TestTroubleshootingCommonPatterns:
     @pytest.mark.docs
     async def test_validated_handler_drops_invalid_message(self) -> None:
         async with PubSubTestClient(broker) as client:
-            await client.publish(topic="validated-events", data={"wrong": "shape"})
+            await client.publish(
+                topic="validated-events", data={"wrong": "shape"}
+            )
             results = client.get_results()
 
         assert len(results) == 1
