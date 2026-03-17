@@ -47,7 +47,9 @@ class TestMessagePublishing:
                 data=sent_data,
             )
 
-            received_data = await asyncio.wait_for(received.get(), timeout=self.timeout)
+            received_data = await asyncio.wait_for(
+                received.get(), timeout=self.timeout
+            )
             assert received_data == sent_data
 
     @pytest.mark.asyncio
@@ -75,7 +77,9 @@ class TestMessagePublishing:
                 data=sent_data,
             )
 
-            received_data = await asyncio.wait_for(received.get(), timeout=self.timeout)
+            received_data = await asyncio.wait_for(
+                received.get(), timeout=self.timeout
+            )
             assert received_data.decode() == sent_data
 
     @pytest.mark.asyncio
@@ -103,7 +107,9 @@ class TestMessagePublishing:
                 data=sent_data,
             )
 
-            result = await asyncio.wait_for(received.get(), timeout=self.timeout)
+            result = await asyncio.wait_for(
+                received.get(), timeout=self.timeout
+            )
             received_data = json.loads(result.decode())
             assert sent_data == received_data
 
@@ -135,7 +141,9 @@ class TestMessagePublishing:
                 attributes=sent_attributes,
             )
 
-            result = await asyncio.wait_for(received.get(), timeout=self.timeout)
+            result = await asyncio.wait_for(
+                received.get(), timeout=self.timeout
+            )
 
             assert isinstance(result, Message)
             assert result.data == sent_data
@@ -165,12 +173,16 @@ class TestMessagePublishing:
                 attribute_name: str
                 attribute_value: str
 
-            sent_data = SomePydanticModel(attribute_name="car_color", attribute_value="blue")
+            sent_data = SomePydanticModel(
+                attribute_name="car_color", attribute_value="blue"
+            )
             await connected_broker.publish(
                 topic_name=unique_topic,
                 data=sent_data,
             )
 
-            result = await asyncio.wait_for(received.get(), timeout=self.timeout)
+            result = await asyncio.wait_for(
+                received.get(), timeout=self.timeout
+            )
             received_data = SomePydanticModel.model_validate_json(result)
             assert sent_data == received_data

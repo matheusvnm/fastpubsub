@@ -12,11 +12,15 @@ class TestCrossProjectSupport:
         router = PubSubRouter(project_id="ProjectB")
         broker.include_router(router)
 
-        @broker.subscriber("sub_a", topic_name="topic_a", subscription_name="sub_a")
+        @broker.subscriber(
+            "sub_a", topic_name="topic_a", subscription_name="sub_a"
+        )
         async def sub_a(msg):
             pass
 
-        @router.subscriber("sub_b", topic_name="topic_b", subscription_name="sub_b")
+        @router.subscriber(
+            "sub_b", topic_name="topic_b", subscription_name="sub_b"
+        )
         async def sub_b(msg):
             pass
 
@@ -35,18 +39,25 @@ class TestCrossProjectSupport:
     def test_pubsub_project_broker_overrides(self):
         broker = PubSubBroker(project_id="ProjectA")
 
-        @broker.subscriber("sub_a", topic_name="topic_a", subscription_name="sub_a")
+        @broker.subscriber(
+            "sub_a", topic_name="topic_a", subscription_name="sub_a"
+        )
         async def default_sub_handler(msg):
             pass
 
         @broker.subscriber(
-            "sub_b", topic_name="topic_b", subscription_name="sub_b", project_id="ProjectB"
+            "sub_b",
+            topic_name="topic_b",
+            subscription_name="sub_b",
+            project_id="ProjectB",
         )
         async def another_project_sub_handler(msg):
             pass
 
         default_project_publisher = broker.publisher("topic_a")
-        specific_project_publisher = broker.publisher("topic_c", project_id="ProjectC")
+        specific_project_publisher = broker.publisher(
+            "topic_c", project_id="ProjectC"
+        )
 
         default_project_subscriber = broker.router.subscribers["sub_a"]
         specific_project_subscriber = broker.router.subscribers["sub_b"]
@@ -59,12 +70,16 @@ class TestCrossProjectSupport:
 
     @pytest.mark.asyncio
     @patch("fastpubsub.router.Publisher")
-    async def test_case_broker_publish_override_project_id(self, MockPublisher):
+    async def test_case_broker_publish_override_project_id(
+        self, MockPublisher
+    ):
         broker = PubSubBroker(project_id="ProjectA")
         mock_pub_instance = MockPublisher.return_value
         mock_pub_instance.publish = AsyncMock()
 
-        await broker.publish("topic_b", {"data": "test"}, project_id="ProjectB")
+        await broker.publish(
+            "topic_b", {"data": "test"}, project_id="ProjectB"
+        )
         MockPublisher.assert_called_with(
             topic_name="topic_b", project_id="ProjectB", middlewares=[]
         )

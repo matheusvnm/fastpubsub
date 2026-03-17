@@ -13,7 +13,10 @@ from fastpubsub.datastructures import (
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
-from fastpubsub.middlewares import HandleMessageSerializerMiddleware, Middleware
+from fastpubsub.middlewares import (
+    HandleMessageSerializerMiddleware,
+    Middleware,
+)
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.types import AsyncCallable
 
@@ -73,8 +76,8 @@ class Subscriber:
 
         Args:
             middleware: The middleware to include.
-            args: The positional arguments used on the middleware instantiation.
-            kwargs: The keyword  arguments used on the middleware instantiation.
+            args: The positional arguments used on middleware instantiation.
+            kwargs: The keyword arguments used on middleware instantiation.
         """
         ensure_async_middleware(middleware)
 
@@ -85,7 +88,9 @@ class Subscriber:
         self.middlewares.append(wrapper_middleware)
 
     def _build_callstack(self) -> BaseMiddleware:
-        callstack: BaseMiddleware = HandleMessageSerializerMiddleware(None, self.func)
+        callstack: BaseMiddleware = HandleMessageSerializerMiddleware(
+            None, self.func
+        )
         for middleware, args, kwargs in reversed(self.middlewares):
             callstack = middleware(callstack, *args, **kwargs)
         return callstack

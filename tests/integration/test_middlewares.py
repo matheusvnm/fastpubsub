@@ -56,11 +56,17 @@ class TestMiddlewares:
             event.set()
 
         async with managed_broker(connected_broker):
-            await connected_broker.publish(topic_name=unique_topic, data="test message")
+            await connected_broker.publish(
+                topic_name=unique_topic, data="test message"
+            )
             await asyncio.wait_for(event.wait(), timeout=self.timeout)
 
             calls = [call[0][0] for call in mock.call_args_list]
-            assert calls == ["logging_middleware", "validation_middleware", "handler"]
+            assert calls == [
+                "logging_middleware",
+                "validation_middleware",
+                "handler",
+            ]
 
     @pytest.mark.asyncio
     async def test_subscriber_specific_middleware(
@@ -89,7 +95,9 @@ class TestMiddlewares:
             event.set()
 
         async with managed_broker(connected_broker):
-            await connected_broker.publish(topic_name=unique_topic, data="test")
+            await connected_broker.publish(
+                topic_name=unique_topic, data="test"
+            )
             await asyncio.wait_for(event.wait(), timeout=self.timeout)
 
             calls = [call[0][0] for call in mock.call_args_list]
@@ -111,7 +119,10 @@ class TestMiddlewares:
                 return await super().on_message(message)
 
             async def on_publish(
-                self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
+                self,
+                data: bytes,
+                ordering_key: str,
+                attributes: dict[str, str] | None,
             ) -> Any:
                 if not attributes:
                     attributes = {}
@@ -131,8 +142,12 @@ class TestMiddlewares:
             pass
 
         async with managed_broker(connected_broker):
-            await connected_broker.publish(topic_name=unique_topic, data="test")
-            attributes = await asyncio.wait_for(received.get(), timeout=self.timeout)
+            await connected_broker.publish(
+                topic_name=unique_topic, data="test"
+            )
+            attributes = await asyncio.wait_for(
+                received.get(), timeout=self.timeout
+            )
 
             assert isinstance(attributes, dict)
             assert attributes.get("key") == "value"

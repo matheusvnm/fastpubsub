@@ -7,7 +7,9 @@ from fastpubsub.testing import PubSubTestClient
 class TestLinkedPubsub:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_message_from_first_topic_is_chained_to_second_topic(self) -> None:
+    async def test_message_from_first_topic_is_chained_to_second_topic(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await test_publish()
             published_messages = client.get_published_messages()

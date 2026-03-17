@@ -9,7 +9,11 @@ from typer.testing import CliRunner
 from fastpubsub.applications import FastPubSub
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.cli.main import app
-from fastpubsub.cli.runner import AppConfiguration, ApplicationRunner, ServerConfiguration
+from fastpubsub.cli.runner import (
+    AppConfiguration,
+    ApplicationRunner,
+    ServerConfiguration,
+)
 from fastpubsub.exceptions import FastPubSubCLIException
 
 runner = CliRunner()
@@ -33,7 +37,9 @@ class TestCLI:
 
     @patch("fastpubsub.cli.main.ensure_pubsub_credentials")
     @patch("fastpubsub.cli.main.ApplicationRunner")
-    def test_run_command(self, mock_runner: MagicMock, mock_ensure_credentials: MagicMock):
+    def test_run_command(
+        self, mock_runner: MagicMock, mock_ensure_credentials: MagicMock
+    ):
         result = runner.invoke(app, ["run", "some_module:app"])
         assert result.exit_code == 0
         mock_runner.assert_called_once()
@@ -84,7 +90,9 @@ class TestCLI:
             reload=True,
             log_level="error",
         )
-        mock_runner_class.assert_called_once_with(expected_app_config, expected_server_config)
+        mock_runner_class.assert_called_once_with(
+            expected_app_config, expected_server_config
+        )
         mock_runner_instance.setup.assert_called_once()
         mock_runner_instance.validate.assert_called_once()
         mock_runner_instance.run.assert_called_once()
@@ -108,32 +116,49 @@ class TestApplicationRunner:
             log_level="INFO",
         )
 
-        runner_instance = ApplicationRunner(app_config=app_config, server_config=server_config)
+        runner_instance = ApplicationRunner(
+            app_config=app_config, server_config=server_config
+        )
         runner_instance.run()
         mock_uvicorn_run.assert_called_once_with(
             app_config.app, lifespan="on", **asdict(server_config)
         )
 
-    @patch("fastpubsub.cli.runner.ApplicationRunner._resolve_application_posix_path")
-    @patch("fastpubsub.cli.runner.ApplicationRunner._translate_pypath_to_posix")
+    @patch(
+        "fastpubsub.cli.runner.ApplicationRunner._resolve_application_posix_path"
+    )
+    @patch(
+        "fastpubsub.cli.runner.ApplicationRunner._translate_pypath_to_posix"
+    )
     @patch("uvicorn.importer.import_from_string")
     def test_validate_application_invalid_app_instance(
-        self, mock_import: MagicMock, mock_translate: MagicMock, mock_resolve: MagicMock
+        self,
+        mock_import: MagicMock,
+        mock_translate: MagicMock,
+        mock_resolve: MagicMock,
     ):
         mock_import.return_value = object()  # Not a FastPubSub instance
         app_config = MagicMock(spec=AppConfiguration)
         app_config.app = "my_app:app"
         runner_instance = ApplicationRunner(
-            app_config=app_config, server_config=MagicMock(spec=ServerConfiguration)
+            app_config=app_config,
+            server_config=MagicMock(spec=ServerConfiguration),
         )
         with pytest.raises(FastPubSubCLIException):
             runner_instance.validate()
 
-    @patch("fastpubsub.cli.runner.ApplicationRunner._resolve_application_posix_path")
-    @patch("fastpubsub.cli.runner.ApplicationRunner._translate_pypath_to_posix")
+    @patch(
+        "fastpubsub.cli.runner.ApplicationRunner._resolve_application_posix_path"
+    )
+    @patch(
+        "fastpubsub.cli.runner.ApplicationRunner._translate_pypath_to_posix"
+    )
     @patch("uvicorn.importer.import_from_string")
     def test_validate_application_valid_app(
-        self, mock_import: MagicMock, mock_translate: MagicMock, mock_resolve: MagicMock
+        self,
+        mock_import: MagicMock,
+        mock_translate: MagicMock,
+        mock_resolve: MagicMock,
     ):
         mock_broker = MagicMock(spec=PubSubBroker)
         mock_import.return_value = FastPubSub(broker=mock_broker)
@@ -141,13 +166,15 @@ class TestApplicationRunner:
         app_config = MagicMock(spec=AppConfiguration)
         app_config.app = "my_app:app"
         runner_instance = ApplicationRunner(
-            app_config=app_config, server_config=MagicMock(spec=ServerConfiguration)
+            app_config=app_config,
+            server_config=MagicMock(spec=ServerConfiguration),
         )
         runner_instance.validate()
 
     def test_translate_pypath_to_posix_invalid_format(self):
         runner_instance = ApplicationRunner(
-            MagicMock(spec=AppConfiguration), MagicMock(spec=ServerConfiguration)
+            MagicMock(spec=AppConfiguration),
+            MagicMock(spec=ServerConfiguration),
         )
         with pytest.raises(uvicorn.importer.ImportFromStringError):
             runner_instance._translate_pypath_to_posix("invalid_path")
@@ -155,7 +182,9 @@ class TestApplicationRunner:
 
 class TestUtils:
     def test_ensure_pubsub_credentials_set(self):
-        with patch.dict(os.environ, {"GOOGLE_APPLICATION_CREDENTIALS": "fake_credentials"}):
+        with patch.dict(
+            os.environ, {"GOOGLE_APPLICATION_CREDENTIALS": "fake_credentials"}
+        ):
             from fastpubsub.cli.utils import ensure_pubsub_credentials
 
             ensure_pubsub_credentials()

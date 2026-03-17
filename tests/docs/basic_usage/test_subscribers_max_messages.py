@@ -28,7 +28,10 @@ class TestSubscribersMaxMessages:
             results = client.get_results()
 
         assert len(published_messages) == MAX_MESSAGES * 5
-        assert all(message.topic_name == "test-topic" for message in published_messages)
+        assert all(
+            message.topic_name == "test-topic"
+            for message in published_messages
+        )
         assert len(results) == MAX_MESSAGES * 5
         assert all(result.error is None for result in results)
         assert sleep.await_count == MAX_MESSAGES * 5

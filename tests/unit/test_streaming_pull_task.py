@@ -5,7 +5,10 @@ from concurrent.futures import Future
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from google.cloud.pubsub_v1.subscriber.exceptions import AcknowledgeError, AcknowledgeStatus
+from google.cloud.pubsub_v1.subscriber.exceptions import (
+    AcknowledgeError,
+    AcknowledgeStatus,
+)
 from google.cloud.pubsub_v1.subscriber.futures import StreamingPullFuture
 
 from fastpubsub.concurrency.tasks import MessageMapper, PubSubStreamingPullTask
@@ -48,7 +51,6 @@ class TestMessageMapper:
     def test_message_mapper_convert(
         self, mock_subscriber: MagicMock, mock_pubsub_message: MagicMock
     ):
-        """Test MessageMapper.convert() correctly maps PubSubMessage to Message."""
         mapper = MessageMapper(mock_subscriber)
 
         result = mapper.convert(mock_pubsub_message)
@@ -80,7 +82,9 @@ class TestPubSubStreamingPullTask:
 
     @pytest.fixture(autouse=True)
     def mock_get_loop(self):
-        with patch("fastpubsub.concurrency.tasks.asyncio.get_running_loop") as get_loop:
+        with patch(
+            "fastpubsub.concurrency.tasks.asyncio.get_running_loop"
+        ) as get_loop:
             yield get_loop
 
     @pytest.fixture
@@ -129,10 +133,11 @@ class TestPubSubStreamingPullTask:
 
     @pytest.mark.asyncio
     async def test_on_message_creates_task(
-        self, mock_get_loop: MagicMock, mock_subscriber: MagicMock, mock_pubsub_message: MagicMock
+        self,
+        mock_get_loop: MagicMock,
+        mock_subscriber: MagicMock,
+        mock_pubsub_message: MagicMock,
     ):
-        """Test that _on_message creates a task and registers it with scheduler."""
-
         event_loop = asyncio.get_event_loop()
         mock_get_loop.return_value = event_loop
 
@@ -222,7 +227,9 @@ class TestPubSubStreamingPullTask:
         task = PubSubStreamingPullTask(mock_subscriber)
 
         mock_callstack = MagicMock()
-        mock_callstack.on_message = AsyncMock(side_effect=ValueError("Test error"))
+        mock_callstack.on_message = AsyncMock(
+            side_effect=ValueError("Test error")
+        )
         mock_subscriber._build_callstack.return_value = mock_callstack
 
         nack_future = Future()
@@ -255,7 +262,9 @@ class TestPubSubStreamingPullTask:
         task = PubSubStreamingPullTask(mock_subscriber)
 
         future = Future()
-        error = AcknowledgeError(AcknowledgeStatus.PERMISSION_DENIED, "Permission denied")
+        error = AcknowledgeError(
+            AcknowledgeStatus.PERMISSION_DENIED, "Permission denied"
+        )
         future.set_exception(error)
 
         await task._wait_acknowledge_response(future)
@@ -269,7 +278,9 @@ class TestPubSubStreamingPullTask:
         task = PubSubStreamingPullTask(mock_subscriber)
 
         future = Future()
-        error = AcknowledgeError(AcknowledgeStatus.FAILED_PRECONDITION, "Failed precondition")
+        error = AcknowledgeError(
+            AcknowledgeStatus.FAILED_PRECONDITION, "Failed precondition"
+        )
         future.set_exception(error)
 
         await task._wait_acknowledge_response(future)
@@ -283,7 +294,9 @@ class TestPubSubStreamingPullTask:
         task = PubSubStreamingPullTask(mock_subscriber)
 
         future = Future()
-        error = AcknowledgeError(AcknowledgeStatus.INVALID_ACK_ID, "Invalid ack ID")
+        error = AcknowledgeError(
+            AcknowledgeStatus.INVALID_ACK_ID, "Invalid ack ID"
+        )
         future.set_exception(error)
 
         await task._wait_acknowledge_response(future)
@@ -305,8 +318,6 @@ class TestPubSubStreamingPullTask:
     async def test_shutdown_waits_and_cancels_task(
         self, mock_subscriber: MagicMock, mock_streaming_pull_future: MagicMock
     ):
-        """Test shutdown calls scheduler.wait_for_completion() then cancels StreamingPullFuture."""
-
         task = PubSubStreamingPullTask(mock_subscriber)
         task.task = mock_streaming_pull_future
         task.scheduler.wait_for_completion = AsyncMock(return_value=True)
@@ -314,6 +325,8 @@ class TestPubSubStreamingPullTask:
 
         await task.shutdown(timeout=30.0)
 
-        task.scheduler.wait_for_completion.assert_called_once_with(timeout=30.0)
+        task.scheduler.wait_for_completion.assert_called_once_with(
+            timeout=30.0
+        )
         mock_streaming_pull_future.cancel.assert_called_once()
         mock_streaming_pull_future.result.assert_called_once_with(timeout=30.0)

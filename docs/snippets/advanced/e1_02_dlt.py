@@ -109,7 +109,9 @@ class FallbackPaymentService:
 
 
 class AdminDashboard:
-    async def create_ticket(self, title: str, data: bytes, priority: str) -> None:
+    async def create_ticket(
+        self, title: str, data: bytes, priority: str
+    ) -> None:
         pass
 
 

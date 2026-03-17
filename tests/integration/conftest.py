@@ -41,7 +41,9 @@ async def cleanup_resources(
     # Cleanup subscription
     try:
         sub_client = SubscriberClient()
-        sub_path = sub_client.subscription_path(project_id, unique_subscription)
+        sub_path = sub_client.subscription_path(
+            project_id, unique_subscription
+        )
         sub_client.delete_subscription(request={"subscription": sub_path})
     except Exception:
         pass  # Ignore cleanup errors
@@ -75,7 +77,9 @@ async def connected_broker(
     # Cleanup subscription
     try:
         sub_client = SubscriberClient()
-        sub_path = sub_client.subscription_path(project_id, unique_subscription)
+        sub_path = sub_client.subscription_path(
+            project_id, unique_subscription
+        )
         sub_client.delete_subscription(request={"subscription": sub_path})
     except Exception:
         pass  # Ignore cleanup errors

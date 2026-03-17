@@ -56,7 +56,8 @@ AppHostOption = Annotated[
     typer.Option(
         "-h",
         "--host",
-        help="The host to serve the application on. Use '0.0.0.0' for public access.",
+        help="The host to serve the application on. "
+        "Use '0.0.0.0' for public access.",
         show_default=True,
         envvar="FASTPUBSUB_SERVER_HOST",
     ),

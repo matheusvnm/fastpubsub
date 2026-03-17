@@ -8,7 +8,10 @@ from pydantic import BaseModel, ConfigDict, validate_call
 
 from fastpubsub.concurrency.utils import ensure_async_middleware
 from fastpubsub.exceptions import FastPubSubException
-from fastpubsub.middlewares import Middleware, PublishMessageSerializerMiddleware
+from fastpubsub.middlewares import (
+    Middleware,
+    PublishMessageSerializerMiddleware,
+)
 from fastpubsub.middlewares.base import BaseMiddleware
 
 
@@ -57,12 +60,17 @@ class Publisher:
         serialized_message = await self._serialize_message(data)
 
         await callstack.on_publish(
-            data=serialized_message, ordering_key=ordering_key, attributes=attributes
+            data=serialized_message,
+            ordering_key=ordering_key,
+            attributes=attributes,
         )
 
     def _build_callstack(self, autocreate: bool = True) -> BaseMiddleware:
         callstack: BaseMiddleware = PublishMessageSerializerMiddleware(
-            None, project_id=self.project_id, topic_name=self.topic_name, autocreate=autocreate
+            None,
+            project_id=self.project_id,
+            topic_name=self.topic_name,
+            autocreate=autocreate,
         )
 
         for middleware, args, kwargs in reversed(self.middlewares):
@@ -70,7 +78,9 @@ class Publisher:
         return callstack
 
     @staticmethod
-    async def _serialize_message(data: BaseModel | dict[str, Any] | str | bytes) -> bytes:
+    async def _serialize_message(
+        data: BaseModel | dict[str, Any] | str | bytes,
+    ) -> bytes:
         if isinstance(data, bytes):
             return data
 
@@ -87,7 +97,8 @@ class Publisher:
 
         raise FastPubSubException(
             f"The message {data} is not serializable. "
-            "Please send as one of the following formats: BaseModel, dict, str or bytes."
+            "Please send as one of the following formats: "
+            "BaseModel, dict, str or bytes."
         )
 
     @validate_call(config=ConfigDict(strict=True))
@@ -98,8 +109,8 @@ class Publisher:
 
         Args:
             middleware: The middleware to include.
-            args: The positional arguments used on the middleware instantiation.
-            kwargs: The keyword  arguments used on the middleware instantiation.
+            args: The positional arguments used on middleware instantiation.
+            kwargs: The keyword  arguments used on middleware instantiation.
         """
         ensure_async_middleware(middleware)
 

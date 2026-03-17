@@ -11,7 +11,10 @@ class GZipMiddleware(BaseMiddleware):
     """A middleware for compressing and decompressing messages using gzip."""
 
     def __init__(
-        self, next_call: BaseMiddleware, compresslevel: int = 9, mtime: int | float | None = None
+        self,
+        next_call: BaseMiddleware,
+        compresslevel: int = 9,
+        mtime: int | float | None = None,
     ):
         """Initializes the GZipMiddleware.
 
@@ -65,4 +68,6 @@ class GZipMiddleware(BaseMiddleware):
         compressed_data = gzip.compress(
             data=data, compresslevel=self.compresslevel, mtime=self.mtime
         )
-        return await super().on_publish(compressed_data, ordering_key, attributes)
+        return await super().on_publish(
+            compressed_data, ordering_key, attributes
+        )

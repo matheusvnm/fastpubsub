@@ -7,7 +7,9 @@ from fastpubsub.testing import PubSubTestClient
 class TestTestingPublishedMessages:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_forwarded_message_is_captured_with_expected_topic_and_data(self) -> None:
+    async def test_forwarded_message_is_captured_with_expected_topic_and_data(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await client.publish("order-123", topic="incoming-orders")
             published_messages = client.get_published_messages()

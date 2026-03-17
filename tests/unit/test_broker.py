@@ -39,7 +39,9 @@ class TestPubSubBroker:
             213,
         ],
     )
-    def test_init_with_invalid_project_id_raises_exception(self, invalid_project_id):
+    def test_init_with_invalid_project_id_raises_exception(
+        self, invalid_project_id
+    ):
         with pytest.raises(FastPubSubException):
             PubSubBroker(project_id=invalid_project_id)
 
@@ -89,7 +91,9 @@ class TestPubSubBroker:
         os.environ["FASTPUBSUB_SUBSCRIBERS"] = selected_subscribers
         try:
             mock_router = MagicMock()
-            mock_router._get_subscribers = MagicMock(return_value={"a": "a", "b": "b"})
+            mock_router._get_subscribers = MagicMock(
+                return_value={"a": "a", "b": "b"}
+            )
             broker.router = mock_router
 
             found_subscribers = broker._filter_subscribers()
@@ -97,14 +101,19 @@ class TestPubSubBroker:
             for expected_sub in expected_subscribers:
                 if expected_sub not in found_subscribers:
                     pytest.fail(
-                        reason="The expected subscribers do not "
-                        f"match the filtered ones {expected_subscribers} {found_subscribers}"
+                        reason=(
+                            "The expected subscribers do not "
+                            "match the filtered ones"
+                            f"{expected_subscribers} {found_subscribers}"
+                        )
                     )
         finally:
             os.environ["FASTPUBSUB_SUBSCRIBERS"] = ""
 
     @pytest.mark.asyncio
-    async def test_shutdown_successfully(self, async_task_manager: MagicMock, broker: PubSubBroker):
+    async def test_shutdown_successfully(
+        self, async_task_manager: MagicMock, broker: PubSubBroker
+    ):
         await broker.shutdown()
         async_task_manager.shutdown.assert_called_once()
 
@@ -116,7 +125,10 @@ class TestPubSubBroker:
 
     @pytest.mark.asyncio
     async def test_start_broker(
-        self, subscription_builder: MagicMock, async_task_manager: MagicMock, broker: PubSubBroker
+        self,
+        subscription_builder: MagicMock,
+        async_task_manager: MagicMock,
+        broker: PubSubBroker,
     ):
         expected_subscriber = MagicMock(spec=Subscriber)
         expected_subscriber.project_id = "some_project_id"
@@ -124,7 +136,9 @@ class TestPubSubBroker:
         await broker.start()
 
         subscription_builder.build.assert_called_once_with(expected_subscriber)
-        async_task_manager.create_task.assert_called_once_with(expected_subscriber)
+        async_task_manager.create_task.assert_called_once_with(
+            expected_subscriber
+        )
         async_task_manager.start.assert_called_once()
 
     @pytest.mark.parametrize(

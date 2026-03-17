@@ -68,8 +68,12 @@ class PushMessageContent(BaseModel):
 
     id: str = Field(alias="messageId", title="The message id")
     data: str = Field(title="The message content base64-encoded")
-    publish_time: str = Field(alias="publishTime", title="The publish datetime of the message")
-    attributes: dict[str, str] = Field({}, title="The attributes of the message")
+    publish_time: str = Field(
+        alias="publishTime", title="The publish datetime of the message"
+    )
+    attributes: dict[str, str] = Field(
+        {}, title="The attributes of the message"
+    )
 
 
 class PushMessage(BaseModel):

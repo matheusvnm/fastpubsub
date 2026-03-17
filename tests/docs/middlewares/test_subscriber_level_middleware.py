@@ -10,7 +10,7 @@ from fastpubsub.testing import PubSubTestClient
 class TestMiddlewaresSubscriberLevel:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_subscriber_level_middleware_processes_messages_for_target_subscriber(
+    async def test_subscriber_level_middleware_is_exclusive(
         self,
     ) -> None:
         async with PubSubTestClient(broker) as client:

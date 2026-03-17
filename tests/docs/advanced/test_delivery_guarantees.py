@@ -26,12 +26,22 @@ class TestAdvancedDeliveryGuarantees:
 
         monkeypatch.setattr(f"{_SNIPPET}.process_event", process_event)
         monkeypatch.setattr(f"{_SNIPPET}.mark_as_processed", mark_as_processed)
-        monkeypatch.setattr(f"{_SNIPPET}.is_already_processed", _is_already_processed)
+        monkeypatch.setattr(
+            f"{_SNIPPET}.is_already_processed", _is_already_processed
+        )
         mark_as_processed.side_effect = _mark_as_processed
 
         async with PubSubTestClient(broker) as client:
-            await client.publish(topic="events", data={"event": 1}, attributes={"event_id": "e-1"})
-            await client.publish(topic="events", data={"event": 1}, attributes={"event_id": "e-1"})
+            await client.publish(
+                topic="events",
+                data={"event": 1},
+                attributes={"event_id": "e-1"},
+            )
+            await client.publish(
+                topic="events",
+                data={"event": 1},
+                attributes={"event_id": "e-1"},
+            )
             results = client.get_results()
 
         assert len(results) == 2

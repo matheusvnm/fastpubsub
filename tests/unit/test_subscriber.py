@@ -13,7 +13,11 @@ from tests.conftest import callstack_matches, callstack_to_collection
 
 
 def subscriber_create_test_cases():
-    default_parameters = {"alias": "alias", "topic_name": "topic", "subscription_name": "sub"}
+    default_parameters = {
+        "alias": "alias",
+        "topic_name": "topic",
+        "subscription_name": "sub",
+    }
 
     class InvalidMiddlewareClass: ...
 
@@ -41,9 +45,17 @@ def subscriber_create_test_cases():
         [{**default_parameters, "max_backoff_delay_secs": None}],
         [{**default_parameters, "max_messages": None}],
         [{**default_parameters, "middlewares": True}],
-        [{**default_parameters, "middlewares": Middleware(InvalidMiddlewareClass)}],
         [
-            {**default_parameters, "middlewares": Middleware(ValidMiddlewareWithParameter, True)}
+            {
+                **default_parameters,
+                "middlewares": Middleware(InvalidMiddlewareClass),
+            }
+        ],
+        [
+            {
+                **default_parameters,
+                "middlewares": Middleware(ValidMiddlewareWithParameter, True),
+            }
         ],  # Invalid type
     ]
 
@@ -53,9 +65,9 @@ def subscriber(broker: PubSubBroker) -> Subscriber:
     async def some_subscriber_handler():
         pass
 
-    broker.subscriber("some_sub", topic_name="some_topic", subscription_name="some_sub_name")(
-        some_subscriber_handler
-    )
+    broker.subscriber(
+        "some_sub", topic_name="some_topic", subscription_name="some_sub_name"
+    )(some_subscriber_handler)
     subscribers = broker.router._get_subscribers()
     return subscribers.popitem()[1]
 
@@ -78,9 +90,15 @@ class TestSubscriber:
         async def handler_b(_): ...
         async def handler_broker(_): ...
 
-        router_a.subscriber("sub_a", topic_name="tn", subscription_name="sn")(handler_a)
-        router_b.subscriber("sub_b", topic_name="tn", subscription_name="sn")(handler_b)
-        broker.subscriber("sub_c", topic_name="tn", subscription_name="sn")(handler_broker)
+        router_a.subscriber("sub_a", topic_name="tn", subscription_name="sn")(
+            handler_a
+        )
+        router_b.subscriber("sub_b", topic_name="tn", subscription_name="sn")(
+            handler_b
+        )
+        broker.subscriber("sub_c", topic_name="tn", subscription_name="sn")(
+            handler_broker
+        )
         subscribers = broker.router._get_subscribers()
 
         subscriber_a = subscribers["a.sub_a"]
@@ -90,7 +108,11 @@ class TestSubscriber:
 
         subscriber_b = subscribers["a.b.sub_b"]
         callstack_b = subscriber_b._build_callstack()
-        expected_output = [second_middleware, first_middleware, HandleMessageSerializerMiddleware]
+        expected_output = [
+            second_middleware,
+            first_middleware,
+            HandleMessageSerializerMiddleware,
+        ]
         assert callstack_matches(callstack_b, expected_output)
 
         subscriber_c = subscribers["sub_c"]
@@ -105,19 +127,29 @@ class TestSubscriber:
         first_middleware: type[BaseMiddleware],
         second_middleware: type[BaseMiddleware],
     ):
-        broker.include_middleware(first_middleware, "broker_arg", arg_2="broker_kwarg")
-        broker.include_middleware(second_middleware, arg_2="broker_kwargs_only")
-        router_a.include_middleware(first_middleware, "router_arg", arg_2="router_kwarg")
+        broker.include_middleware(
+            first_middleware, "broker_arg", arg_2="broker_kwarg"
+        )
+        broker.include_middleware(
+            second_middleware, arg_2="broker_kwargs_only"
+        )
+        router_a.include_middleware(
+            first_middleware, "router_arg", arg_2="router_kwarg"
+        )
         router_a.include_middleware(second_middleware, "router_arg_only")
         broker.include_router(router_a)
 
         async def handler_a(_): ...
 
-        broker.subscriber("broker_handler", topic_name="tn", subscription_name="sn")(handler_a)
+        broker.subscriber(
+            "broker_handler", topic_name="tn", subscription_name="sn"
+        )(handler_a)
 
         async def handler_b(_): ...
 
-        router_a.subscriber("router_handler", topic_name="tn", subscription_name="sn")(handler_b)
+        router_a.subscriber(
+            "router_handler", topic_name="tn", subscription_name="sn"
+        )(handler_b)
 
         subscribers = broker.router._get_subscribers()
 
@@ -167,15 +199,21 @@ class TestSubscriber:
         ]
 
         router = PubSubRouter(middlewares=router_middlewares)
-        broker = PubSubBroker("some_project", routers=[router], middlewares=broker_middlewares)
+        broker = PubSubBroker(
+            "some_project", routers=[router], middlewares=broker_middlewares
+        )
 
         async def handler_a(_): ...
 
-        broker.subscriber("sub_a", topic_name="tn", subscription_name="sn")(handler_a)
+        broker.subscriber("sub_a", topic_name="tn", subscription_name="sn")(
+            handler_a
+        )
 
         async def handler_b(_): ...
 
-        router.subscriber("sub_b", topic_name="tn", subscription_name="sn")(handler_b)
+        router.subscriber("sub_b", topic_name="tn", subscription_name="sn")(
+            handler_b
+        )
 
         subscribers = broker.router._get_subscribers()
 
@@ -238,7 +276,10 @@ class TestSubscriber:
         subscriber_create_test_cases(),
     )
     def test_subscriber_invalid_data_failed(
-        self, data: dict[str, Any], broker: PubSubBroker, router_a: PubSubRouter
+        self,
+        data: dict[str, Any],
+        broker: PubSubBroker,
+        router_a: PubSubRouter,
     ):
         objs = [broker, router_a]
         for obj in objs:

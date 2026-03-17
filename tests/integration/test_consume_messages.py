@@ -74,9 +74,15 @@ class TestMessageConsumption:
                 event.set()
 
         async with managed_broker(connected_broker):
-            await connected_broker.publish(topic_name=unique_topic, data="Message 1")
-            await connected_broker.publish(topic_name=unique_topic, data="Message 2")
-            await connected_broker.publish(topic_name=unique_topic, data="Message 3")
+            await connected_broker.publish(
+                topic_name=unique_topic, data="Message 1"
+            )
+            await connected_broker.publish(
+                topic_name=unique_topic, data="Message 2"
+            )
+            await connected_broker.publish(
+                topic_name=unique_topic, data="Message 3"
+            )
 
             await asyncio.wait_for(event.wait(), timeout=self.timeout)
 
@@ -109,7 +115,9 @@ class TestMessageConsumption:
         message_quantity = 3
         async with managed_broker(connected_broker):
             for i in range(message_quantity):
-                await connected_broker.publish(topic_name=unique_topic, data=f"Message {i}")
+                await connected_broker.publish(
+                    topic_name=unique_topic, data=f"Message {i}"
+                )
             # Give some time to start processing
             await asyncio.sleep(2)
 

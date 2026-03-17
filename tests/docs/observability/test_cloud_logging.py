@@ -11,14 +11,18 @@ SNIPPET_MODULE = "docs.snippets.observability.e1_02_cloud_logging"
 
 
 class TestObservabilityCloudLogging:
-    def install_fake_google_cloud_logging(self, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    def install_fake_google_cloud_logging(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> MagicMock:
         sys.modules.pop(SNIPPET_MODULE, None)
 
         fake_client_cls = MagicMock()
 
         logging_module = types.ModuleType("google.cloud.logging")
         logging_module.Client = fake_client_cls
-        monkeypatch.setitem(sys.modules, "google.cloud.logging", logging_module)
+        monkeypatch.setitem(
+            sys.modules, "google.cloud.logging", logging_module
+        )
 
         cloud_module = types.ModuleType("google.cloud")
         cloud_module.__path__ = []

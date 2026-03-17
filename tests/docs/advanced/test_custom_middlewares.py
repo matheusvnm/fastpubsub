@@ -33,7 +33,11 @@ class TestAdvancedCustomMiddlewares:
             middlewares=[Middleware(ValidationMiddleware)],
         )
 
-        @broker.subscriber(alias="validator", topic_name="events", subscription_name="events-sub")
+        @broker.subscriber(
+            alias="validator",
+            topic_name="events",
+            subscription_name="events-sub",
+        )
         async def _handler(message: Message) -> str:
             return message.data.decode("utf-8")
 
@@ -48,12 +52,16 @@ class TestAdvancedCustomMiddlewares:
 
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_publisher_metadata_middleware_enriches_attributes(self) -> None:
+    async def test_publisher_metadata_middleware_enriches_attributes(
+        self,
+    ) -> None:
         capture = _CapturePublishMiddleware()
         middleware = PublisherMetadataMiddleware(next_call=capture)
 
         await middleware.on_publish(
-            data=b"payload", ordering_key="order-1", attributes={"tenant": "acme"}
+            data=b"payload",
+            ordering_key="order-1",
+            attributes={"tenant": "acme"},
         )
 
         assert len(capture.calls) == 1
@@ -67,11 +75,15 @@ class TestAdvancedCustomMiddlewares:
 
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_publisher_metadata_middleware_handles_missing_attributes(self) -> None:
+    async def test_publisher_metadata_middleware_handles_missing_attributes(
+        self,
+    ) -> None:
         capture = _CapturePublishMiddleware()
         middleware = PublisherMetadataMiddleware(next_call=capture)
 
-        await middleware.on_publish(data=b"payload", ordering_key="", attributes=None)
+        await middleware.on_publish(
+            data=b"payload", ordering_key="", attributes=None
+        )
 
         assert capture.calls[0][2] == {
             "schema-version": "v1",

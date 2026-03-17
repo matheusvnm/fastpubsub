@@ -1,7 +1,11 @@
 import pytest
 
-from docs.snippets.routers.e2_03_prefix_resolution_fails import broker as first_broker
-from docs.snippets.routers.e3_03_prefix_resolution_fails import broker as second_broker
+from docs.snippets.routers.e2_03_prefix_resolution_fails import (
+    broker as first_broker,
+)
+from docs.snippets.routers.e3_03_prefix_resolution_fails import (
+    broker as second_broker,
+)
 from fastpubsub.broker import PubSubBroker
 from fastpubsub.exceptions import FastPubSubException
 

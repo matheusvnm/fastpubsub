@@ -40,15 +40,25 @@ class PubSubBroker:
             middlewares: A sequence of middlewares to apply to all messages
                 incoming to subscribers and publishers.
         """
-        if not (project_id and isinstance(project_id, str) and len(project_id.strip()) > 0):
-            raise FastPubSubException(f"The project id value ({project_id}) is invalid.")
+        if not (
+            project_id
+            and isinstance(project_id, str)
+            and len(project_id.strip()) > 0
+        ):
+            raise FastPubSubException(
+                f"The project id value ({project_id}) is invalid."
+            )
 
         self.project_id = project_id
         self.shutdown_timeout = shutdown_timeout
-        self.router = PubSubRouter(routers=routers, project_id=project_id, middlewares=middlewares)
+        self.router = PubSubRouter(
+            routers=routers, project_id=project_id, middlewares=middlewares
+        )
         self.task_manager = AsyncTaskManager()
 
-    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    @validate_call(
+        config=ConfigDict(strict=True, arbitrary_types_allowed=True)
+    )
     def subscriber(
         self,
         alias: str,
@@ -75,25 +85,32 @@ class PubSubBroker:
             alias: A unique name for the subscriber. You can use this alias to
                 select which subscription to use on the CLI.
             topic_name: The name of the topic to subscribe to.
-            subscription_name: The name of the subscription attached to the topic.
+            subscription_name: The name of the subscription for the topic.
             project_id: An alternative project id to create a subscription
                 and consume messages from. If set the broker project id
                 will be ignored.
-            autocreate: Whether to automatically create the topic and
+            autocreate: Automatically creates the topic and
                 subscription if they do not exists.
-            autoupdate: Whether to automatically update the subscription.
+            autoupdate: Automatically updates the subscription.
             filter_expression: A filter expression to apply to the
                 subscription to filter messages.
             dead_letter_topic: The name of the dead-letter topic.
             max_delivery_attempts: The maximum number of delivery attempts
                 before sending the message to the dead-letter.
             ack_deadline_seconds: The acknowledgment deadline in seconds.
-            enable_message_ordering: Whether the message must be delivered in order.
-            enable_exactly_once_delivery: Whether to enable exactly-once delivery.
+            enable_message_ordering: Enables message ordering.
+                It can only be set when creating the subscription.
+            enable_exactly_once_delivery: Enables exactly-once delivery.
+                It can only be set when creating the subscription.
             min_backoff_delay_secs: The minimum backoff delay in seconds.
             max_backoff_delay_secs: The maximum backoff delay in seconds.
-            max_messages: The maximum number of messages to fetch from the broker.
-            middlewares: A sequence of middlewares to apply **only to the subscriber**.
+            max_messages: The maximum number of messages to fetch from
+                the broker at a time.
+            middlewares: A sequence of middlewares to apply to the subscriber.
+                It is subscriber specific, not application-wide.
+
+        Returns:
+            A decorator that registers the function as a subscriber.
 
         Returns:
             A decorator that registers the function as a subscriber.
@@ -129,7 +146,9 @@ class PubSubBroker:
         Returns:
             A publisher for the given topic.
         """
-        return self.router.publisher(topic_name=topic_name, project_id=project_id)
+        return self.router.publisher(
+            topic_name=topic_name, project_id=project_id
+        )
 
     @validate_call(config=ConfigDict(strict=True))
     async def publish(
@@ -150,7 +169,7 @@ class PubSubBroker:
                         If set the broker's project id will be ignored.
             ordering_key: The ordering key for the message.
             attributes: A dictionary of message attributes.
-            autocreate: Whether to automatically create the topic if it does not exists.
+            autocreate: Automatically creates the topic if it does not exists.
         """
         return await self.router.publish(
             topic_name=topic_name,
@@ -177,8 +196,8 @@ class PubSubBroker:
 
         Args:
             middleware: The middleware to include.
-            args: The positional arguments used on the middleware instantiation.
-            kwargs: The keyword  arguments used on the middleware instantiation.
+            args: The positional arguments used on middleware instantiation.
+            kwargs: The keyword  arguments used on middleware instantiation.
         """
         return self.router.include_middleware(middleware, *args, **kwargs)
 
@@ -188,11 +207,14 @@ class PubSubBroker:
         if not subscribers:
             logger.error("No subscriber found for running.")
             raise FastPubSubException(
-                "You must select the subscribers using --subscribers flag or run them all."
+                "You must select the subscribers using "
+                "--subscribers flag or run them all."
             )
 
         for subscriber in subscribers:
-            subscription_builder = PubSubSubscriptionBuilder(project_id=subscriber.project_id)
+            subscription_builder = PubSubSubscriptionBuilder(
+                project_id=subscriber.project_id
+            )
             await subscription_builder.build(subscriber)
             self.task_manager.create_task(subscriber)
 
@@ -206,7 +228,9 @@ class PubSubBroker:
         """
         subscribers = self.task_manager.alive()
         if not subscribers:
-            logger.info("The subscribers are not active. May be they are deactivated?")
+            logger.info(
+                "The subscribers are not active. May be they are deactivated?"
+            )
             return False
 
         for name, liveness in subscribers.items():
@@ -224,7 +248,9 @@ class PubSubBroker:
         """
         subscribers = self.task_manager.ready()
         if not subscribers:
-            logger.info("The subscribers are not active. May be they are deactivated?")
+            logger.info(
+                "The subscribers are not active. May be they are deactivated?"
+            )
             return False
 
         for name, readiness in subscribers.items():
@@ -239,16 +265,22 @@ class PubSubBroker:
         selected_subscribers = self._get_selected_subscribers()
 
         if not selected_subscribers:
-            logger.debug(f"Running all the subscribers as {list(subscribers.keys())}")
+            logger.debug(
+                f"Running all the subscribers as {list(subscribers.keys())}"
+            )
             return list(subscribers.values())
 
         found_subscribers = []
         for selected_subscriber in selected_subscribers:
             if selected_subscriber not in subscribers:
-                logger.warning(f"The '{selected_subscriber}' subscriber alias not found")
+                logger.warning(
+                    f"The '{selected_subscriber}' subscriber alias not found"
+                )
                 continue
 
-            logger.debug(f"We have found the subscriber '{selected_subscriber}'")
+            logger.debug(
+                f"We have found the subscriber '{selected_subscriber}'"
+            )
             found_subscribers.append(subscribers[selected_subscriber])
 
         return found_subscribers

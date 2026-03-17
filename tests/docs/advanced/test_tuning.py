@@ -15,7 +15,9 @@ class TestAdvancedTuning:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         fast_async_operation = AsyncMock()
-        monkeypatch.setattr(f"{_SNIPPET}.fast_async_operation", fast_async_operation)
+        monkeypatch.setattr(
+            f"{_SNIPPET}.fast_async_operation", fast_async_operation
+        )
 
         async with PubSubTestClient(broker) as client:
             await client.publish(topic="high-events", data={"value": 1})

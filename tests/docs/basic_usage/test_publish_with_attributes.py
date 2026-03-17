@@ -19,9 +19,12 @@ class TestPublishWithAttributes:
             results = client.get_results()
 
         assert len(published_messages) == 2
-        assert all(message.topic_name == "events" for message in published_messages)
         assert all(
-            message.attributes == {"event_type": "user_login", "priority": "high"}
+            message.topic_name == "events" for message in published_messages
+        )
+        assert all(
+            message.attributes
+            == {"event_type": "user_login", "priority": "high"}
             for message in published_messages
         )
         assert all(result.error is None for result in results)

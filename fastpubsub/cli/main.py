@@ -18,12 +18,17 @@ from fastpubsub.cli.options import (
     AppVersionOption,
     CLIContext,
 )
-from fastpubsub.cli.runner import AppConfiguration, ApplicationRunner, ServerConfiguration
+from fastpubsub.cli.runner import (
+    AppConfiguration,
+    ApplicationRunner,
+    ServerConfiguration,
+)
 from fastpubsub.cli.utils import LogLevels, ensure_pubsub_credentials
 
 app = typer.Typer(
     name="fastpubsub",
-    help="A CLI to run FastPubSub applications and interact with Pub/Sub (locally and on cloud).",
+    help="A CLI to run FastPubSub applications and "
+    "interact with Pub/Sub (locally and on cloud).",
     pretty_exceptions_short=True,
     invoke_without_command=True,
     rich_markup_mode="markdown",
@@ -60,11 +65,16 @@ def main(
     ctx: CLIContext,
     version: AppVersionOption = False,
 ) -> None:
-    """Display helpful tips when the main command is run without any subcommands."""
+    """Display helpful tips when the command is run with no subcommands."""
     if ctx.invoked_subcommand is None and not version:
         rich.print("\n[bold]Welcome to the FastPubSub CLI! ✨[/bold]")
-        rich.print("\n[dim]A CLI to run FastPubSub applications and interact with Pub/Sub.[/dim]")
-        rich.print("\n[bold]Usage[/bold]: [cyan]fastpubsub [COMMAND] [ARGS]...[/cyan]")
+        rich.print(
+            "\n[dim]A CLI to run FastPubSub applications "
+            "and interact with Pub/Sub.[/dim]"
+        )
+        rich.print(
+            "\n[bold]Usage[/bold]: [cyan]fastpubsub [COMMAND] [ARGS]...[/cyan]"
+        )
         rich.print("\n[bold]Common Commands:[/bold]")
         rich.print("  [green]run[/green]    Run a FastPubSub application.")
         rich.print("  [green]help[/green]   Get detailed help for a command.")
@@ -81,7 +91,8 @@ def main(
         import platform
 
         typer.echo(
-            f"Running FastPubSub {__version__} with {platform.python_implementation()} "
+            f"Running FastPubSub {__version__} with "
+            f"{platform.python_implementation()} "
             f"{platform.python_version()} on {platform.system()}",
         )
 
@@ -132,7 +143,9 @@ def run(
         log_level=server_log_level.lower(),
     )
 
-    application_runner = ApplicationRunner(app_configuration, server_configuration)
+    application_runner = ApplicationRunner(
+        app_configuration, server_configuration
+    )
     application_runner.setup()
     application_runner.validate()
     application_runner.run()

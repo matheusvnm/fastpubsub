@@ -19,7 +19,11 @@ from google.pubsub import RetryPolicy, Subscription
 from fastpubsub.clients.factory import PubSubClientFactory
 from fastpubsub.clients.scheduler import AsyncScheduler
 from fastpubsub.concurrency.utils import apply_async
-from fastpubsub.datastructures import DeadLetterPolicy, MessageDeliveryPolicy, MessageRetryPolicy
+from fastpubsub.datastructures import (
+    DeadLetterPolicy,
+    MessageDeliveryPolicy,
+    MessageRetryPolicy,
+)
 from fastpubsub.exceptions import FastPubSubException
 
 DEFAULT_PUBSUB_TIMEOUT = 20.0
@@ -49,8 +53,12 @@ class PubSubClient:
         delivery_policy: MessageDeliveryPolicy,
         dead_letter_policy: DeadLetterPolicy | None = None,
     ) -> Subscription:
-        subscriber_client = await PubSubClientFactory.get_subscriber(self.project_id)
-        name = subscriber_client.subscription_path(self.project_id, subscription_name)
+        subscriber_client = await PubSubClientFactory.get_subscriber(
+            self.project_id
+        )
+        name = subscriber_client.subscription_path(
+            self.project_id, subscription_name
+        )
         topic = subscriber_client.topic_path(self.project_id, topic_name)
 
         dlt_policy = None
@@ -65,10 +73,15 @@ class PubSubClient:
                 max_delivery_attempts=dead_letter_policy.max_delivery_attempts,
             )
 
-        min_backoff_delay = timedelta(seconds=retry_policy.min_backoff_delay_secs)
-        max_backoff_delay = timedelta(seconds=retry_policy.max_backoff_delay_secs)
+        min_backoff_delay = timedelta(
+            seconds=retry_policy.min_backoff_delay_secs
+        )
+        max_backoff_delay = timedelta(
+            seconds=retry_policy.max_backoff_delay_secs
+        )
         message_retry_policy = RetryPolicy(
-            minimum_backoff=min_backoff_delay, maximum_backoff=max_backoff_delay
+            minimum_backoff=min_backoff_delay,
+            maximum_backoff=max_backoff_delay,
         )
 
         return Subscription(
@@ -106,16 +119,24 @@ class PubSubClient:
             dead_letter_policy=dead_letter_policy,
         )
 
-        subscriber_client = await PubSubClientFactory.get_subscriber(self.project_id)
+        subscriber_client = await PubSubClientFactory.get_subscriber(
+            self.project_id
+        )
         with suppress(AlreadyExists):
-            logger.debug(f"Attempting to create subscription: {subscription_request.name}")
+            logger.debug(
+                "Attempting to create subscription: "
+                f"{subscription_request.name}"
+            )
             await apply_async(
                 subscriber_client.create_subscription,
                 request=subscription_request,
                 timeout=DEFAULT_PUBSUB_TIMEOUT,
             )
 
-            logger.debug(f"Successfully created subscription: {subscription_request.name}")
+            logger.debug(
+                "Successfully created subscription: "
+                f"{subscription_request.name}"
+            )
 
     async def update_subscription(
         self,
@@ -155,8 +176,13 @@ class PubSubClient:
         update_mask = FieldMask(paths=update_fields)
 
         try:
-            subscriber_client = await PubSubClientFactory.get_subscriber(self.project_id)
-            logger.debug(f"Attempting to update the subscription: {subscription_request.name}")
+            subscriber_client = await PubSubClientFactory.get_subscriber(
+                self.project_id
+            )
+            logger.debug(
+                "Attempting to update the subscription: "
+                f"{subscription_request.name}"
+            )
             response = await apply_async(
                 subscriber_client.update_subscription,
                 subscription=subscription_request,
@@ -164,8 +190,14 @@ class PubSubClient:
                 timeout=DEFAULT_PUBSUB_TIMEOUT,
             )
 
-            logger.debug(f"Successfully updated the subscription: {subscription_request.name}")
-            logger.debug(f"The subscription is now following the configuration: {response}")
+            logger.debug(
+                "Successfully updated "
+                f"the subscription: {subscription_request.name}"
+            )
+            logger.debug(
+                "The subscription is now "
+                f"following the configuration: {response}"
+            )
         except NotFound as e:
             raise FastPubSubException(
                 "We could not update the subscription configuration. "
@@ -176,7 +208,9 @@ class PubSubClient:
                 "option to automatically create them."
             ) from e
 
-    async def create_topic(self, topic_name: str, create_default_subscription: bool = True) -> None:
+    async def create_topic(
+        self, topic_name: str, create_default_subscription: bool = True
+    ) -> None:
         """Creates a topic.
 
         Args:
@@ -184,14 +218,22 @@ class PubSubClient:
             create_default_subscription: Whether to create a default
                 subscription for the topic.
         """
-        subscriber_client = await PubSubClientFactory.get_subscriber(self.project_id)
-        publisher_client = await PubSubClientFactory.get_publisher(self.project_id)
+        subscriber_client = await PubSubClientFactory.get_subscriber(
+            self.project_id
+        )
+        publisher_client = await PubSubClientFactory.get_publisher(
+            self.project_id
+        )
 
         with suppress(AlreadyExists):
             logger.debug(f"Creating topic '{topic_name}'.")
-            topic_path = publisher_client.topic_path(self.project_id, topic_name)
+            topic_path = publisher_client.topic_path(
+                self.project_id, topic_name
+            )
 
-            topic = await apply_async(publisher_client.create_topic, name=topic_path)
+            topic = await apply_async(
+                publisher_client.create_topic, name=topic_path
+            )
             logger.debug(f"Created topic '{topic.name}' successfully.")
 
             if not create_default_subscription:
@@ -245,7 +287,11 @@ class PubSubClient:
             )
 
             message_id = await apply_async(response.result)
-            logger.info(f"Message published for topic {topic_path} with id {message_id}")
+            logger.info(
+                "Message published for "
+                f"topic {topic_path} with "
+                f"id {message_id}"
+            )
             logger.debug(f"We sent {data!r} with metadata {attributes}")
         except Exception:
             logger.exception("Publisher failure", stacklevel=5)
@@ -258,19 +304,23 @@ class PubSubClient:
         max_messages: int,
         scheduler: AsyncScheduler,
     ) -> StreamingPullFuture:
-        """Starts the subscription listening on background given a subscription.
+        """Starts the subscription listening on background.
 
         Args:
             callback: The function called when a message is received.
             subscription_name: The name of the subscription.
             max_messages: The maximum number of messages to pull.
-            scheduler: The scheduler used to receive messages from GCP and send to callback.
+            scheduler: The object that allocates messages to callbacks.
 
         Returns:
             A future that can be used to check the progress and get the result.
         """
-        subscriber_client = await PubSubClientFactory.get_subscriber(self.project_id)
-        subscription_path = subscriber_client.subscription_path(self.project_id, subscription_name)
+        subscriber_client = await PubSubClientFactory.get_subscriber(
+            self.project_id
+        )
+        subscription_path = subscriber_client.subscription_path(
+            self.project_id, subscription_name
+        )
 
         future: StreamingPullFuture = subscriber_client.subscribe(
             callback=callback,

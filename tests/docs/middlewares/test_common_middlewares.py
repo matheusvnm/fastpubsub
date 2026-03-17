@@ -1,6 +1,9 @@
 import pytest
 
-from docs.snippets.middlewares.e1_01_common_middlewares import broker, publish_first_message
+from docs.snippets.middlewares.e1_01_common_middlewares import (
+    broker,
+    publish_first_message,
+)
 from fastpubsub.middlewares import GZipMiddleware
 from fastpubsub.testing import PubSubTestClient
 
@@ -8,7 +11,9 @@ from fastpubsub.testing import PubSubTestClient
 class TestMiddlewaresCommon:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_gzip_middleware_compresses_publish_path_and_processes_message(self) -> None:
+    async def test_gzip_middleware_successfully_executes(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await publish_first_message()
             published_messages = client.get_published_messages()
@@ -27,10 +32,14 @@ class TestMiddlewaresCommon:
 
         assert processed_result.error is None
         assert processed_result.message.attributes is not None
-        assert processed_result.message.attributes["content-encoding"] == "gzip"
+        assert (
+            processed_result.message.attributes["content-encoding"] == "gzip"
+        )
 
     @pytest.mark.docs
-    def test_gzip_middleware_configuration_is_registered_with_expected_level(self) -> None:
+    def test_gzip_middleware_configuration_is_registered_with_expected_level(
+        self,
+    ) -> None:
         middlewares = broker.router.middlewares
         cls, _, kwargs = iter(middlewares[0])
 

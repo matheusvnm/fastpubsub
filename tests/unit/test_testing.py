@@ -31,12 +31,28 @@ class TestMatchesFilter:
         assert matches_filter({"key": "value"}, "\n\t") is True
 
     def test_exact_match_equals_double_quotes(self):
-        assert matches_filter({"event_type": "order"}, 'attributes.event_type = "order"') is True
-        assert matches_filter({"event_type": "user"}, 'attributes.event_type = "order"') is False
+        assert (
+            matches_filter(
+                {"event_type": "order"}, 'attributes.event_type = "order"'
+            )
+            is True
+        )
+        assert (
+            matches_filter(
+                {"event_type": "user"}, 'attributes.event_type = "order"'
+            )
+            is False
+        )
 
     def test_exact_match_equals_single_quotes(self):
-        assert matches_filter({"type": "test"}, "attributes.type = 'test'") is True
-        assert matches_filter({"type": "other"}, "attributes.type = 'test'") is False
+        assert (
+            matches_filter({"type": "test"}, "attributes.type = 'test'")
+            is True
+        )
+        assert (
+            matches_filter({"type": "other"}, "attributes.type = 'test'")
+            is False
+        )
 
     def test_exact_match_missing_attribute(self):
         assert matches_filter({}, 'attributes.event_type = "order"') is False
@@ -46,10 +62,16 @@ class TestMatchesFilter:
         assert matches_filter({"key": "value"}, 'attributes.key = ""') is False
 
     def test_not_equals_different_value(self):
-        assert matches_filter({"type": "user"}, 'attributes.type != "order"') is True
+        assert (
+            matches_filter({"type": "user"}, 'attributes.type != "order"')
+            is True
+        )
 
     def test_not_equals_same_value(self):
-        assert matches_filter({"type": "order"}, 'attributes.type != "order"') is False
+        assert (
+            matches_filter({"type": "order"}, 'attributes.type != "order"')
+            is False
+        )
 
     def test_not_equals_missing_attribute(self):
         assert matches_filter({}, 'attributes.type != "order"') is True
@@ -71,21 +93,37 @@ class TestMatchesFilter:
         assert matches_filter({"my_key": "value"}, "attributes:my_key") is True
 
     def test_has_prefix_match(self):
-        result = matches_filter({"region": "us-east-1"}, 'hasPrefix(attributes.region, "us-")')
+        result = matches_filter(
+            {"region": "us-east-1"}, 'hasPrefix(attributes.region, "us-")'
+        )
         assert result is True
 
     def test_has_prefix_no_match(self):
-        result = matches_filter({"region": "eu-west-1"}, 'hasPrefix(attributes.region, "us-")')
+        result = matches_filter(
+            {"region": "eu-west-1"}, 'hasPrefix(attributes.region, "us-")'
+        )
         assert result is False
 
     def test_has_prefix_missing_attribute(self):
-        assert matches_filter({}, 'hasPrefix(attributes.region, "us-")') is False
+        assert (
+            matches_filter({}, 'hasPrefix(attributes.region, "us-")') is False
+        )
 
     def test_has_prefix_empty_prefix(self):
-        assert matches_filter({"region": "us-east-1"}, 'hasPrefix(attributes.region, "")') is True
+        assert (
+            matches_filter(
+                {"region": "us-east-1"}, 'hasPrefix(attributes.region, "")'
+            )
+            is True
+        )
 
     def test_has_prefix_exact_match(self):
-        assert matches_filter({"region": "us"}, 'hasPrefix(attributes.region, "us")') is True
+        assert (
+            matches_filter(
+                {"region": "us"}, 'hasPrefix(attributes.region, "us")'
+            )
+            is True
+        )
 
     def test_and_both_true(self):
         attrs = {"type": "order", "status": "pending"}
@@ -109,7 +147,9 @@ class TestMatchesFilter:
 
     def test_multiple_and(self):
         attrs = {"a": "1", "b": "2", "c": "3"}
-        expr = 'attributes.a = "1" AND attributes.b = "2" AND attributes.c = "3"'
+        expr = (
+            'attributes.a = "1" AND attributes.b = "2" AND attributes.c = "3"'
+        )
         assert matches_filter(attrs, expr) is True
 
     def test_or_first_true(self):
@@ -134,33 +174,52 @@ class TestMatchesFilter:
 
     def test_multiple_or(self):
         attrs = {"type": "refund"}
-        expr = 'attributes.type = "order" OR attributes.type = "user" OR attributes.type = "refund"'
+        expr = (
+            'attributes.type = "order" OR '
+            'attributes.type = "user" OR '
+            'attributes.type = "refund"'
+        )
         assert matches_filter(attrs, expr) is True
 
     def test_not_operator_false_becomes_true(self):
-        assert matches_filter({"type": "user"}, 'NOT attributes.type = "order"') is True
+        assert (
+            matches_filter({"type": "user"}, 'NOT attributes.type = "order"')
+            is True
+        )
 
     def test_not_operator_true_becomes_false(self):
-        assert matches_filter({"type": "order"}, 'NOT attributes.type = "order"') is False
+        assert (
+            matches_filter({"type": "order"}, 'NOT attributes.type = "order"')
+            is False
+        )
 
     def test_not_with_existence(self):
         assert matches_filter({}, "NOT attributes:key") is True
         assert matches_filter({"key": "value"}, "NOT attributes:key") is False
 
     def test_double_not(self):
-        assert matches_filter({"type": "order"}, 'NOT NOT attributes.type = "order"') is True
+        assert (
+            matches_filter(
+                {"type": "order"}, 'NOT NOT attributes.type = "order"'
+            )
+            is True
+        )
 
     def test_and_has_higher_precedence_than_or(self):
         """Tests if 'a OR b AND c' means 'a OR (b AND c)'"""
         attrs = {"a": "1"}
-        expr = 'attributes.a = "1" OR attributes.b = "2" AND attributes.c = "3"'
+        expr = (
+            'attributes.a = "1" OR attributes.b = "2" AND attributes.c = "3"'
+        )
 
         # True OR (False AND False) -> True OR False -> True
         assert matches_filter(attrs, expr) is True
 
     def test_and_has_higher_precedence_than_or_second_case(self):
         attrs = {"b": "2", "c": "3"}
-        expr = 'attributes.a = "1" OR attributes.b = "2" AND attributes.c = "3"'
+        expr = (
+            'attributes.a = "1" OR attributes.b = "2" AND attributes.c = "3"'
+        )
         # False OR (True AND True) -> False OR True -> True
         assert matches_filter(attrs, expr) is True
 
@@ -168,7 +227,9 @@ class TestMatchesFilter:
         """Tests if parantheses change the precendence"""
 
         attrs = {"a": "1", "b": "2"}
-        expr = '(attributes.a = "1" OR attributes.b = "2") AND attributes.c = "3"'
+        expr = (
+            '(attributes.a = "1" OR attributes.b = "2") AND attributes.c = "3"'
+        )
         # (True OR True) AND False -> True AND False -> False
         assert matches_filter(attrs, expr) is False
 
@@ -267,7 +328,9 @@ class TestPubSubTestClient:
         assert len(client._patchers) == 0
 
     @pytest.mark.asyncio
-    async def test_context_manager_stops_patches_on_exception(self, broker: PubSubBroker):
+    async def test_context_manager_stops_patches_on_exception(
+        self, broker: PubSubBroker
+    ):
         client = PubSubTestClient(broker)
 
         with pytest.raises(RuntimeError):
@@ -292,7 +355,9 @@ class TestPubSubTestClient:
         received_messages: list[Message] = []
 
         @broker.subscriber(
-            alias="test-sub", topic_name="test-topic", subscription_name="test-subscription"
+            alias="test-sub",
+            topic_name="test-topic",
+            subscription_name="test-subscription",
         )
         async def handler(msg: Message) -> None:
             received_messages.append(msg)
@@ -304,18 +369,24 @@ class TestPubSubTestClient:
 
     # Publish with multiple subscribers (same topic)
     @pytest.mark.asyncio
-    async def test_publish_with_multiple_subscribers_same_topic(self, broker: PubSubBroker):
+    async def test_publish_with_multiple_subscribers_same_topic(
+        self, broker: PubSubBroker
+    ):
         received_a: list[Message] = []
         received_b: list[Message] = []
 
         @broker.subscriber(
-            alias="sub-a", topic_name="test-topic", subscription_name="subscription-a"
+            alias="sub-a",
+            topic_name="test-topic",
+            subscription_name="subscription-a",
         )
         async def handler_a(msg: Message) -> None:
             received_a.append(msg)
 
         @broker.subscriber(
-            alias="sub-b", topic_name="test-topic", subscription_name="subscription-b"
+            alias="sub-b",
+            topic_name="test-topic",
+            subscription_name="subscription-b",
         )
         async def handler_b(msg: Message) -> None:
             received_b.append(msg)
@@ -332,11 +403,19 @@ class TestPubSubTestClient:
         received_a: list[Message] = []
         received_b: list[Message] = []
 
-        @broker.subscriber(alias="sub-a", topic_name="topic-a", subscription_name="subscription-a")
+        @broker.subscriber(
+            alias="sub-a",
+            topic_name="topic-a",
+            subscription_name="subscription-a",
+        )
         async def handler_a(msg: Message) -> None:
             received_a.append(msg)
 
-        @broker.subscriber(alias="sub-b", topic_name="topic-b", subscription_name="subscription-b")
+        @broker.subscriber(
+            alias="sub-b",
+            topic_name="topic-b",
+            subscription_name="subscription-b",
+        )
         async def handler_b(msg: Message) -> None:
             received_b.append(msg)
 
@@ -363,41 +442,56 @@ class TestPubSubTestClient:
         async with PubSubTestClient(broker) as client:
             # Should be received
             await client.publish(
-                {"data": "order1"}, topic="events", attributes={"event_type": "order"}
+                {"data": "order1"},
+                topic="events",
+                attributes={"event_type": "order"},
             )
             # Should NOT be received
             await client.publish(
-                {"data": "user1"}, topic="events", attributes={"event_type": "user"}
+                {"data": "user1"},
+                topic="events",
+                attributes={"event_type": "user"},
             )
 
         assert len(received) == 1
         assert received[0].attributes["event_type"] == "order"
 
     @pytest.mark.asyncio
-    async def test_filter_expression_no_filter_receives_all(self, broker: PubSubBroker):
+    async def test_filter_expression_no_filter_receives_all(
+        self, broker: PubSubBroker
+    ):
         received: list[Message] = []
 
         @broker.subscriber(
-            alias="unfiltered-sub", topic_name="events", subscription_name="unfiltered-subscription"
+            alias="unfiltered-sub",
+            topic_name="events",
+            subscription_name="unfiltered-subscription",
         )
         async def handler(msg: Message) -> None:
             received.append(msg)
 
         async with PubSubTestClient(broker) as client:
-            await client.publish("msg1", topic="events", attributes={"type": "a"})
-            await client.publish("msg2", topic="events", attributes={"type": "b"})
+            await client.publish(
+                "msg1", topic="events", attributes={"type": "a"}
+            )
+            await client.publish(
+                "msg2", topic="events", attributes={"type": "b"}
+            )
 
         assert len(received) == 2
 
     @pytest.mark.asyncio
     async def test_filter_expression_and_operator(self, broker: PubSubBroker):
         received: list[Message] = []
+        FILTER_EXPRESSION = (
+            'attributes.type = "order" AND attributes.status = "pending"'
+        )
 
         @broker.subscriber(
             alias="and-filter-sub",
             topic_name="events",
             subscription_name="and-filter-subscription",
-            filter_expression='attributes.type = "order" AND attributes.status = "pending"',
+            filter_expression=FILTER_EXPRESSION,
         )
         async def handler(msg: Message) -> None:
             received.append(msg)
@@ -405,11 +499,15 @@ class TestPubSubTestClient:
         async with PubSubTestClient(broker) as client:
             # Matches
             await client.publish(
-                "msg1", topic="events", attributes={"type": "order", "status": "pending"}
+                "msg1",
+                topic="events",
+                attributes={"type": "order", "status": "pending"},
             )
             # Doesn't match (wrong status)
             await client.publish(
-                "msg2", topic="events", attributes={"type": "order", "status": "completed"}
+                "msg2",
+                topic="events",
+                attributes={"type": "order", "status": "completed"},
             )
 
         assert len(received) == 1
@@ -417,20 +515,29 @@ class TestPubSubTestClient:
     @pytest.mark.asyncio
     async def test_filter_expression_or_operator(self, broker: PubSubBroker):
         received: list[Message] = []
+        FILTER_EXPRESSION = (
+            'attributes.type = "order" OR attributes.type = "refund"'
+        )
 
         @broker.subscriber(
             alias="or-filter-sub",
             topic_name="events",
             subscription_name="or-filter-subscription",
-            filter_expression='attributes.type = "order" OR attributes.type = "refund"',
+            filter_expression=FILTER_EXPRESSION,
         )
         async def handler(msg: Message) -> None:
             received.append(msg)
 
         async with PubSubTestClient(broker) as client:
-            await client.publish("msg1", topic="events", attributes={"type": "order"})
-            await client.publish("msg2", topic="events", attributes={"type": "refund"})
-            await client.publish("msg3", topic="events", attributes={"type": "user"})
+            await client.publish(
+                "msg1", topic="events", attributes={"type": "order"}
+            )
+            await client.publish(
+                "msg2", topic="events", attributes={"type": "refund"}
+            )
+            await client.publish(
+                "msg3", topic="events", attributes={"type": "user"}
+            )
 
         assert len(received) == 2
 
@@ -448,14 +555,20 @@ class TestPubSubTestClient:
             received.append(msg)
 
         async with PubSubTestClient(broker) as client:
-            await client.publish("msg1", topic="events", attributes={"type": "order"})
-            await client.publish("msg2", topic="events", attributes={"type": "test"})
+            await client.publish(
+                "msg1", topic="events", attributes={"type": "order"}
+            )
+            await client.publish(
+                "msg2", topic="events", attributes={"type": "test"}
+            )
 
         assert len(received) == 1
         assert received[0].attributes["type"] == "order"
 
     @pytest.mark.asyncio
-    async def test_filter_expression_existence_check(self, broker: PubSubBroker):
+    async def test_filter_expression_existence_check(
+        self, broker: PubSubBroker
+    ):
         received: list[Message] = []
 
         @broker.subscriber(
@@ -468,8 +581,12 @@ class TestPubSubTestClient:
             received.append(msg)
 
         async with PubSubTestClient(broker) as client:
-            await client.publish("msg1", topic="events", attributes={"priority": "high"})
-            await client.publish("msg2", topic="events", attributes={"other": "value"})
+            await client.publish(
+                "msg1", topic="events", attributes={"priority": "high"}
+            )
+            await client.publish(
+                "msg2", topic="events", attributes={"other": "value"}
+            )
 
         assert len(received) == 1
 
@@ -487,8 +604,12 @@ class TestPubSubTestClient:
             received.append(msg)
 
         async with PubSubTestClient(broker) as client:
-            await client.publish("msg1", topic="events", attributes={"region": "us-east-1"})
-            await client.publish("msg2", topic="events", attributes={"region": "eu-west-1"})
+            await client.publish(
+                "msg1", topic="events", attributes={"region": "us-east-1"}
+            )
+            await client.publish(
+                "msg2", topic="events", attributes={"region": "eu-west-1"}
+            )
 
         assert len(received) == 1
 
@@ -518,9 +639,15 @@ class TestPubSubTestClient:
             users.append(msg)
 
         async with PubSubTestClient(broker) as client:
-            await client.publish("o1", topic="events", attributes={"type": "order"})
-            await client.publish("u1", topic="events", attributes={"type": "user"})
-            await client.publish("o2", topic="events", attributes={"type": "order"})
+            await client.publish(
+                "o1", topic="events", attributes={"type": "order"}
+            )
+            await client.publish(
+                "u1", topic="events", attributes={"type": "user"}
+            )
+            await client.publish(
+                "o2", topic="events", attributes={"type": "order"}
+            )
 
         assert len(orders) == 2
         assert len(users) == 1
@@ -529,8 +656,12 @@ class TestPubSubTestClient:
     @pytest.mark.asyncio
     async def test_get_published_messages(self, broker: PubSubBroker):
         async with PubSubTestClient(broker) as client:
-            await client.publish("msg1", topic="topic-a", attributes={"key": "1"})
-            await client.publish("msg2", topic="topic-b", attributes={"key": "2"})
+            await client.publish(
+                "msg1", topic="topic-a", attributes={"key": "1"}
+            )
+            await client.publish(
+                "msg2", topic="topic-b", attributes={"key": "2"}
+            )
 
             messages = client.get_published_messages()
             assert len(messages) == 2
@@ -538,7 +669,9 @@ class TestPubSubTestClient:
             assert messages[1].topic_name == "topic-b"
 
     @pytest.mark.asyncio
-    async def test_get_published_messages_returns_copy(self, broker: PubSubBroker):
+    async def test_get_published_messages_returns_copy(
+        self, broker: PubSubBroker
+    ):
         async with PubSubTestClient(broker) as client:
             await client.publish("msg", topic="topic")
 
@@ -562,7 +695,9 @@ class TestPubSubTestClient:
 
     # Middleware execution tests
     @pytest.mark.asyncio
-    async def test_middleware_execution_in_test_client(self, broker: PubSubBroker):
+    async def test_middleware_execution_in_test_client(
+        self, broker: PubSubBroker
+    ):
         middleware_calls: list[str] = []
 
         class TestMiddleware(BaseMiddleware):
@@ -586,11 +721,15 @@ class TestPubSubTestClient:
 
     # Message content tests
     @pytest.mark.asyncio
-    async def test_message_attributes_passed_correctly(self, broker: PubSubBroker):
+    async def test_message_attributes_passed_correctly(
+        self, broker: PubSubBroker
+    ):
         received_msg: Message | None = None
 
         @broker.subscriber(
-            alias="attr-sub", topic_name="test-topic", subscription_name="attr-subscription"
+            alias="attr-sub",
+            topic_name="test-topic",
+            subscription_name="attr-subscription",
         )
         async def handler(msg: Message) -> None:
             nonlocal received_msg
@@ -598,18 +737,24 @@ class TestPubSubTestClient:
 
         async with PubSubTestClient(broker) as client:
             await client.publish(
-                "test", topic="test-topic", attributes={"key1": "value1", "key2": "value2"}
+                "test",
+                topic="test-topic",
+                attributes={"key1": "value1", "key2": "value2"},
             )
 
         assert received_msg is not None
         assert received_msg.attributes == {"key1": "value1", "key2": "value2"}
 
     @pytest.mark.asyncio
-    async def test_message_topic_and_subscriber_name(self, broker: PubSubBroker):
+    async def test_message_topic_and_subscriber_name(
+        self, broker: PubSubBroker
+    ):
         received_msg: Message | None = None
 
         @broker.subscriber(
-            alias="meta-sub", topic_name="my-topic", subscription_name="my-subscription"
+            alias="meta-sub",
+            topic_name="my-topic",
+            subscription_name="my-subscription",
         )
         async def handler(msg: Message) -> None:
             nonlocal received_msg
@@ -627,7 +772,11 @@ class TestPubSubTestClient:
     async def test_message_has_unique_id(self, broker: PubSubBroker):
         received_msgs: list[Message] = []
 
-        @broker.subscriber(alias="id-sub", topic_name="topic", subscription_name="subscription")
+        @broker.subscriber(
+            alias="id-sub",
+            topic_name="topic",
+            subscription_name="subscription",
+        )
         async def handler(msg: Message) -> None:
             received_msgs.append(msg)
 
@@ -645,7 +794,9 @@ class TestPubSubTestClient:
         received_msg: Message | None = None
 
         @broker.subscriber(
-            alias="delivery-sub", topic_name="topic", subscription_name="subscription"
+            alias="delivery-sub",
+            topic_name="topic",
+            subscription_name="subscription",
         )
         async def handler(msg: Message) -> None:
             nonlocal received_msg
@@ -662,13 +813,19 @@ class TestPubSubTestClient:
     async def test_publish_dict_data(self, broker: PubSubBroker):
         received_msg: Message | None = None
 
-        @broker.subscriber(alias="dict-sub", topic_name="topic", subscription_name="subscription")
+        @broker.subscriber(
+            alias="dict-sub",
+            topic_name="topic",
+            subscription_name="subscription",
+        )
         async def handler(msg: Message) -> None:
             nonlocal received_msg
             received_msg = msg
 
         async with PubSubTestClient(broker) as client:
-            await client.publish({"key": "value", "number": 123}, topic="topic")
+            await client.publish(
+                {"key": "value", "number": 123}, topic="topic"
+            )
 
         assert received_msg is not None
         assert b'"key"' in received_msg.data
@@ -678,7 +835,11 @@ class TestPubSubTestClient:
     async def test_publish_string_data(self, broker: PubSubBroker):
         received_msg: Message | None = None
 
-        @broker.subscriber(alias="str-sub", topic_name="topic", subscription_name="subscription")
+        @broker.subscriber(
+            alias="str-sub",
+            topic_name="topic",
+            subscription_name="subscription",
+        )
         async def handler(msg: Message) -> None:
             nonlocal received_msg
             received_msg = msg
@@ -693,7 +854,11 @@ class TestPubSubTestClient:
     async def test_publish_bytes_data(self, broker: PubSubBroker):
         received_msg: Message | None = None
 
-        @broker.subscriber(alias="bytes-sub", topic_name="topic", subscription_name="subscription")
+        @broker.subscriber(
+            alias="bytes-sub",
+            topic_name="topic",
+            subscription_name="subscription",
+        )
         async def handler(msg: Message) -> None:
             nonlocal received_msg
             received_msg = msg
@@ -710,7 +875,9 @@ class TestPubSubTestClient:
         received_msg: Message | None = None
 
         @broker.subscriber(
-            alias="no-attr-sub", topic_name="topic", subscription_name="subscription"
+            alias="no-attr-sub",
+            topic_name="topic",
+            subscription_name="subscription",
         )
         async def handler(msg: Message) -> None:
             nonlocal received_msg
@@ -723,7 +890,9 @@ class TestPubSubTestClient:
         assert received_msg.attributes == {}
 
     @pytest.mark.asyncio
-    async def test_filter_with_no_attributes_published(self, broker: PubSubBroker):
+    async def test_filter_with_no_attributes_published(
+        self, broker: PubSubBroker
+    ):
         received: list[Message] = []
 
         @broker.subscriber(
@@ -742,7 +911,9 @@ class TestPubSubTestClient:
 
     # Published message dataclass tests
     @pytest.mark.asyncio
-    async def test_published_message_has_project_id(self, broker: PubSubBroker):
+    async def test_published_message_has_project_id(
+        self, broker: PubSubBroker
+    ):
         async with PubSubTestClient(broker) as client:
             await client.publish("test", topic="topic")
 
@@ -752,9 +923,13 @@ class TestPubSubTestClient:
             assert messages[0].project_id == "test-project"
 
     @pytest.mark.asyncio
-    async def test_published_message_with_explicit_project_id(self, broker: PubSubBroker):
+    async def test_published_message_with_explicit_project_id(
+        self, broker: PubSubBroker
+    ):
         async with PubSubTestClient(broker) as client:
-            await client.publish("test", topic="topic", project_id="other-project")
+            await client.publish(
+                "test", topic="topic", project_id="other-project"
+            )
 
             messages = client.get_published_messages()
             assert len(messages) == 1
@@ -762,7 +937,9 @@ class TestPubSubTestClient:
 
     # Cross-project tests
     @pytest.mark.asyncio
-    async def test_cross_project_publish_matches_subscriber(self, broker: PubSubBroker):
+    async def test_cross_project_publish_matches_subscriber(
+        self, broker: PubSubBroker
+    ):
         received: list[Message] = []
 
         @broker.subscriber(
@@ -775,7 +952,9 @@ class TestPubSubTestClient:
             received.append(msg)
 
         async with PubSubTestClient(broker) as client:
-            await client.publish("test", topic="events", project_id="other-project")
+            await client.publish(
+                "test", topic="events", project_id="other-project"
+            )
 
         assert len(received) == 1
         assert received[0].project_id == "other-project"
@@ -796,12 +975,16 @@ class TestPubSubTestClient:
             received.append(msg)
 
         async with PubSubTestClient(broker) as client:
-            await client.publish("test", topic="events")  # defaults to broker project
+            await client.publish(
+                "test", topic="events"
+            )  # defaults to broker project
 
         assert len(received) == 0
 
     @pytest.mark.asyncio
-    async def test_same_topic_different_projects_isolated(self, broker: PubSubBroker):
+    async def test_same_topic_different_projects_isolated(
+        self, broker: PubSubBroker
+    ):
         received_default: list[Message] = []
         received_other: list[Message] = []
 
@@ -824,7 +1007,9 @@ class TestPubSubTestClient:
 
         async with PubSubTestClient(broker) as client:
             await client.publish("msg1", topic="events")  # default project
-            await client.publish("msg2", topic="events", project_id="other-project")
+            await client.publish(
+                "msg2", topic="events", project_id="other-project"
+            )
 
         assert len(received_default) == 1
         assert len(received_other) == 1
@@ -903,15 +1088,21 @@ class TestPubSubTestClient:
             assert ok_results[0].return_value == "ok"
 
     @pytest.mark.asyncio
-    async def test_processing_results_multiple_subscribers(self, broker: PubSubBroker):
+    async def test_processing_results_multiple_subscribers(
+        self, broker: PubSubBroker
+    ):
         @broker.subscriber(
-            alias="sub-a2", topic_name="events", subscription_name="sub-a2-subscription"
+            alias="sub-a2",
+            topic_name="events",
+            subscription_name="sub-a2-subscription",
         )
         async def handler_a(msg: Message) -> None:
             pass
 
         @broker.subscriber(
-            alias="sub-b2", topic_name="events", subscription_name="sub-b2-subscription"
+            alias="sub-b2",
+            topic_name="events",
+            subscription_name="sub-b2-subscription",
         )
         async def handler_b(msg: Message) -> None:
             pass
@@ -925,7 +1116,9 @@ class TestPubSubTestClient:
             assert names == {"handler_a", "handler_b"}
 
     @pytest.mark.asyncio
-    async def test_processing_results_cross_project(self, broker: PubSubBroker):
+    async def test_processing_results_cross_project(
+        self, broker: PubSubBroker
+    ):
         @broker.subscriber(
             alias="proj-default-sub",
             topic_name="events",
@@ -945,7 +1138,9 @@ class TestPubSubTestClient:
 
         async with PubSubTestClient(broker) as client:
             await client.publish("test", topic="events")
-            await client.publish("test", topic="events", project_id="other-project")
+            await client.publish(
+                "test", topic="events", project_id="other-project"
+            )
 
             results = client.get_results()
             assert len(results) == 2
@@ -955,7 +1150,9 @@ class TestPubSubTestClient:
     @pytest.mark.asyncio
     async def test_processing_results_returns_copy(self, broker: PubSubBroker):
         @broker.subscriber(
-            alias="copy-sub", topic_name="events", subscription_name="copy-subscription"
+            alias="copy-sub",
+            topic_name="events",
+            subscription_name="copy-subscription",
         )
         async def handler(msg: Message) -> None:
             pass

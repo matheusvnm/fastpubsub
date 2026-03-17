@@ -3,5 +3,3 @@
 from importlib.metadata import version
 
 __version__ = version("fastpubsub")
-
-SERVICE_NAME = f"fastpubsub-{__version__}"

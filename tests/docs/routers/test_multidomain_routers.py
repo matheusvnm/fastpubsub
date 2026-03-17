@@ -10,7 +10,9 @@ from fastpubsub.testing import PubSubTestClient
 class TestRoutersMultiDomainMain:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_main_broker_routes_user_and_post_messages_to_domain_handlers(self) -> None:
+    async def test_broker_routes_messages_to_domain_handlers(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await publish_test_messages()
 
@@ -21,7 +23,9 @@ class TestRoutersMultiDomainMain:
         assert len(processed_results) == 2
 
         topics = [result.message.topic_name for result in processed_results]
-        subscribers = {result.message.subscriber_name for result in processed_results}
+        subscribers = {
+            result.message.subscriber_name for result in processed_results
+        }
 
         assert topics == ["users-topic", "posts-topic"]
         assert subscribers == {"handle_user_message", "handle_post_message"}

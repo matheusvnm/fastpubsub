@@ -5,7 +5,10 @@ import logging
 from concurrent.futures import Future
 from typing import Any, cast
 
-from google.cloud.pubsub_v1.subscriber.exceptions import AcknowledgeError, AcknowledgeStatus
+from google.cloud.pubsub_v1.subscriber.exceptions import (
+    AcknowledgeError,
+    AcknowledgeStatus,
+)
 from google.cloud.pubsub_v1.subscriber.futures import StreamingPullFuture
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 
@@ -21,7 +24,7 @@ logger: FastPubSubLogger = cast(FastPubSubLogger, logging.getLogger(__name__))
 
 
 class MessageMapper:
-    """A mapper used to deserialize a Pub/Sub message into a fastpubsub.Message class."""
+    """A object to deserialize a Pub/Sub message into a fastpubsub.Message."""
 
     def __init__(self, subscriber: Subscriber):
         """Initializes the MessageMapper.
@@ -57,7 +60,7 @@ class MessageMapper:
 
 
 class PubSubStreamingPullTask:
-    """A task for polling messages from a Pub/Sub subscription with StreamingPull API."""
+    """A task for polling messages from a Pub/Sub subscription."""
 
     def __init__(self, subscriber: Subscriber) -> None:
         """Initializes the PubSubPollTask.
@@ -75,7 +78,9 @@ class PubSubStreamingPullTask:
 
     async def start(self) -> None:
         """Starts the message polling loop."""
-        logger.info(f"The {self.subscriber.name} handler is waiting for messages.")
+        logger.info(
+            f"The {self.subscriber.name} handler is waiting for messages."
+        )
         self.task = await self.client.subscribe(
             callback=self._on_message,
             subscription_name=self.subscriber.subscription_name,
@@ -117,7 +122,9 @@ class PubSubStreamingPullTask:
             except Exception:
                 future = received_message.nack_with_response()
                 await self._wait_acknowledge_response(future=future)
-                logger.exception("Unhandled exception on message", stacklevel=5)
+                logger.exception(
+                    "Unhandled exception on message", stacklevel=5
+                )
                 return
 
     async def _wait_acknowledge_response(self, future: Future[Any]) -> None:
@@ -126,13 +133,17 @@ class PubSubStreamingPullTask:
         except AcknowledgeError as e:
             self._on_acknowledge_failed(e)
         except TimeoutError:
-            logger.error("The acknowledge response took too long. The message will be retried.")
+            logger.error(
+                "The acknowledge response took too long. "
+                "The message will be retried."
+            )
 
     def _on_acknowledge_failed(self, e: AcknowledgeError) -> None:
         match e.error_code:
             case AcknowledgeStatus.PERMISSION_DENIED:
                 logger.exception(
-                    "The subscriber does not have permission to ack/nack the message or the "
+                    "The subscriber does not have permission "
+                    "to ack/nack the message or the "
                     "subscription does not exists anymore.",
                     stacklevel=5,
                 )
@@ -144,10 +155,15 @@ class PubSubStreamingPullTask:
                 )
             case AcknowledgeStatus.INVALID_ACK_ID:
                 logger.info(
-                    "The message ack_id expired. It will be redelivered later.", exc_info=True
+                    "The message ack_id expired. "
+                    "It will be redelivered later.",
+                    exc_info=True,
                 )
             case _:
-                logger.exception("Some unknown error happened during ack/nack.", stacklevel=5)
+                logger.exception(
+                    "Some unknown error happened during ack/nack.",
+                    stacklevel=5,
+                )
 
     def task_ready(self) -> bool:
         """Checks if the task is ready.

@@ -1,13 +1,18 @@
 import pytest
 
-from docs.snippets.basic_usage.e6_01_lifespan_hooks import announce_startup, broker
+from docs.snippets.basic_usage.e6_01_lifespan_hooks import (
+    announce_startup,
+    broker,
+)
 from fastpubsub.testing import PubSubTestClient
 
 
 class TestLifespanHooks:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_after_startup_hook_publishes_system_online_message(self) -> None:
+    async def test_after_startup_hook_publishes_system_online_message(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await announce_startup()
             published_messages = client.get_published_messages()

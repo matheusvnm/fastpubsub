@@ -54,8 +54,6 @@ class TestAsyncSchedulerTracking:
     async def test_deregister_executed_task_removes_from_tracking(
         self, scheduler: AsyncScheduler, mock_message: MagicMock
     ):
-        """Test that deregister_executed_task cleans up."""
-
         async def dummy_coro():
             await asyncio.sleep(0.01)
 
@@ -64,21 +62,15 @@ class TestAsyncSchedulerTracking:
         scheduler.register_task_execution(task, mock_message)
         assert id(task) in scheduler._executing_tasks
 
-        # Wait for task to complete (which triggers auto-deregister via done callback)
         await task
-
-        # Small delay to allow done callback to execute
         await asyncio.sleep(0.01)
-
         assert id(task) not in scheduler._executing_tasks
 
     @pytest.mark.asyncio
     async def test_get_in_flight_count_returns_pending_and_executing(
         self, scheduler: AsyncScheduler, mock_message: MagicMock
     ):
-        """Test that get_in_flight_count returns correct counts."""
-
-        def dummy_callback(msg):
+        def dummy_callback(_):
             pass
 
         scheduler.schedule(dummy_callback, mock_message)
@@ -142,7 +134,9 @@ class TestAsyncSchedulerTracking:
         assert scheduler.closed is True
 
     @pytest.mark.asyncio
-    async def test_wait_for_completion_returns_true_on_success(self, scheduler):
+    async def test_wait_for_completion_returns_true_on_success(
+        self, scheduler
+    ):
         """Test that wait_for_completion returns True when all complete."""
 
         result = await scheduler.wait_for_completion(timeout=1.0)

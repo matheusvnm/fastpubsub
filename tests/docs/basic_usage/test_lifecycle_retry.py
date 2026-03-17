@@ -57,7 +57,9 @@ class TestLifecycleRetry:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         post_mock = AsyncMock()
-        monkeypatch.setattr(f"{_SNIPPET}.httpx.AsyncClient", lambda: _SuccessClient(post_mock))
+        monkeypatch.setattr(
+            f"{_SNIPPET}.httpx.AsyncClient", lambda: _SuccessClient(post_mock)
+        )
 
         async with PubSubTestClient(broker) as client:
             await client.publish(topic="orders", data={"order_id": "ord-200"})
@@ -65,4 +67,6 @@ class TestLifecycleRetry:
 
         assert len(results) == 1
         assert results[0].error is None
-        post_mock.assert_awaited_once_with("https://downstream.service/process/ord-200")
+        post_mock.assert_awaited_once_with(
+            "https://downstream.service/process/ord-200"
+        )

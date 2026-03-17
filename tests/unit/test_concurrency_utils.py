@@ -48,9 +48,13 @@ class TestEnsureAsyncMiddleware:
             SyncOnPublishMiddleware,
         ],
     )
-    def test_with_invalid_middleware_raises_exception(self, invalid_middleware):
+    def test_with_invalid_middleware_raises_exception(
+        self, invalid_middleware
+    ):
         with pytest.raises(TypeError):
             ensure_async_middleware(invalid_middleware)
 
-    def test_with_valid_middleware_succeeds(self, first_middleware: type[BaseMiddleware]):
+    def test_with_valid_middleware_succeeds(
+        self, first_middleware: type[BaseMiddleware]
+    ):
         ensure_async_middleware(first_middleware)

@@ -26,7 +26,8 @@ async def handle_task(message: Message):
 )
 async def handle_order(message: Message):
     logger.info("Processing order")
-    # Output: Processing order | name=order-handler message_id=12345 topic_name=orders
+    # Output:
+    # Processing order | name=order-handler message_id=12345 topic_name=orders
 
 
 # --8<-- [end:context_aware_logging]

@@ -20,7 +20,9 @@ def mock_broker() -> MagicMock:
 
 class TestApplicationLifecycle:
     @pytest.mark.asyncio
-    async def test_application_hooks_are_called_on_constructor(self, mock_broker: MagicMock):
+    async def test_application_hooks_are_called_on_constructor(
+        self, mock_broker: MagicMock
+    ):
         on_startup_action = AsyncMock(spec=FunctionType)
         after_startup_action = AsyncMock(spec=FunctionType)
         on_shutdown_action = AsyncMock(spec=FunctionType)
@@ -65,7 +67,9 @@ class TestApplicationLifecycle:
         after_shutdown_mock.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_decorator_hooks_are_called_with_lifespan(self, mock_broker: MagicMock):
+    async def test_decorator_hooks_are_called_with_lifespan(
+        self, mock_broker: MagicMock
+    ):
         start_lifepan_call = MagicMock()
         end_lifepan_call = MagicMock()
 

@@ -1,13 +1,18 @@
 import pytest
 
-from docs.snippets.routers.e1_02_nested_routers_financial import broker, publish_test_messages
+from docs.snippets.routers.e1_02_nested_routers_financial import (
+    broker,
+    publish_test_messages,
+)
 from fastpubsub.testing import PubSubTestClient
 
 
 class TestRoutersNestedRoutersFinancial:
     @pytest.mark.asyncio
     @pytest.mark.docs
-    async def test_nested_router_handlers_receive_messages_for_each_domain(self) -> None:
+    async def test_nested_router_handlers_receive_messages_for_each_domain(
+        self,
+    ) -> None:
         async with PubSubTestClient(broker) as client:
             await publish_test_messages()
 
@@ -20,7 +25,9 @@ class TestRoutersNestedRoutersFinancial:
         assert len(processed_results) == 3
 
         topics = [result.message.topic_name for result in processed_results]
-        subscribers_names = {result.message.subscriber_name for result in processed_results}
+        subscribers_names = {
+            result.message.subscriber_name for result in processed_results
+        }
 
         assert topics == [
             "core-topic",

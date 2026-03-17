@@ -183,8 +183,12 @@ class FastPubSub(FastAPI, Application):
             after_shutdown=after_shutdown,
         )
 
-        self.add_api_route(path=liveness_url, endpoint=self._get_liveness, methods=["GET"])
-        self.add_api_route(path=readiness_url, endpoint=self._get_readiness, methods=["GET"])
+        self.add_api_route(
+            path=liveness_url, endpoint=self._get_liveness, methods=["GET"]
+        )
+        self.add_api_route(
+            path=readiness_url, endpoint=self._get_readiness, methods=["GET"]
+        )
 
     @asynccontextmanager
     async def _run(self, app: "FastPubSub") -> AsyncGenerator[None]:

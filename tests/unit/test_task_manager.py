@@ -12,7 +12,9 @@ ASYNC_TASK_MANAGER_MODULE_PATH = "fastpubsub.concurrency.manager"
 class TestAsyncTaskManager:
     @pytest.fixture()
     def task(self) -> Generator[MagicMock]:
-        with patch(f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubStreamingPullTask") as streaming_task:
+        with patch(
+            f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubStreamingPullTask"
+        ) as streaming_task:
             streaming_task.return_value.start = AsyncMock()
             streaming_task.return_value.shutdown = AsyncMock()
             yield streaming_task
@@ -89,16 +91,24 @@ class TestAsyncTaskManagerShutdown:
 
     @pytest.fixture()
     def task(self) -> Generator[MagicMock]:
-        with patch(f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubStreamingPullTask") as streaming_task:
+        with patch(
+            f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubStreamingPullTask"
+        ) as streaming_task:
             streaming_task.return_value.start = AsyncMock()
             streaming_task.return_value.shutdown = AsyncMock()
-            streaming_task.return_value.task_alive = MagicMock(return_value=True)
+            streaming_task.return_value.task_alive = MagicMock(
+                return_value=True
+            )
             yield streaming_task
 
     @pytest.mark.asyncio
-    async def test_shutdown_calls_task_shutdown_with_timeout(self, task: MagicMock):
+    async def test_shutdown_calls_task_shutdown_with_timeout(
+        self, task: MagicMock
+    ):
         """Test that shutdown calls each task's shutdown with timeout."""
-        with patch(f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubClientFactory") as mock_factory:
+        with patch(
+            f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubClientFactory"
+        ) as mock_factory:
             mock_factory.close_all = AsyncMock()
 
             task_manager = AsyncTaskManager()
@@ -114,7 +124,9 @@ class TestAsyncTaskManagerShutdown:
     @pytest.mark.asyncio
     async def test_shutdown_clears_tasks_list(self, task: MagicMock):
         """Test that shutdown clears the tasks list."""
-        with patch(f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubClientFactory") as mock_factory:
+        with patch(
+            f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubClientFactory"
+        ) as mock_factory:
             mock_factory.close_all = AsyncMock()
 
             task_manager = AsyncTaskManager()
@@ -132,7 +144,9 @@ class TestAsyncTaskManagerShutdown:
     @pytest.mark.asyncio
     async def test_shutdown_closes_factory_clients(self, task: MagicMock):
         """Test that shutdown calls PubSubClientFactory.close_all()."""
-        with patch(f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubClientFactory") as mock_factory:
+        with patch(
+            f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubClientFactory"
+        ) as mock_factory:
             mock_factory.close_all = AsyncMock()
 
             task_manager = AsyncTaskManager()
@@ -146,7 +160,9 @@ class TestAsyncTaskManagerShutdown:
     @pytest.mark.asyncio
     async def test_shutdown_skips_dead_tasks(self, task: MagicMock):
         """Test that shutdown only processes alive tasks."""
-        with patch(f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubClientFactory") as mock_factory:
+        with patch(
+            f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubClientFactory"
+        ) as mock_factory:
             mock_factory.close_all = AsyncMock()
 
             # Set task_alive to return False
@@ -163,7 +179,9 @@ class TestAsyncTaskManagerShutdown:
     @pytest.mark.asyncio
     async def test_shutdown_propagates_timeout_to_tasks(self, task: MagicMock):
         """Test that custom timeout is propagated."""
-        with patch(f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubClientFactory") as mock_factory:
+        with patch(
+            f"{ASYNC_TASK_MANAGER_MODULE_PATH}.PubSubClientFactory"
+        ) as mock_factory:
             mock_factory.close_all = AsyncMock()
 
             task_manager = AsyncTaskManager()
