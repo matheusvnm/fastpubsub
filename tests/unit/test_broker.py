@@ -110,6 +110,33 @@ class TestPubSubBroker:
         finally:
             os.environ["FASTPUBSUB_SUBSCRIBERS"] = ""
 
+    @pytest.mark.parametrize(
+        ("selected_subscribers", "expected_count"),
+        [
+            ("a.*", 2),
+            ("**.x", 2),
+            ("a.?", 2),
+        ],
+    )
+    async def test_filter_subscribers_with_wildcards(
+        self,
+        broker: PubSubBroker,
+        selected_subscribers: str,
+        expected_count: int,
+    ) -> None:
+        try:
+            os.environ["FASTPUBSUB_SUBSCRIBERS"] = selected_subscribers
+            broker.router = MagicMock()
+            broker.router._get_subscribers.return_value = {
+                "a.x": "ax",
+                "a.y": "ay",
+                "b.x": "bx",
+            }
+            found = broker._filter_subscribers()
+            assert len(found) == expected_count
+        finally:
+            os.environ["FASTPUBSUB_SUBSCRIBERS"] = ""
+
     @pytest.mark.asyncio
     async def test_shutdown_successfully(
         self, async_task_manager: MagicMock, broker: PubSubBroker

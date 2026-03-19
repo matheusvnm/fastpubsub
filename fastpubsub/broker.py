@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
+from fastpubsub._internal.selector import SubscriberSelector
 from fastpubsub.builder import PubSubSubscriptionBuilder
 from fastpubsub.concurrency.manager import AsyncTaskManager
 from fastpubsub.exceptions import FastPubSubException
@@ -262,42 +263,20 @@ class PubSubBroker:
 
     def _filter_subscribers(self) -> list[Subscriber]:
         subscribers = self.router._get_subscribers()
-        selected_subscribers = self._get_selected_subscribers()
-
-        if not selected_subscribers:
-            logger.debug(
-                f"Running all the subscribers as {list(subscribers.keys())}"
-            )
-            return list(subscribers.values())
-
-        found_subscribers = []
-        for selected_subscriber in selected_subscribers:
-            if selected_subscriber not in subscribers:
-                logger.warning(
-                    f"The '{selected_subscriber}' subscriber alias not found"
-                )
-                continue
-
-            logger.debug(
-                f"We have found the subscriber '{selected_subscriber}'"
-            )
-            found_subscribers.append(subscribers[selected_subscriber])
-
-        return found_subscribers
+        patterns = self._get_selected_subscribers()
+        selector = SubscriberSelector(patterns=patterns)
+        return selector.select(subscribers)
 
     def _get_selected_subscribers(self) -> set[str]:
-        selected_subscribers: set[str] = set()
         subscribers_text = os.getenv("FASTPUBSUB_SUBSCRIBERS", "")
         if not subscribers_text:
-            return selected_subscribers
+            return set()
 
-        dirty_aliases = subscribers_text.split(",")
-        for dirty_alias in dirty_aliases:
-            clean_alias = dirty_alias.lower().strip()
-            if clean_alias:
-                selected_subscribers.add(clean_alias)
-
-        return selected_subscribers
+        return {
+            alias.lower().strip()
+            for alias in subscribers_text.split(",")
+            if alias.strip()
+        }
 
     async def shutdown(self) -> None:
         """Gracefully shuts down the broker using the configured timeout."""
