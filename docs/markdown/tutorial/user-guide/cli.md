@@ -92,6 +92,57 @@ This is useful for:
 - Testing specific handlers in isolation
 - Scaling individual subscribers independently
 
+### Wildcard Patterns
+
+You can use glob patterns to select subscribers by alias prefix, suffix, or hierarchy:
+
+```bash
+# All subscribers under the "orders" prefix
+fastpubsub run my_project.main:app -s 'orders.*'
+
+# All "process" subscribers across any prefix
+fastpubsub run my_project.main:app -s '*.process'
+
+# All subscribers at any depth under "orders"
+fastpubsub run my_project.main:app -s 'orders.**'
+
+# "process" subscribers at any depth
+fastpubsub run my_project.main:app -s '**.process'
+
+# Compose patterns: ** and * together
+fastpubsub run my_project.main:app -s '**.orders.*.process'
+
+# Mix exact names and patterns
+fastpubsub run my_project.main:app -s 'orders.*' -s payments.refund
+```
+
+Given the following application:
+
+```python
+--8<-- "basic_usage/e8_03_cli_wildcards.py:wildcard_subscribers"
+```
+
+The registered aliases are: `orders.process`, `orders.validate`, `orders.notify`, `payments.process`.
+
+| Pattern | Matches |
+|---------|---------|
+| `orders.*` | `orders.process`, `orders.validate`, `orders.notify` |
+| `*.process` | `orders.process`, `payments.process` |
+| `orders.**` | `orders.process`, `orders.validate`, `orders.notify` |
+| `**.process` | `orders.process`, `payments.process` |
+| `order?.*` | `orders.process`, `orders.validate`, `orders.notify` |
+
+**Supported wildcards:**
+
+| Wildcard | Meaning |
+|----------|---------|
+| `*` | Matches any characters within a single segment (between dots) |
+| `?` | Matches exactly one character |
+| `**` | Matches zero or more dot-separated segments |
+
+!!! note
+    If a pattern does not match any subscriber, a warning is logged and the application continues. The application only fails to start if **no subscribers at all** are selected.
+
 ---
 
 ## Production Mode
