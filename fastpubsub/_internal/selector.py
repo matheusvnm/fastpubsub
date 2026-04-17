@@ -55,27 +55,31 @@ def _match_segments(pattern: str, alias: str) -> bool:
 
 def _match_parts(
     pattern_parts: tuple[str, ...],
-    pi: int,
+    pattern_index: int,
     alias_parts: tuple[str, ...],
-    ai: int,
+    alias_index: int,
 ) -> bool:
     """Recursive matcher for dot-separated segments."""
-    if pi == len(pattern_parts) and ai == len(alias_parts):
+    if pattern_index == len(pattern_parts) and alias_index == len(alias_parts):
         return True
-    if pi == len(pattern_parts):
+    if pattern_index == len(pattern_parts):
         return False
 
-    if pattern_parts[pi] == "**":
-        for skip in range(ai, len(alias_parts) + 1):
-            if _match_parts(pattern_parts, pi + 1, alias_parts, skip):
+    if pattern_parts[pattern_index] == "**":
+        for skip in range(alias_index, len(alias_parts) + 1):
+            if _match_parts(
+                pattern_parts, pattern_index + 1, alias_parts, skip
+            ):
                 return True
         return False
 
-    if ai == len(alias_parts):
+    if alias_index == len(alias_parts):
         return False
 
-    if fnmatch(alias_parts[ai], pattern_parts[pi]):
-        return _match_parts(pattern_parts, pi + 1, alias_parts, ai + 1)
+    if fnmatch(alias_parts[alias_index], pattern_parts[pattern_index]):
+        return _match_parts(
+            pattern_parts, pattern_index + 1, alias_parts, alias_index + 1
+        )
 
     return False
 
