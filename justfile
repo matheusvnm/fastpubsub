@@ -54,7 +54,7 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 [group("tests")]
 @test-unit *args: (up "--no-deps fastpubsub") && down
     just _start_msg "Running unit tests"
-    {{ run_test_command }} pytest -m "not connected and not slow" -n auto --tb=short {{ args }}
+    {{ run_test_command }} pytest -m "not (connected or slow or docs)" -n auto --tb=short {{ args }}
 
 [doc("Run integration tests (requires emulator)")]
 [group("tests")]

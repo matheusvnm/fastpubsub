@@ -5,7 +5,7 @@ import pytest
 from docs.snippets.basic_usage.e3_02_subscribers_max_messages import (
     MAX_MESSAGES,
     broker,
-    test_publish,
+    publish_first_message,
 )
 from fastpubsub.testing import PubSubTestClient
 
@@ -23,7 +23,7 @@ class TestSubscribersMaxMessages:
         monkeypatch.setattr(f"{_SNIPPET}.asyncio.sleep", sleep)
 
         async with PubSubTestClient(broker) as client:
-            await test_publish()
+            await publish_first_message()
             published_messages = client.get_published_messages()
             results = client.get_results()
 

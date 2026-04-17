@@ -30,7 +30,7 @@ async def process_message(message: Message) -> None:
 
 # --8<-- [start:bulk_publish]
 @app.after_startup
-async def test_publish() -> None:
+async def publish_first_message() -> None:
     async with TaskGroup() as tg:
         for _ in range(MAX_MESSAGES * 5):
             tg.create_task(broker.publish("test-topic", "hi!"))
