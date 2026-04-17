@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
-from fastpubsub._internal.selector import SubscriberSelector
+from fastpubsub._internal import SubscriberSelector
 from fastpubsub.builder import PubSubSubscriptionBuilder
 from fastpubsub.concurrency.manager import AsyncTaskManager
 from fastpubsub.exceptions import FastPubSubException
@@ -273,7 +273,7 @@ class PubSubBroker:
             return set()
 
         return {
-            alias.lower().strip()
+            alias.strip()
             for alias in subscribers_text.split(",")
             if alias.strip()
         }

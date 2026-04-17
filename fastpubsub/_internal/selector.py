@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def _is_glob_pattern(pattern: str) -> bool:
     """Check if a string contains glob characters."""
-    return any(c in pattern for c in ("*", "?", "["))
+    return any(c in pattern for c in ("*", "?"))
 
 
 def _match_pattern(pattern: str, alias: str) -> bool:
@@ -43,14 +43,20 @@ def _match_segments(pattern: str, alias: str) -> bool:
     ``?`` matches a single character (not a dot).
     """
     pattern_parts = pattern.split(".")
+    # Collapse consecutive ** segments to prevent exponential backtracking
+    collapsed: list[str] = []
+    for part in pattern_parts:
+        if part == "**" and collapsed and collapsed[-1] == "**":
+            continue
+        collapsed.append(part)
     alias_parts = alias.split(".")
-    return _match_parts(pattern_parts, 0, alias_parts, 0)
+    return _match_parts(tuple(collapsed), 0, tuple(alias_parts), 0)
 
 
 def _match_parts(
-    pattern_parts: list[str],
+    pattern_parts: tuple[str, ...],
     pi: int,
-    alias_parts: list[str],
+    alias_parts: tuple[str, ...],
     ai: int,
 ) -> bool:
     """Recursive matcher for dot-separated segments."""
@@ -112,7 +118,7 @@ class SubscriberSelector:
             for alias, subscriber in subscribers.items():
                 if alias in seen_aliases:
                     continue
-                if _match_pattern(pattern, alias):
+                if _match_pattern(pattern, alias.lower()):
                     result.append(subscriber)
                     seen_aliases.add(alias)
                     matched = True

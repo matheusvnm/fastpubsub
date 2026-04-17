@@ -198,7 +198,7 @@ class PubSubRouter:
                     f"{self.prefix}.{prefixed_subscription_name}"
                 )
 
-            if prefixed_alias in self.subscribers:
+            if prefixed_alias.lower() in self.subscribers:
                 raise FastPubSubException(
                     f"The alias '{prefixed_alias}' already exists."
                     " The alias must be unique among all subscribers"
@@ -373,4 +373,4 @@ class PubSubRouter:
 
             old_alias = alias.split(".")[-1]
             new_prefixed_alias = f"{self.prefix}.{old_alias}"
-            self.subscribers[new_prefixed_alias] = subscriber
+            self.subscribers[new_prefixed_alias.lower()] = subscriber
