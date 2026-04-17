@@ -76,6 +76,13 @@ class TestSubscriberSelectorExactMatch:
         result = selector.select(subs)
         assert len(result) == 1
 
+    def test_case_insensitive_mixed_case_alias(self) -> None:
+        subs = {"Orders.Process": _make_subscriber("process")}
+        selector = SubscriberSelector(patterns={"orders.*"})
+        result = selector.select(subs)
+        assert len(result) == 1
+        assert result[0].name == "process"
+
     def test_no_duplicates(self) -> None:
         subs = {"a": _make_subscriber("a")}
         selector = SubscriberSelector(patterns={"a"})
@@ -200,6 +207,20 @@ class TestSubscriberSelectorDoubleStarMatch:
         assert names == {
             "orders_process",
             "validate",
+            "pay_process",
+        }
+
+    def test_consecutive_double_stars_collapsed(
+        self, subscribers: dict[str, MagicMock]
+    ) -> None:
+        selector = SubscriberSelector(patterns={"**.**.process"})
+        result = selector.select(subscribers)
+        names = {s.name for s in result}
+        assert names == {
+            "root_process",
+            "orders_process",
+            "v1_process",
+            "v1_br_process",
             "pay_process",
         }
 
