@@ -30,6 +30,6 @@ async def handle_from_another_topic(message: Message) -> None:
 
 
 @app.after_startup
-async def test_publish() -> None:
+async def publish_first_message() -> None:
     publisher = broker.publisher("first-topic")
     await publisher.publish({"hello": "world"})

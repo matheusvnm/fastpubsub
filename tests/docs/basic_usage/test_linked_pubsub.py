@@ -1,6 +1,9 @@
 import pytest
 
-from docs.snippets.basic_usage.e3_01_linked_pubsub import broker, test_publish
+from docs.snippets.basic_usage.e3_01_linked_pubsub import (
+    broker,
+    publish_first_message,
+)
 from fastpubsub.testing import PubSubTestClient
 
 
@@ -11,7 +14,7 @@ class TestLinkedPubsub:
         self,
     ) -> None:
         async with PubSubTestClient(broker) as client:
-            await test_publish()
+            await publish_first_message()
             published_messages = client.get_published_messages()
             results = client.get_results()
 
