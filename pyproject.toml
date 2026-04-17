@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv_build>=0.9.0"]
+requires = ["uv_build>=0.9.0,<0.12"]
 build-backend = "uv_build"
 
 [project]
@@ -28,7 +28,6 @@ dependencies = [
 
 classifiers = [
     "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: 3",
