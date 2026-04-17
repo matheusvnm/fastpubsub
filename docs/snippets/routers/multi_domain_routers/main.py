@@ -1,7 +1,7 @@
-from posts_domain.routers import posts_router
-from user_domain.routers import users_router
-
 from fastpubsub import FastPubSub, PubSubBroker
+
+from .posts_domain.routers import posts_router
+from .user_domain.routers import users_router
 
 # --8<-- [start:main_app]
 broker = PubSubBroker(project_id="fastpubsub-pubsub-local")
