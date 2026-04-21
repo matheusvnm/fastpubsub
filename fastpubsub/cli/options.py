@@ -4,7 +4,7 @@ from typing import Annotated
 
 import typer
 
-from fastpubsub.cli.utils import LogLevels
+from fastpubsub.cli.utils import LogLevels, OutputFormat
 
 CLIContext = typer.Context
 
@@ -125,5 +125,36 @@ AppVersionOption = Annotated[
         "--version",
         is_eager=True,
         help="Show current platform, python and FastPubSub version.",
+    ),
+]
+
+InspectColumnsOption = Annotated[
+    str | None,
+    typer.Option(
+        "-c",
+        "--columns",
+        help="Comma-separated column names to display. "
+        "Use 'all' to show every column including policy fields. "
+        "Default: alias, project, topic, subscription, handler.",
+    ),
+]
+
+InspectFormatOption = Annotated[
+    OutputFormat,
+    typer.Option(
+        "-f",
+        "--format",
+        case_sensitive=False,
+        help="Output format: 'table' (default) or 'json'.",
+    ),
+]
+
+InspectFilterOption = Annotated[
+    list[str],
+    typer.Option(
+        "--filter",
+        help="Glob pattern to filter subscribers by alias. "
+        "Supports *, ?, and ** wildcards. "
+        "Repeatable: --filter 'orders.*' --filter 'payments.*'.",
     ),
 ]

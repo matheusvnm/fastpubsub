@@ -67,19 +67,13 @@ class ApplicationRunner:
 
     def validate(self) -> None:
         """Validates a FastPubSub application."""
-        from fastpubsub.applications import FastPubSub
-        from fastpubsub.exceptions import FastPubSubCLIException
+        from fastpubsub.cli.utils import import_app
 
         posix_path = self._translate_pypath_to_posix(
             pypath=self.app_config.app
         )
         self._resolve_application_posix_path(posix_path=posix_path)
-
-        app = uvicorn.importer.import_from_string(self.app_config.app)
-        if not app or not isinstance(app, FastPubSub):
-            raise FastPubSubCLIException(
-                f"The app {self.app_config.app} is not a {FastPubSub} instance"
-            )
+        import_app(self.app_config.app)
 
     def run(self) -> None:
         """Runs a FastPubSub application."""

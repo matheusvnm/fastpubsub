@@ -262,7 +262,7 @@ class PubSubBroker:
         return True
 
     def _filter_subscribers(self) -> list[Subscriber]:
-        subscribers = self.router._get_subscribers()
+        subscribers = self.router.get_subscribers()
         patterns = self._get_selected_subscribers()
         selector = SubscriberSelector(patterns=patterns)
         return selector.select(subscribers)

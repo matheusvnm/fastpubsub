@@ -329,12 +329,13 @@ class PubSubRouter:
         if wrapper_middleware not in self.middlewares:
             self.middlewares.append(wrapper_middleware)
 
-    def _get_subscribers(self) -> dict[str, Subscriber]:
+    def get_subscribers(self) -> dict[str, Subscriber]:
+        """Return all subscribers from this router and its nested routers."""
         subscribers: dict[str, Subscriber] = {}
         subscribers.update(self.subscribers)
         router: PubSubRouter
         for router in self.routers:
-            router_subscribers = router._get_subscribers()
+            router_subscribers = router.get_subscribers()
             for alias, new_subscriber in router.subscribers.items():
                 if alias in subscribers:
                     existing_subscriber = subscribers[alias]

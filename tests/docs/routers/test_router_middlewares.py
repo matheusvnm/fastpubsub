@@ -36,7 +36,7 @@ class TestRoutersRouterMiddlewares:
     def test_router_middleware_registration_propagates_into_subscribers(
         self,
     ) -> None:
-        subscribers = broker.router._get_subscribers()
+        subscribers = broker.router.get_subscribers()
 
         subscriber_created = subscribers["users.created"]
         subscriber_deleted = subscribers["users.deleted"]

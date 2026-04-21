@@ -68,7 +68,7 @@ def subscriber(broker: PubSubBroker) -> Subscriber:
     broker.subscriber(
         "some_sub", topic_name="some_topic", subscription_name="some_sub_name"
     )(some_subscriber_handler)
-    subscribers = broker.router._get_subscribers()
+    subscribers = broker.router.get_subscribers()
     return subscribers.popitem()[1]
 
 
@@ -99,7 +99,7 @@ class TestSubscriber:
         broker.subscriber("sub_c", topic_name="tn", subscription_name="sn")(
             handler_broker
         )
-        subscribers = broker.router._get_subscribers()
+        subscribers = broker.router.get_subscribers()
 
         subscriber_a = subscribers["a.sub_a"]
         callstack_a = subscriber_a._build_callstack()
@@ -151,7 +151,7 @@ class TestSubscriber:
             "router_handler", topic_name="tn", subscription_name="sn"
         )(handler_b)
 
-        subscribers = broker.router._get_subscribers()
+        subscribers = broker.router.get_subscribers()
 
         broker_subscriber = subscribers["broker_handler"]
         broker_callstack = broker_subscriber._build_callstack()
@@ -215,7 +215,7 @@ class TestSubscriber:
             handler_b
         )
 
-        subscribers = broker.router._get_subscribers()
+        subscribers = broker.router.get_subscribers()
 
         # Broker Subscriber
         broker_subscriber = subscribers["sub_a"]

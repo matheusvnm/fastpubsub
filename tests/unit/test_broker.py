@@ -91,7 +91,7 @@ class TestPubSubBroker:
         os.environ["FASTPUBSUB_SUBSCRIBERS"] = selected_subscribers
         try:
             mock_router = MagicMock()
-            mock_router._get_subscribers = MagicMock(
+            mock_router.get_subscribers = MagicMock(
                 return_value={"a": "a", "b": "b"}
             )
             broker.router = mock_router
@@ -127,7 +127,7 @@ class TestPubSubBroker:
         try:
             os.environ["FASTPUBSUB_SUBSCRIBERS"] = selected_subscribers
             broker.router = MagicMock()
-            broker.router._get_subscribers.return_value = {
+            broker.router.get_subscribers.return_value = {
                 "a.x": "ax",
                 "a.y": "ay",
                 "b.x": "bx",

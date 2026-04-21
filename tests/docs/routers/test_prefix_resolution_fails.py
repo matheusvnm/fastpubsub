@@ -21,7 +21,7 @@ class TestAliasResolutionFailed:
     @pytest.mark.docs
     def test_alias_conflict_raises_error(self, broker: PubSubBroker) -> None:
         with pytest.raises(FastPubSubException) as exc_info:
-            broker.router._get_subscribers()
+            broker.router.get_subscribers()
 
         error_message = str(exc_info.value)
         assert "test-alias-abc" in error_message
