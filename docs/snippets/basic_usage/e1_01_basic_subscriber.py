@@ -27,8 +27,6 @@ async def handle_message(message: Message):
 
 
 # --8<-- [end:basic_subscriber]
-
-
 # --8<-- [start:basic_subscriber_startup]
 @app.after_startup
 async def publish_initial_message() -> None:

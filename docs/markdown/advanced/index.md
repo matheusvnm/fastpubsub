@@ -1,7 +1,3 @@
----
-icon: lucide/flask-conical
----
-
 # Advanced Usage
 
 This section consolidates FastPubSub capabilities that are typically adopted after the core development workflow is already stable.
