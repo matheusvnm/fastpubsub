@@ -23,6 +23,13 @@ class LogLevels(StrEnum):
     DEBUG = "debug"
 
 
+class OutputFormat(StrEnum):
+    """A class to represent output formats."""
+
+    TABLE = "table"
+    JSON = "json"
+
+
 def ensure_pubsub_credentials() -> None:
     """Ensures that the Pub/Sub credentials are set."""
     credentials = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")

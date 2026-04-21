@@ -33,6 +33,7 @@ from fastpubsub.cli.runner import (
 )
 from fastpubsub.cli.utils import (
     LogLevels,
+    OutputFormat,
     ensure_pubsub_credentials,
     import_app,
 )
@@ -175,7 +176,7 @@ def inspect_subscribers(
     app: AppArgument,
     filter_patterns: InspectFilterOption = [],
     columns: InspectColumnsOption = None,
-    output_format: InspectFormatOption = "table",
+    output_format: InspectFormatOption = OutputFormat.TABLE,
 ) -> None:
     """List all subscribers in a FastPubSub application.
 

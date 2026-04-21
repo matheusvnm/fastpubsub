@@ -4,7 +4,7 @@ from typing import Annotated
 
 import typer
 
-from fastpubsub.cli.utils import LogLevels
+from fastpubsub.cli.utils import LogLevels, OutputFormat
 
 CLIContext = typer.Context
 
@@ -140,10 +140,11 @@ InspectColumnsOption = Annotated[
 ]
 
 InspectFormatOption = Annotated[
-    str,
+    OutputFormat,
     typer.Option(
         "-f",
         "--format",
+        case_sensitive=False,
         help="Output format: 'table' (default) or 'json'.",
     ),
 ]

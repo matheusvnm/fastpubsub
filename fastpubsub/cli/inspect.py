@@ -11,6 +11,7 @@ from rich.table import Table
 from fastpubsub.__about__ import __version__
 from fastpubsub._internal import SubscriberSelector
 from fastpubsub.applications import FastPubSub
+from fastpubsub.exceptions import FastPubSubCLIException
 from fastpubsub.pubsub.subscriber import Subscriber
 
 inspect_app = typer.Typer(
@@ -108,7 +109,7 @@ def resolve_columns(columns_arg: str | None) -> list[str]:
         A list of validated column names.
 
     Raises:
-        typer.BadParameter: If any column name is unknown.
+        FastPubSubCLIException: If any column name is unknown.
     """
     if columns_arg is None:
         return list(DEFAULT_COLUMNS)
@@ -122,12 +123,9 @@ def resolve_columns(columns_arg: str | None) -> list[str]:
     unknown = [t for t in tokens if t not in SubscriberRecord.model_fields]
     if unknown:
         available = ", ".join(ALL_COLUMNS)
-        typer.echo(
-            f"Error: Unknown column(s): {', '.join(unknown)}. "
-            f"Available: {available}",
-            err=True,
+        raise FastPubSubCLIException(
+            f"Unknown column(s): {', '.join(unknown)}. Available: {available}"
         )
-        raise SystemExit(1)
 
     return tokens
 
@@ -164,9 +162,10 @@ class SubscriberInspector:
         records = self._build_records()
 
         if output_format == "json":
-            return self._print_json(records)
+            self._print_json(records)
+            return
 
-        return self._print_table(records)
+        self._print_table(records)
 
     def _build_records(self) -> list[SubscriberRecord]:
         """Build sorted SubscriberRecord list from the app.
@@ -179,10 +178,11 @@ class SubscriberInspector:
         if self.filter_patterns:
             selector = SubscriberSelector(patterns=self.filter_patterns)
             filtered_list = selector.select(subscribers)
+            filtered_ids = {id(s) for s in filtered_list}
             subscribers = {
                 alias: sub
                 for alias, sub in subscribers.items()
-                if sub in filtered_list
+                if id(sub) in filtered_ids
             }
 
         return sorted(
