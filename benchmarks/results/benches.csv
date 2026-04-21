@@ -3,3 +3,5 @@ FastPubSub Version;Case;Total Events;Elapsed Time;EPS;Timestamp;Python Version;D
 0.7.2;basic;1147;60.15;19.07;2026-01-08T14:02:34.377837+00:00;3.12.12;FastPubSub Message processing;3.83 GB;10
 0.7.3;baseline;43575;60.17;724.19;2026-01-09T13:46:16.794085+00:00;3.12.12;Pure google-cloud-pubsub (baseline);3.83 GB;100
 0.7.3;basic;111940;60.53;1849.33;2026-01-09T13:47:17.366602+00:00;3.12.12;FastPubSub Message processing;3.83 GB;100
+0.8.2;baseline;44992;60.96;738.07;2026-04-21T23:23:21.135870+00:00;3.12.13;Pure google-cloud-pubsub (baseline);3.83 GB;100
+0.8.2;basic;111824;60.51;1847.90;2026-04-21T23:24:21.698655+00:00;3.12.13;FastPubSub Message processing;3.83 GB;100
