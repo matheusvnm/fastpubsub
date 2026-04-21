@@ -233,12 +233,3 @@ class SubscriberInspector:
             ],
         }
         typer.echo(json.dumps(output, indent=2, default=str))
-
-
-# Future inspect subcommands:
-# - inspect topics: list unique topics and their subscribers (fan-out view)
-# - inspect publishers: list registered publishers and target topics
-# - inspect routes: show router hierarchy, prefixes, and nesting
-# - inspect middlewares: show middleware chains per subscriber and global
-# - inspect policies: summary table of retry, DLT, and delivery policies
-# - inspect config: resolved runtime config (project, host, port, env vars)
