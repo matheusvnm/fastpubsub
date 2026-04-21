@@ -4,7 +4,11 @@ import rich
 import typer
 
 from fastpubsub.__about__ import __version__
-from fastpubsub.cli.inspect import inspect_app
+from fastpubsub.cli.inspect import (
+    SubscriberInspector,
+    inspect_app,
+    resolve_columns,
+)
 from fastpubsub.cli.options import (
     AppArgument,
     AppHostOption,
@@ -18,13 +22,20 @@ from fastpubsub.cli.options import (
     AppServerLogLevelOption,
     AppVersionOption,
     CLIContext,
+    InspectColumnsOption,
+    InspectFilterOption,
+    InspectFormatOption,
 )
 from fastpubsub.cli.runner import (
     AppConfiguration,
     ApplicationRunner,
     ServerConfiguration,
 )
-from fastpubsub.cli.utils import LogLevels, ensure_pubsub_credentials
+from fastpubsub.cli.utils import (
+    LogLevels,
+    ensure_pubsub_credentials,
+    import_app,
+)
 
 app = typer.Typer(
     name="fastpubsub",
@@ -157,6 +168,33 @@ def run(
     application_runner.setup()
     application_runner.validate()
     application_runner.run()
+
+
+@inspect_app.command(name="subscribers")
+def inspect_subscribers(
+    app: AppArgument,
+    filter_patterns: InspectFilterOption = [],
+    columns: InspectColumnsOption = None,
+    output_format: InspectFormatOption = "table",
+) -> None:
+    """List all subscribers in a FastPubSub application.
+
+    Args:
+        app: The application path in module:attribute format.
+        filter_patterns: Glob patterns to filter subscribers by alias.
+        columns: Comma-separated column names, or 'all'.
+        output_format: Output format: 'table' or 'json'.
+    """
+    resolved_columns = resolve_columns(columns)
+    app_instance = import_app(app)
+
+    inspector = SubscriberInspector(
+        app_instance=app_instance,
+        app_path=app,
+        columns=resolved_columns,
+        filter_patterns=set(filter_patterns) if filter_patterns else set(),
+    )
+    inspector.inspect(output_format)
 
 
 @app.command(name="help")

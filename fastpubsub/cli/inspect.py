@@ -10,13 +10,7 @@ from rich.table import Table
 
 from fastpubsub.__about__ import __version__
 from fastpubsub._internal import SubscriberSelector
-from fastpubsub.cli.options import (
-    AppArgument,
-    InspectColumnsOption,
-    InspectFilterOption,
-    InspectFormatOption,
-)
-from fastpubsub.cli.utils import import_app
+from fastpubsub.applications import FastPubSub
 from fastpubsub.pubsub.subscriber import Subscriber
 
 inspect_app = typer.Typer(
@@ -25,7 +19,13 @@ inspect_app = typer.Typer(
     rich_markup_mode="markdown",
 )
 
-DEFAULT_COLUMNS = ["alias", "project", "topic", "subscription", "handler"]
+DEFAULT_COLUMNS = [
+    "alias",
+    "project",
+    "topic",
+    "subscription",
+    "handler",
+]
 
 
 class SubscriberRecord(BaseModel):
@@ -132,100 +132,107 @@ def resolve_columns(columns_arg: str | None) -> list[str]:
     return tokens
 
 
-def _format_table(
-    app_path: str,
-    records: list[SubscriberRecord],
-    columns: list[str],
-) -> None:
-    """Print subscribers as a Rich table.
+class SubscriberInspector:
+    """Inspects subscribers of a FastPubSub application."""
 
-    Args:
-        app_path: The module:attribute path for the header.
-        records: List of SubscriberRecord to display.
-        columns: Column names to include.
-    """
-    count = len(records)
-    header = (
-        f"[bold]FastPubSub[/bold] (v{__version__}): "
-        f"{app_path} — {count} subscriber{'s' if count != 1 else ''}"
-    )
-    rich.print(f"\n{header}\n")
+    def __init__(
+        self,
+        app_instance: FastPubSub,
+        app_path: str,
+        columns: list[str],
+        filter_patterns: set[str],
+    ) -> None:
+        """Initialize the SubscriberInspector.
 
-    table = Table()
-    for col in columns:
-        table.add_column(col.replace("_", " ").title())
+        Args:
+            app_instance: The FastPubSub application instance.
+            app_path: The module:attribute path string.
+            columns: Resolved column names to display.
+            filter_patterns: Glob patterns for alias filtering.
+        """
+        self.app_instance = app_instance
+        self.app_path = app_path
+        self.columns = columns
+        self.filter_patterns = filter_patterns
 
-    for record in records:
-        row = record.model_dump(include=set(columns))
-        table.add_row(*[str(row[col]) for col in columns])
+    def inspect(self, output_format: str) -> None:
+        """Run the inspection and print output.
 
-    console = Console()
-    console.print(table)
+        Args:
+            output_format: The output format ('table' or 'json').
+        """
+        records = self._build_records()
 
+        if output_format == "json":
+            return self._print_json(records)
 
-def _format_json(
-    app_path: str,
-    records: list[SubscriberRecord],
-    columns: list[str],
-) -> None:
-    """Print subscribers as JSON.
+        return self._print_table(records)
 
-    Args:
-        app_path: The module:attribute path.
-        records: List of SubscriberRecord to display.
-        columns: Column names to include.
-    """
-    output = {
-        "app": app_path,
-        "version": __version__,
-        "subscribers": [
-            record.model_dump(include=set(columns)) for record in records
-        ],
-    }
-    typer.echo(json.dumps(output, indent=2, default=str))
+    def _build_records(self) -> list[SubscriberRecord]:
+        """Build sorted SubscriberRecord list from the app.
 
+        Returns:
+            A sorted list of SubscriberRecord instances.
+        """
+        subscribers = self.app_instance.broker.router.get_subscribers()
 
-@inspect_app.command(name="subscribers")
-def inspect_subscribers(
-    app: AppArgument,
-    filter_patterns: InspectFilterOption = [],
-    columns: InspectColumnsOption = None,
-    output_format: InspectFormatOption = "table",
-) -> None:
-    """List all subscribers in a FastPubSub application.
+        if self.filter_patterns:
+            selector = SubscriberSelector(patterns=self.filter_patterns)
+            filtered_list = selector.select(subscribers)
+            subscribers = {
+                alias: sub
+                for alias, sub in subscribers.items()
+                if sub in filtered_list
+            }
 
-    Args:
-        app: The application path in module:attribute format.
-        filter_patterns: Glob patterns to filter subscribers by alias.
-        columns: Comma-separated column names, or 'all'.
-        output_format: Output format: 'table' or 'json'.
-    """
-    resolved_columns = resolve_columns(columns)
+        return sorted(
+            [
+                SubscriberRecord.from_subscriber(alias, sub)
+                for alias, sub in subscribers.items()
+            ],
+            key=lambda r: r.alias,
+        )
 
-    fastpubsub_app = import_app(app)
-    subscribers = fastpubsub_app.broker.router.get_subscribers()
+    def _print_table(self, records: list[SubscriberRecord]) -> None:
+        """Print subscribers as a Rich table.
 
-    if filter_patterns:
-        selector = SubscriberSelector(patterns=set(filter_patterns))
-        filtered_list = selector.select(subscribers)
-        subscribers = {
-            alias: sub
-            for alias, sub in subscribers.items()
-            if sub in filtered_list
+        Args:
+            records: List of SubscriberRecord to display.
+        """
+        count = len(records)
+        header = (
+            f"[bold]FastPubSub[/bold] (v{__version__}): "
+            f"{self.app_path} — "
+            f"{count} subscriber{'s' if count != 1 else ''}"
+        )
+        rich.print(f"\n{header}\n")
+
+        table = Table()
+        for col in self.columns:
+            table.add_column(col.replace("_", " ").title())
+
+        for record in records:
+            row = record.model_dump(include=set(self.columns))
+            table.add_row(*[str(row[col]) for col in self.columns])
+
+        console = Console()
+        console.print(table)
+
+    def _print_json(self, records: list[SubscriberRecord]) -> None:
+        """Print subscribers as JSON.
+
+        Args:
+            records: List of SubscriberRecord to display.
+        """
+        output = {
+            "app": self.app_path,
+            "version": __version__,
+            "subscribers": [
+                record.model_dump(include=set(self.columns))
+                for record in records
+            ],
         }
-
-    records = sorted(
-        [
-            SubscriberRecord.from_subscriber(alias, sub)
-            for alias, sub in subscribers.items()
-        ],
-        key=lambda r: r.alias,
-    )
-
-    if output_format == "json":
-        _format_json(app, records, resolved_columns)
-    else:
-        _format_table(app, records, resolved_columns)
+        typer.echo(json.dumps(output, indent=2, default=str))
 
 
 # Future inspect subcommands:

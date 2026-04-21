@@ -157,7 +157,7 @@ class TestResolveColumns:
 
 
 class TestInspectSubscribersFilter:
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_filter_exact_alias(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(
@@ -174,7 +174,7 @@ class TestInspectSubscribersFilter:
         assert "handler_a" in result.stdout
         assert "handler_b" not in result.stdout
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_filter_glob_pattern(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(
@@ -191,7 +191,7 @@ class TestInspectSubscribersFilter:
         assert "handler_a" in result.stdout
         assert "handler_b" in result.stdout
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_filter_multiple_patterns(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(
@@ -210,7 +210,7 @@ class TestInspectSubscribersFilter:
         assert "handler_a" in result.stdout
         assert "handler_b" in result.stdout
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_filter_no_matches(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(
@@ -226,7 +226,7 @@ class TestInspectSubscribersFilter:
         assert result.exit_code == 0
         assert "0 subscribers" in result.stdout
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_filter_with_json_format(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(
@@ -248,7 +248,7 @@ class TestInspectSubscribersFilter:
 
 
 class TestInspectSubscribersTable:
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_default_table_output(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(app, ["inspect", "subscribers", "myapp:app"])
@@ -259,7 +259,7 @@ class TestInspectSubscribersTable:
         assert "topic-a" in result.stdout
         assert "topic-b" in result.stdout
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_sorted_by_alias(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(app, ["inspect", "subscribers", "myapp:app"])
@@ -268,7 +268,7 @@ class TestInspectSubscribersTable:
         pos_b = result.stdout.index("handler_b")
         assert pos_a < pos_b
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_columns_alias_topic_only(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(
@@ -287,7 +287,7 @@ class TestInspectSubscribersTable:
         # subscription column should NOT appear
         assert "sub-a" not in result.stdout
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_columns_all(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(
@@ -311,7 +311,7 @@ class TestInspectSubscribersTable:
         aliases = [s["alias"] for s in data["subscribers"]]
         assert "handler_a" in aliases
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_columns_case_insensitive(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(
@@ -328,7 +328,7 @@ class TestInspectSubscribersTable:
         assert "handler_a" in result.stdout
         assert "topic-a" in result.stdout
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_unknown_column_error(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(
@@ -344,14 +344,14 @@ class TestInspectSubscribersTable:
         assert result.exit_code != 0
         assert "nonexistent" in result.output
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_empty_app_table(self, mock_import):
         mock_import.return_value = _build_empty_app()
         result = runner.invoke(app, ["inspect", "subscribers", "myapp:app"])
         assert result.exit_code == 0
         assert "0 subscribers" in result.stdout
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_header_shows_version(self, mock_import):
         from fastpubsub.__about__ import __version__
 
@@ -362,7 +362,7 @@ class TestInspectSubscribersTable:
 
 
 class TestInspectSubscribersJson:
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_json_output(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(
@@ -381,7 +381,7 @@ class TestInspectSubscribersJson:
         assert "version" in data
         assert len(data["subscribers"]) == 2
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_json_sorted_by_alias(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(
@@ -398,7 +398,7 @@ class TestInspectSubscribersJson:
         aliases = [s["alias"] for s in data["subscribers"]]
         assert aliases == sorted(aliases)
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_json_with_columns(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(
@@ -417,7 +417,7 @@ class TestInspectSubscribersJson:
         for sub in data["subscribers"]:
             assert set(sub.keys()) == {"alias", "topic"}
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_json_columns_all(self, mock_import):
         mock_import.return_value = _build_test_app()
         result = runner.invoke(
@@ -438,7 +438,7 @@ class TestInspectSubscribersJson:
         for sub in data["subscribers"]:
             assert set(sub.keys()) == set(ALL_COLUMNS)
 
-    @patch("fastpubsub.cli.inspect.import_app")
+    @patch("fastpubsub.cli.main.import_app")
     def test_json_empty_app(self, mock_import):
         mock_import.return_value = _build_empty_app()
         result = runner.invoke(
