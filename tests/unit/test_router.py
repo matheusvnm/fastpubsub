@@ -38,7 +38,7 @@ class TestPubSubRouter:
         with pytest.raises(FastPubSubException):
             PubSubRouter(middlewares=321)
 
-    def testget_subscribers(self):
+    def test_get_subscribers(self):
         router = PubSubRouter()
 
         @router.subscriber(

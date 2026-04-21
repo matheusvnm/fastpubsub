@@ -48,7 +48,7 @@ def import_app(app_path: str) -> FastPubSub:
         FastPubSubCLIException: If the import fails or the object
             is not a FastPubSub instance.
     """
-    from fastpubsub.applications import FastPubSub as _FastPubSub
+    from fastpubsub.applications import FastPubSub
 
     if ":" not in app_path:
         raise FastPubSubCLIException(
@@ -74,7 +74,7 @@ def import_app(app_path: str) -> FastPubSub:
             f"Failed to import '{app_path}': {exc}"
         ) from exc
 
-    if not isinstance(app, _FastPubSub):
+    if not isinstance(app, FastPubSub):
         raise FastPubSubCLIException(
             f"The object at '{app_path}' is not a "
             f"FastPubSub instance (got {type(app).__name__})."
