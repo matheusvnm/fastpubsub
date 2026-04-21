@@ -127,3 +127,33 @@ AppVersionOption = Annotated[
         help="Show current platform, python and FastPubSub version.",
     ),
 ]
+
+InspectColumnsOption = Annotated[
+    str | None,
+    typer.Option(
+        "-c",
+        "--columns",
+        help="Comma-separated column names to display. "
+        "Use 'all' to show every column including policy fields. "
+        "Default: alias, project, topic, subscription, handler.",
+    ),
+]
+
+InspectFormatOption = Annotated[
+    str,
+    typer.Option(
+        "-f",
+        "--format",
+        help="Output format: 'table' (default) or 'json'.",
+    ),
+]
+
+InspectFilterOption = Annotated[
+    list[str],
+    typer.Option(
+        "--filter",
+        help="Glob pattern to filter subscribers by alias. "
+        "Supports *, ?, and ** wildcards. "
+        "Repeatable: --filter 'orders.*' --filter 'payments.*'.",
+    ),
+]
