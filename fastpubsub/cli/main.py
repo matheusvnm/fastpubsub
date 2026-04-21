@@ -4,6 +4,7 @@ import rich
 import typer
 
 from fastpubsub.__about__ import __version__
+from fastpubsub.cli.inspect import inspect_app
 from fastpubsub.cli.options import (
     AppArgument,
     AppHostOption,
@@ -33,6 +34,8 @@ app = typer.Typer(
     invoke_without_command=True,
     rich_markup_mode="markdown",
 )
+
+app.add_typer(inspect_app)
 
 # V2: this command and its subcommands will be released on the future"
 """
@@ -76,8 +79,13 @@ def main(
             "\n[bold]Usage[/bold]: [cyan]fastpubsub [COMMAND] [ARGS]...[/cyan]"
         )
         rich.print("\n[bold]Common Commands:[/bold]")
-        rich.print("  [green]run[/green]    Run a FastPubSub application.")
-        rich.print("  [green]help[/green]   Get detailed help for a command.")
+        rich.print("  [green]run[/green]       Run a FastPubSub application.")
+        rich.print(
+            "  [green]inspect[/green]   Inspect application components."
+        )
+        rich.print(
+            "  [green]help[/green]      Get detailed help for a command."
+        )
         rich.print(
             "\nRun '[cyan]fastpubsub --help[/cyan]' for "
             "a list of all available commands and options."
