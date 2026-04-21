@@ -32,7 +32,7 @@ class TestCrossProjectPublish:
         )
         assert results == []
 
-        subscribers = broker.router._get_subscribers()
+        subscribers = broker.router.get_subscribers()
         assert (
             subscribers["shared-events-handler"].project_id
             == "other-project-id"

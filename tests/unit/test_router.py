@@ -22,7 +22,7 @@ class TestPubSubRouter:
         async def handler(msg):
             pass
 
-        subscribers = router._get_subscribers()
+        subscribers = router.get_subscribers()
         assert "api.test.alias" in subscribers
 
     def test_include_wrong_type(self):
@@ -38,7 +38,7 @@ class TestPubSubRouter:
         with pytest.raises(FastPubSubException):
             PubSubRouter(middlewares=321)
 
-    def test_get_subscribers(self):
+    def testget_subscribers(self):
         router = PubSubRouter()
 
         @router.subscriber(
@@ -53,7 +53,7 @@ class TestPubSubRouter:
         async def handler2(msg):
             pass
 
-        subscribers = router._get_subscribers()
+        subscribers = router.get_subscribers()
         assert len(subscribers) == 2
         assert "sub1" in subscribers
         assert "sub2" in subscribers
@@ -78,7 +78,7 @@ class TestPubSubRouter:
             pass
 
         with pytest.raises(FastPubSubException):
-            router._get_subscribers()
+            router.get_subscribers()
 
     def test_allow_duplicate_prefix_on_different_aliases(self):
         router = PubSubRouter()
@@ -99,7 +99,7 @@ class TestPubSubRouter:
         async def handler2(msg):
             pass
 
-        subscribers = router._get_subscribers()
+        subscribers = router.get_subscribers()
         assert len(subscribers) == 2
         assert "same.alias_a" in subscribers
         assert "same.alias_b" in subscribers
@@ -133,7 +133,7 @@ class TestPubSubRouter:
             pass
 
         level1_router = PubSubRouter(prefix="level1", routers=(level2_router,))
-        subscribers = level1_router._get_subscribers()
+        subscribers = level1_router.get_subscribers()
         assert "level1.level2.alias" in subscribers
         assert (
             subscribers["level1.level2.alias"].subscription_name

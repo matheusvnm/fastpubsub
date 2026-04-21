@@ -533,7 +533,7 @@ class PubSubTestClient:
             )
         )
 
-        subscribers = self.broker.router._get_subscribers()
+        subscribers = self.broker.router.get_subscribers()
         for subscriber in subscribers.values():
             if subscriber.topic_name != topic_name:
                 continue

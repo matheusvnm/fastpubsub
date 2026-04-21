@@ -18,7 +18,7 @@ class TestRoutersNestedRoutersFinancial:
 
             published_messages = client.get_published_messages()
             processed_results = client.get_results()
-            subscribers_alias = set(broker.router._get_subscribers())
+            subscribers_alias = set(broker.router.get_subscribers())
 
         assert len(subscribers_alias) == 3
         assert len(published_messages) == 3
