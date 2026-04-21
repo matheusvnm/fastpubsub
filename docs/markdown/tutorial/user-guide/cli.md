@@ -196,7 +196,7 @@ The framework is actively developed with planned features:
 
 - **Full Support for Uvicorn**: At the moment we only support a few set of basic configurations for uvicorn. We intend to support them all in the future.
 - **Publish Messages**: Publish messages locally to the configured emulator or directly sending to your handler.
-- **Listing FastPubSub Components**: Different strategies to list your routers, subscribers, publishers, etc.
+- **Inspecting Components**: See [Inspecting Your Application](inspect.md) for listing subscribers, topics, and more.
 
 ---
 
