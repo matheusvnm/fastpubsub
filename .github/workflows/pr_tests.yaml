@@ -20,7 +20,7 @@ jobs:
       UV_PYTHON: "3.12"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Install uv command
         uses: astral-sh/setup-uv@v7
       - name: Install dependencies
@@ -48,7 +48,7 @@ jobs:
       PYTHONPATH: "docs/snippets"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Install uv command
         uses: astral-sh/setup-uv@v7
       - name: Install dependencies

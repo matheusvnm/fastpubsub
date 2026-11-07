@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Install uv command
         uses: astral-sh/setup-uv@v7
       - name: Upgrade locked dependencies
@@ -34,7 +34,7 @@ jobs:
           echo "version=$(uv version --short)" >> "$GITHUB_OUTPUT"
       - name: Open pull request
         if: steps.lock.outputs.has_changes == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.AUTOMATION_TOKEN }}
           branch: upgrade/dependencies
