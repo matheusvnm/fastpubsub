@@ -1,10 +1,16 @@
+set dotenv-load
+
 # PROJECT SETTINGS
 
 project_name := "fastpubsub"
 python_version := "3.12"
-pubsub_emulator_host := "localhost:8085"
+pubsub_emulator_port := env("PUBSUB_EMULATOR_PORT", "8085")
+pubsub_emulator_host := "localhost:" + pubsub_emulator_port
+docs_port := env("DOCS_PORT", "8001")
 
 # DIRECTORIES
+
+worktrees_dir := ".worktrees"
 
 typecheck_dirs := "fastpubsub benchmarks"
 target_dirs := "fastpubsub tests docs/snippets benchmarks"
@@ -278,6 +284,49 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
     rm -rf *.log 2>/dev/null || true
 
 # ----------------------------------------------------------------------------
+# Git Commands
+# ----------------------------------------------------------------------------
+
+[doc("Create a worktree in .worktrees/ with its own container ports")]
+[group('git')]
+[unix]
+worktree-add branch base="main":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    name="{{ replace(branch, '/', '-') }}"
+    path="{{ worktrees_dir }}/$name"
+    offset=1
+    while grep -qsx "PUBSUB_EMULATOR_PORT=$((8085 + offset * 10))" {{ worktrees_dir }}/*/.env; do
+        offset=$((offset + 1))
+    done
+    just _start_msg "Creating worktree $path"
+    if git show-ref --verify --quiet "refs/heads/{{ branch }}"; then
+        git worktree add "$path" "{{ branch }}"
+    else
+        git worktree add -b "{{ branch }}" "$path" "{{ base }}"
+    fi
+    printf '%s\n' \
+        "COMPOSE_PROJECT_NAME={{ project_name }}-$name" \
+        "PUBSUB_EMULATOR_PORT=$((8085 + offset * 10))" \
+        "DOCS_PORT=$((8001 + offset * 10))" > "$path/.env"
+    just _start_msg "Installing dependencies in $path"
+    (cd "$path" && uv sync --all-groups --all-extras)
+    just _green "Worktree ready: $path (emulator port $((8085 + offset * 10)), docs port $((8001 + offset * 10)))"
+
+[doc("Stop the containers of a worktree and remove it")]
+[group('git')]
+[unix]
+worktree-remove branch:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    path="{{ worktrees_dir }}/{{ replace(branch, '/', '-') }}"
+    just _start_msg "Removing containers and volumes of $path"
+    (cd "$path" && docker compose down --volumes --remove-orphans) \
+        || just _warn_msg "Could not remove the containers of $path"
+    just _start_msg "Removing worktree $path"
+    git worktree remove "$path"
+
+# ----------------------------------------------------------------------------
 # Documentation Commands
 # ----------------------------------------------------------------------------
 
@@ -291,7 +340,7 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 [group('docs')]
 @serve-docs:
     just _start_msg "Starting documentation server"
-    uv run zensical serve -f {{ docs_dir }}/zensical.toml -a localhost:8001
+    uv run zensical serve -f {{ docs_dir }}/zensical.toml -a localhost:{{ docs_port }}
 
 # ----------------------------------------------------------------------------
 # Private Commands

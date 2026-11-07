@@ -37,5 +37,8 @@ docs/_build
 # Claude
 .claude
 
+# Worktrees
+.worktrees
+
 # Integration planning docs
 integration*.md
