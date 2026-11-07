@@ -7,6 +7,7 @@ services:
       --host-port=0.0.0.0:8085
     environment:
       CLOUDSDK_CORE_PROJECT: fastpubsub-test-project
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
     ports:
       - "${PUBSUB_EMULATOR_PORT:-8085}:8085"
     healthcheck:
@@ -18,7 +19,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 2G
     networks:
       - pubsub-net
     security_opt:
