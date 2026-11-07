@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv_build>=0.9.0,<0.12"]
+requires = ["uv_build>=0.13.0,<0.14"]
 build-backend = "uv_build"
 
 [project]
@@ -65,10 +65,10 @@ fastpubsub = "fastpubsub.cli.main:app"
 
 [dependency-groups]
 lint = [
-    "ruff==0.14.10",
-    "mypy==1.19.1",
-    "bandit==1.9.2",
-    "codespell==2.4.1",
+    "ruff==0.17.4",
+    "mypy==2.4.1",
+    "bandit==1.9.4",
+    "codespell==2.4.3",
 ]
 
 test = [
@@ -90,12 +90,12 @@ dev = [
     {include-group = "lint"},
     {include-group = "test"},
     {include-group = "bench"},
-    "pre-commit==4.3.0",
+    "pre-commit==4.7.0",
 ]
 
 docs = [
     "mkdocstrings-python>=2.0.1",
-    "zensical==0.0.20",
+    "zensical==0.1.0",
 ]
 
 [tool.pytest.ini_options]

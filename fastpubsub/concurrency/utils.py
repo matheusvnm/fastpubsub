@@ -4,7 +4,7 @@ import functools
 import inspect
 from collections.abc import Callable
 from types import FunctionType
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any
 
 import anyio
 import anyio.to_thread
@@ -13,10 +13,6 @@ from fastpubsub.types import AsyncCallable, AsyncDecoratedCallable
 
 if TYPE_CHECKING:
     from fastpubsub.middlewares.base import BaseMiddleware
-
-
-P = ParamSpec("P")
-T = TypeVar("T")
 
 
 def ensure_async_callable_function(
@@ -62,7 +58,7 @@ def ensure_async_middleware(middleware: type["BaseMiddleware"]) -> None:
         )
 
 
-async def apply_async(
+async def apply_async[**P, T](
     func: Callable[P, T], *args: P.args, **kwargs: P.kwargs
 ) -> T:
     """Transforms a blocking sync callable into a async callable.
@@ -80,7 +76,7 @@ async def apply_async(
     return await anyio.to_thread.run_sync(func, abandon_on_cancel=False)
 
 
-async def apply_async_cancellable(
+async def apply_async_cancellable[**P, T](
     func: Callable[P, T], *args: P.args, **kwargs: P.kwargs
 ) -> T:
     """Transforms a blocking sync callable into a async cancellable callable.
