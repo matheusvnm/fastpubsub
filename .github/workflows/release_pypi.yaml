@@ -18,7 +18,7 @@ jobs:
       should_publish: ${{ steps.release.outputs.should_publish }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Install uv command
@@ -51,7 +51,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout code at release tag
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.tag.outputs.tag }}
       - name: Install uv command
