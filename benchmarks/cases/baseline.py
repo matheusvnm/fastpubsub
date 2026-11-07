@@ -1,13 +1,21 @@
-"""Baseline google-cloud-pubsub benchmark case.
+"""Baseline google-cloud-pubsub benchmark cases.
 
-This case measures the performance of using the google-cloud-pubsub
-library directly, without FastPubSub. It serves as a baseline to
-measure the overhead that FastPubSub adds.
+These cases measure the performance of using the google-cloud-pubsub
+library directly, without FastPubSub.
 
 The echo pattern is the same as the basic case:
 1. Subscribe to a topic
 2. When a message is received, publish it back to the same topic
 3. Count each message processed
+
+The baseline case does the same work as FastPubSub for each message.
+It publishes the message, waits for the publish result, acknowledges the
+message and waits for the acknowledge result. It uses the same number
+of threads as the anyio thread limiter that FastPubSub uses.
+
+The non-blocking case never waits in the callback. It acknowledges the
+message when the publish completes. It shows the upper limit of the
+google-cloud-pubsub library for this pattern.
 """
 
 import asyncio
@@ -16,13 +24,15 @@ import logging
 import queue
 import time
 from collections.abc import AsyncIterator
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
 
+import anyio.to_thread
 from google.api_core.exceptions import AlreadyExists
 from google.cloud.pubsub import PublisherClient, SubscriberClient
 from google.cloud.pubsub_v1.subscriber.futures import StreamingPullFuture
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
+from google.cloud.pubsub_v1.subscriber.scheduler import ThreadScheduler
 from google.cloud.pubsub_v1.types import FlowControl
 
 # Disable logging for accurate benchmark timing
@@ -30,8 +40,6 @@ logging.getLogger("google").setLevel(logging.CRITICAL)
 
 # Benchmark configuration (same as basic case)
 PROJECT_ID = "fastpubsub-benchmark"
-TOPIC_NAME = "bench-baseline-topic"
-SUBSCRIPTION_NAME = "bench-baseline-subscription"
 
 # Test message payload (consistent with FastStream benchmarks)
 TEST_MESSAGE = {
@@ -46,11 +54,14 @@ class BaselinePubSubTestCase:
     """Baseline benchmark using pure google-cloud-pubsub library.
 
     This measures the baseline performance of the google-cloud-pubsub
-    library without any FastPubSub overhead.
+    library without any FastPubSub overhead, with the same work and
+    the same concurrency as FastPubSub.
     """
 
     case_name = "baseline"
     description = "Pure google-cloud-pubsub (baseline)"
+    topic_name = "bench-baseline-topic"
+    subscription_name = "bench-baseline-subscription"
 
     def __init__(self, num_msgs: int) -> None:
         """Initialize the benchmark case."""
@@ -59,37 +70,29 @@ class BaselinePubSubTestCase:
         self._subscriber_client: SubscriberClient | None = None
         self._publisher_client: PublisherClient | None = None
         self._streaming_pull_future: StreamingPullFuture | None = None
+        self._topic_path = PublisherClient.topic_path(
+            PROJECT_ID, self.topic_name
+        )
 
-    def _create_topic(self) -> str:
-        """Create the benchmark topic if it doesn't exist.
-
-        Returns:
-            str: The topic path.
-        """
-        topic_path: str = PublisherClient.topic_path(PROJECT_ID, TOPIC_NAME)
-
+    def _create_topic(self) -> None:
+        """Create the benchmark topic if it doesn't exist."""
         with suppress(AlreadyExists):
-            self._publisher_client.create_topic(name=topic_path)  # type: ignore[union-attr]
+            self._publisher_client.create_topic(name=self._topic_path)  # type: ignore[union-attr]
 
-        return topic_path
-
-    def _create_subscription(self, topic_path: str) -> str:
+    def _create_subscription(self) -> str:
         """Create the benchmark subscription if it doesn't exist.
-
-        Args:
-            topic_path: The topic path to subscribe to.
 
         Returns:
             str: The subscription path.
         """
         subscription_path: str = SubscriberClient.subscription_path(
-            PROJECT_ID, SUBSCRIPTION_NAME
+            PROJECT_ID, self.subscription_name
         )
 
         with suppress(AlreadyExists):
             self._subscriber_client.create_subscription(  # type: ignore[union-attr]
                 name=subscription_path,
-                topic=topic_path,
+                topic=self._topic_path,
             )
 
         return subscription_path
@@ -102,18 +105,14 @@ class BaselinePubSubTestCase:
         """
         self._EVENTS_QUEUE.put_nowait(1)
 
-        # Acknowledge the message just like FastPubSub
-        message.ack_with_response()
-
         # Echo message back to create infinite loop (Do not create topic)
-        topic_path = PublisherClient.topic_path(PROJECT_ID, TOPIC_NAME)
         future: Future[str] = self._publisher_client.publish(  # type: ignore[union-attr]
-            topic=topic_path,
+            topic=self._topic_path,
             data=message.data,
         )
-
-        # On FastPubSub we always wait
         future.result()
+
+        message.ack_with_response().result()
 
     @asynccontextmanager
     async def start(self) -> AsyncIterator[float]:
@@ -130,16 +129,24 @@ class BaselinePubSubTestCase:
         self._publisher_client = PublisherClient()
         self._subscriber_client = SubscriberClient()
 
+        thread_limit = int(
+            anyio.to_thread.current_default_thread_limiter().total_tokens
+        )
+
         try:
             # Create topic and subscription
-            topic_path = self._create_topic()
-            subscription_path = self._create_subscription(topic_path)
+            self._create_topic()
+            subscription_path = self._create_subscription()
 
             # Start subscribing
             self._streaming_pull_future = self._subscriber_client.subscribe(
                 subscription=subscription_path,
                 callback=self._on_message,
                 flow_control=FlowControl(max_messages=1000),
+                scheduler=ThreadScheduler(
+                    executor=ThreadPoolExecutor(max_workers=thread_limit)
+                ),
+                await_callbacks_on_shutdown=True,
             )
 
             # Give subscription time to establish
@@ -153,7 +160,7 @@ class BaselinePubSubTestCase:
             for _ in range(self.num_msgs):
                 initial_message = json.dumps(TEST_MESSAGE).encode()
                 future: Future[str] = self._publisher_client.publish(
-                    topic=topic_path,
+                    topic=self._topic_path,
                     data=initial_message,
                 )
                 future.result(timeout=10)  # Wait for initial publish
@@ -164,6 +171,10 @@ class BaselinePubSubTestCase:
             # Cancel the streaming pull
             if self._streaming_pull_future:
                 self._streaming_pull_future.cancel()
+                with suppress(Exception):
+                    await asyncio.to_thread(
+                        self._streaming_pull_future.result, timeout=30
+                    )
                 self._streaming_pull_future = None
 
             # Close clients
@@ -188,3 +199,29 @@ class BaselinePubSubTestCase:
             except queue.Empty:
                 break
         return processed_messages
+
+
+class NonBlockingPubSubTestCase(BaselinePubSubTestCase):
+    """Benchmark using pure google-cloud-pubsub without blocking calls.
+
+    This measures the upper limit of the google-cloud-pubsub library
+    for the echo pattern. The callback never waits for a result.
+    """
+
+    case_name = "nonblocking"
+    description = "Pure google-cloud-pubsub without blocking (upper limit)"
+    topic_name = "bench-nonblocking-topic"
+    subscription_name = "bench-nonblocking-subscription"
+
+    def _on_message(self, message: PubSubMessage) -> None:
+        """Handle incoming message callback.
+
+        Args:
+            message: The received PubSub message.
+        """
+        self._EVENTS_QUEUE.put_nowait(1)
+        future: Future[str] = self._publisher_client.publish(  # type: ignore[union-attr]
+            topic=self._topic_path,
+            data=message.data,
+        )
+        future.add_done_callback(lambda _: message.ack())

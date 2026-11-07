@@ -19,12 +19,21 @@ from typing import Any, Protocol, cast
 
 import psutil
 
-from benchmarks.cases import BaselinePubSubTestCase, BasicTestCase
+from benchmarks.cases import (
+    BaselinePubSubTestCase,
+    BasicTestCase,
+    NonBlockingPubSubTestCase,
+)
 from fastpubsub.__about__ import __version__
 
 BENCH_CASE_IMPLEMENTATIONS = {
-    "all": [BaselinePubSubTestCase, BasicTestCase],
+    "all": [
+        BaselinePubSubTestCase,
+        NonBlockingPubSubTestCase,
+        BasicTestCase,
+    ],
     "baseline": [BaselinePubSubTestCase],
+    "nonblocking": [NonBlockingPubSubTestCase],
     "basic": [BasicTestCase],
 }
 
@@ -66,10 +75,12 @@ class MeasureResult:
     Attributes:
         total_events: Total number of events processed.
         elapsed_time: Time elapsed in seconds.
+        cpu_seconds: CPU time of the benchmark process in seconds.
     """
 
     total_events: int
     elapsed_time: float
+    cpu_seconds: float = 0.0
 
     @property
     def eps(self) -> float:
@@ -81,6 +92,17 @@ class MeasureResult:
         if self.elapsed_time == 0:
             return 0.0
         return self.total_events / self.elapsed_time
+
+    @property
+    def cpu_microseconds_per_event(self) -> float:
+        """Calculate the CPU time of the benchmark process for each event.
+
+        Returns:
+            float: CPU microseconds per event.
+        """
+        if self.total_events <= 0:
+            return 0.0
+        return self.cpu_seconds * 1_000_000 / self.total_events
 
 
 async def measure(
@@ -95,14 +117,33 @@ async def measure(
     Yields:
         MeasureResult: Current measurement snapshot every second.
     """
+    process = psutil.Process()
     async with case.start() as start_time:
+        start_cpu_seconds = read_cpu_seconds(process)
         while (elapsed_time := (time.time() - start_time)) < measure_time:
             yield MeasureResult(-1, elapsed_time)
             await asyncio.sleep(1.0)
 
-    yield MeasureResult(
-        case.get_total_processed_msgs(), time.time() - start_time
-    )
+        final_result = MeasureResult(
+            total_events=case.get_total_processed_msgs(),
+            elapsed_time=time.time() - start_time,
+            cpu_seconds=read_cpu_seconds(process) - start_cpu_seconds,
+        )
+
+    yield final_result
+
+
+def read_cpu_seconds(process: psutil.Process) -> float:
+    """Read the user and system CPU time of all threads of a process.
+
+    Args:
+        process: The process to read.
+
+    Returns:
+        float: CPU time in seconds.
+    """
+    cpu_times = process.cpu_times()
+    return float(cpu_times.user + cpu_times.system)
 
 
 async def run_benchmark(
@@ -130,9 +171,9 @@ async def run_benchmark(
     # Prints the final result and the final line
     sys.stdout.write(
         f"\r[{case.case_name}] Events: {result.total_events:,}, "
-        f"Time: {result.elapsed_time:.1f}s "
-        "({(measure_time - result.elapsed_time):.1f}s left), "
-        f"EPS: {result.eps:,.2f}    "
+        f"Time: {result.elapsed_time:.1f}s, "
+        f"EPS: {result.eps:,.2f}, "
+        f"CPU: {result.cpu_microseconds_per_event:,.1f} µs/event    "
     )
     sys.stdout.flush()
 
@@ -172,6 +213,8 @@ def save_results(
                     "Description",
                     "Host Memory",
                     "Number of Initial Messages",
+                    "CPU Seconds",
+                    "CPU Microseconds per Event",
                 ]
             )
 
@@ -187,6 +230,8 @@ def save_results(
                 case.description,
                 f"{mem.total / (1024**3):.2f} GB",
                 case.num_msgs,
+                f"{result.cpu_seconds:.2f}",
+                f"{result.cpu_microseconds_per_event:.1f}",
             ]
         )
 
@@ -199,19 +244,24 @@ def print_results(
     Args:
         cases_results: List of (case, result) tuples.
     """
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 75)
     print("BENCHMARK RESULTS")
-    print("=" * 60)
-    print(f"{'Case':<15} | {'Events':>12} | {'EPS':>12} | Description")
-    print("-" * 60)
+    print("=" * 75)
+    print(
+        f"{'Case':<15} | {'Events':>12} | {'EPS':>12} | "
+        f"{'CPU µs/event':>12} | Description"
+    )
+    print("-" * 75)
 
     for case, result in cases_results:
         print(
             f"{case.case_name:<15} | {result.total_events:>12,} | "
-            f"{result.eps:>12,.2f} | {case.description}"
+            f"{result.eps:>12,.2f} | "
+            f"{result.cpu_microseconds_per_event:>12,.1f} | "
+            f"{case.description}"
         )
 
-    print("-" * 60)
+    print("-" * 75)
 
     # Calculate overhead for each test case against baseline.
     baseline_result = next(
@@ -225,8 +275,21 @@ def print_results(
             continue
 
         overhead = ((baseline_result.eps - r.eps) / baseline_result.eps) * 100
-        print(f"FastPubSub ({c.case_name}) overhead: {overhead:.1f}%")
-        print("=" * 60)
+        print(f"{c.case_name} EPS overhead against baseline: {overhead:.1f}%")
+
+        if baseline_result.cpu_microseconds_per_event > 0:
+            cpu_overhead = (
+                (
+                    r.cpu_microseconds_per_event
+                    - baseline_result.cpu_microseconds_per_event
+                )
+                / baseline_result.cpu_microseconds_per_event
+            ) * 100
+            print(
+                f"{c.case_name} CPU overhead against baseline: "
+                f"{cpu_overhead:.1f}%"
+            )
+        print("=" * 75)
 
 
 async def main() -> None:
