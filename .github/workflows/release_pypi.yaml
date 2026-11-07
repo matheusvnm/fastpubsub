@@ -1,10 +1,48 @@
 name: Create New Release (PyPI)
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - pyproject.toml
   workflow_dispatch:
 
 jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      should_publish: ${{ steps.release.outputs.should_publish }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Install uv command
+        uses: astral-sh/setup-uv@v7
+      - name: Read project version
+        id: version
+        run: echo "tag=v$(uv version --short)" >> "$GITHUB_OUTPUT"
+      - name: Create tag and GitHub release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if git rev-parse --quiet --verify "refs/tags/$TAG" > /dev/null; then
+            echo "Tag $TAG exists. No new release."
+            echo "should_publish=${{ github.event_name == 'workflow_dispatch' }}" >> "$GITHUB_OUTPUT"
+          else
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --generate-notes
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build_and_publish:
+    needs: tag
+    if: needs.tag.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -12,32 +50,13 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-      - name: Set up Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://github-actions:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git fetch --tags
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Get latest tag
-        id: get_latest_tag
-        run: |
-          LATEST_TAG=$(git tag | tail -n 1)
-          echo "::set-output name=latest_tag::$LATEST_TAG"
-      - name: Checkout code to latest tag
+      - name: Checkout code at release tag
         uses: actions/checkout@v5
         with:
-          ref: ${{ steps.get_latest_tag.outputs.latest_tag }}
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
+          ref: ${{ needs.tag.outputs.tag }}
       - name: Install uv command
-        run: pip install uv
-      - name: Build and publish package
-        run: |
-          uv build
-          uv publish
+        uses: astral-sh/setup-uv@v7
+      - name: Build package
+        run: uv build
+      - name: Publish package
+        run: uv publish --trusted-publishing always
