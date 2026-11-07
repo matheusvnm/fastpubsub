@@ -1,6 +1,7 @@
 """Gzip middleware for FastPubSub."""
 
 import gzip
+import time
 from typing import Any
 
 from fastpubsub.datastructures import Message
@@ -65,8 +66,11 @@ class GZipMiddleware(BaseMiddleware):
             attributes = {}
 
         attributes["content-encoding"] = "gzip"
+        modification_time = time.time() if self.mtime is None else self.mtime
         compressed_data = gzip.compress(
-            data=data, compresslevel=self.compresslevel, mtime=self.mtime
+            data=data,
+            compresslevel=self.compresslevel,
+            mtime=modification_time,
         )
         return await super().on_publish(
             compressed_data, ordering_key, attributes
