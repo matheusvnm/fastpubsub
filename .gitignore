@@ -146,6 +146,7 @@ tmp/
 .python-version/
 .secrets
 *.DS_Store
+.worktrees/
 
 # Local audio notes
 *.m4a

@@ -1,7 +1,9 @@
 ARG PYTHON_VERSION=3.12
 
+FROM ghcr.io/astral-sh/uv:0.9.18 AS uv
+
 FROM python:$PYTHON_VERSION
-COPY --from=ghcr.io/astral-sh/uv:0.9.18 /uv /uvx /bin/
+COPY --from=uv /uv /uvx /bin/
 
 ENV PYTHONUNBUFFERED=1
 ENV UV_COMPILE_BYTECODE=1
