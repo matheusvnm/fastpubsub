@@ -113,13 +113,13 @@ fn build_python_batch<'py>(
     Ok(items)
 }
 
-async fn dispatch_messages(
+fn dispatch_messages(
     mut receiver: mpsc::UnboundedReceiver<ReceivedMessage>,
     max_batch_size: usize,
     call_soon_threadsafe: Py<PyAny>,
     dispatch: Py<PyAny>,
 ) {
-    while let Some(first) = receiver.recv().await {
+    while let Some(first) = receiver.blocking_recv() {
         let mut batch = Vec::with_capacity(max_batch_size);
         batch.push(first);
         while batch.len() < max_batch_size {
@@ -202,14 +202,15 @@ impl Subscription {
             }
             reader_is_running.store(false, Ordering::SeqCst);
         });
-        let dispatcher = RUNTIME.spawn(dispatch_messages(
-            receiver,
-            max_batch_size.max(1),
-            call_soon_threadsafe,
-            dispatch,
-        ));
+        let max_batch_size = max_batch_size.max(1);
+        std::thread::Builder::new()
+            .name("fastpubsub-dispatch".into())
+            .spawn(move || {
+                dispatch_messages(receiver, max_batch_size, call_soon_threadsafe, dispatch)
+            })
+            .map_err(|error| CoreError::new_err(error.to_string()))?;
         Ok(Self {
-            tasks: Mutex::new(vec![reader, dispatcher]),
+            tasks: Mutex::new(vec![reader]),
             shutdown_token,
             is_running,
         })
@@ -238,13 +239,13 @@ impl Subscription {
 
 type PublishOutcome = (Py<PyAny>, Result<String, PublishError>);
 
-async fn complete_publishes(
+fn complete_publishes(
     mut receiver: mpsc::UnboundedReceiver<PublishOutcome>,
     max_batch_size: usize,
     call_soon_threadsafe: Py<PyAny>,
     resolve_batch: Py<PyAny>,
 ) {
-    while let Some(first) = receiver.recv().await {
+    while let Some(first) = receiver.blocking_recv() {
         let mut batch = Vec::with_capacity(max_batch_size);
         batch.push(first);
         while batch.len() < max_batch_size {
@@ -308,12 +309,18 @@ impl Publisher {
             })
         })?;
         let (outcomes, receiver) = mpsc::unbounded_channel();
-        RUNTIME.spawn(complete_publishes(
-            receiver,
-            max_batch_size.max(1),
-            call_soon_threadsafe,
-            resolve_batch,
-        ));
+        let max_batch_size = max_batch_size.max(1);
+        std::thread::Builder::new()
+            .name("fastpubsub-publish".into())
+            .spawn(move || {
+                complete_publishes(
+                    receiver,
+                    max_batch_size,
+                    call_soon_threadsafe,
+                    resolve_batch,
+                )
+            })
+            .map_err(|error| CoreError::new_err(error.to_string()))?;
         Ok(Self { inner, outcomes })
     }
 

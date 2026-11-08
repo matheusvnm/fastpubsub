@@ -4,13 +4,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from google.api_core.exceptions import NotFound
 
 from fastpubsub.datastructures import Message
 from fastpubsub.middlewares.di import (
     HandleMessageSerializerMiddleware,
     PublishMessageSerializerMiddleware,
 )
+from fastpubsub.transport import NotFound
 
 
 @pytest.fixture
