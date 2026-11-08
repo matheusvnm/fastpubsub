@@ -65,9 +65,9 @@ def format_metric(values: list[float]) -> str:
 
 
 def build_row_name(row: dict[str, str]) -> str:
-    """Name a row by its case, transport and Python version."""
+    """Name a row by its label, case, transport and Python version."""
     transport = row.get("Transport") or "python"
-    return f"{row['Case']} {transport} {row['Python Version']}"
+    return f"{row['Label']}: {row['Case']} {transport} {row['Python Version']}"
 
 
 def print_summary(
@@ -82,8 +82,8 @@ def print_summary(
     Args:
         rows: The result rows.
         is_grouped_by_scenario: Put all labels of a scenario in one table.
-            Each row name then has the case, the transport and the Python
-            version.
+            Each row name then has the label, the case, the transport and
+            the Python version.
     """
     groups: dict[tuple[str, str], dict[str, list[dict[str, str]]]] = (
         defaultdict(lambda: defaultdict(list))
@@ -110,7 +110,7 @@ def print_summary(
             (
                 case_rows
                 for name, case_rows in cases.items()
-                if name.split()[0] == REFERENCE_CASE
+                if REFERENCE_CASE in name.split()
             ),
             next(iter(cases.values())),
         )

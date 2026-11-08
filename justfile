@@ -246,6 +246,15 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
         fi; \
     done
 
+[doc("Build the Rust core in the container and install it in the container environment")]
+[group("bench")]
+@core-build-container: up
+    just _start_msg "Building the Rust core in the container"
+    docker compose exec fastpubsub bash -c \
+        "uvx maturin build --release -m core/Cargo.toml --out /root/.cache/core-wheels \
+        && uv pip install --python /src/.venv --reinstall \
+        /root/.cache/core-wheels/fastpubsub_core-*-abi3-*.whl"
+
 [doc("Clear benchmark results")]
 [group("bench")]
 @bench-clean:

@@ -162,11 +162,15 @@ impl Subscription {
     ) -> PyResult<Self> {
         let subscriber = python.detach(|| {
             RUNTIME.block_on(async move {
-                anonymous_endpoint(PubSubSubscriber::builder(), endpoint, |builder, endpoint| {
-                    builder
-                        .with_endpoint(endpoint)
-                        .with_credentials(AnonymousCredentials::new().build())
-                })
+                anonymous_endpoint(
+                    PubSubSubscriber::builder(),
+                    endpoint,
+                    |builder, endpoint| {
+                        builder
+                            .with_endpoint(endpoint)
+                            .with_credentials(AnonymousCredentials::new().build())
+                    },
+                )
                 .build()
                 .await
                 .map_err(|error| CoreError::new_err(error.to_string()))
@@ -405,11 +409,15 @@ impl AdminClient {
     fn new(python: Python<'_>, endpoint: Option<String>) -> PyResult<Self> {
         python.detach(|| {
             RUNTIME.block_on(async move {
-                let topics = anonymous_endpoint(TopicAdmin::builder(), endpoint.clone(), |builder, endpoint| {
-                    builder
-                        .with_endpoint(endpoint)
-                        .with_credentials(AnonymousCredentials::new().build())
-                })
+                let topics = anonymous_endpoint(
+                    TopicAdmin::builder(),
+                    endpoint.clone(),
+                    |builder, endpoint| {
+                        builder
+                            .with_endpoint(endpoint)
+                            .with_credentials(AnonymousCredentials::new().build())
+                    },
+                )
                 .build()
                 .await
                 .map_err(|error| CoreError::new_err(error.to_string()))?;
@@ -527,7 +535,10 @@ impl AdminClient {
 fn fastpubsub_core(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add("CoreError", module.py().get_type::<CoreError>())?;
     module.add("NotFoundError", module.py().get_type::<NotFoundError>())?;
-    module.add("AlreadyExistsError", module.py().get_type::<AlreadyExistsError>())?;
+    module.add(
+        "AlreadyExistsError",
+        module.py().get_type::<AlreadyExistsError>(),
+    )?;
     module.add_class::<AckHandle>()?;
     module.add_class::<Subscription>()?;
     module.add_class::<Publisher>()?;

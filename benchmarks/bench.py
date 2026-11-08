@@ -319,6 +319,11 @@ def parse_arguments() -> argparse.Namespace:
         help="A name for the code under test, for example python-optimized",
     )
     parser.add_argument(
+        "--cpu-iterations",
+        type=int,
+        help="Loop rounds for 1 ms of CPU work (default: calibrate)",
+    )
+    parser.add_argument(
         "--transport",
         choices=["python", "rust"],
         default="python",
@@ -350,8 +355,10 @@ def main() -> None:
     case_names = list(CASE_LOCATIONS) if "all" in args.case else args.case
 
     code_folder = Path(args.fastpubsub_source or Path.cwd())
-    print("Calibrating 1 ms of CPU work...")
-    cpu_iterations = calibrate_cpu_iterations()
+    cpu_iterations = args.cpu_iterations
+    if cpu_iterations is None:
+        print("Calibrating 1 ms of CPU work...")
+        cpu_iterations = calibrate_cpu_iterations()
     run_context = {
         "run_id": uuid.uuid4().hex[:12],
         "label": args.label,
