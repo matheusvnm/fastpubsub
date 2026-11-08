@@ -22,6 +22,7 @@ from benchmarks.resources import create_run_resources, delete_run_resources
 from benchmarks.workload import SCENARIOS, Recorder
 
 RESULT_PREFIX = "RESULT "
+PHASE_PREFIX = "PHASE "
 
 
 @dataclass
@@ -78,6 +79,15 @@ def read_peak_rss_mb() -> float:
     return peak_rss * bytes_per_unit / (1024 * 1024)
 
 
+def print_phase(name: str) -> None:
+    """Print the start of a run phase for the timeline sampler.
+
+    Args:
+        name: The phase name.
+    """
+    print(PHASE_PREFIX + name, flush=True)
+
+
 def calculate_percentile_ms(
     sorted_latencies_ns: list[int], rank: float
 ) -> float:
@@ -125,8 +135,10 @@ async def run_case(
             SCENARIOS[scenario_name], cpu_iterations, resources, recorder
         )
         async with case.run():
+            print_phase("warmup")
             await asyncio.sleep(warmup)
             recorder.reset()
+            print_phase("measure")
             start_cpu_seconds = read_cpu_seconds(process)
             start_time = time.perf_counter()
 
@@ -135,6 +147,7 @@ async def run_case(
             events, redeliveries, latencies_ns = recorder.read()
             elapsed_seconds = time.perf_counter() - start_time
             cpu_seconds = read_cpu_seconds(process) - start_cpu_seconds
+            print_phase("shutdown")
     finally:
         delete_run_resources(resources)
 

@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from benchmarks.workload import ACK_DEADLINE_SECONDS
 
-PROJECT_ID = "fastpubsub-benchmark"
+PROJECT_ID = os.getenv("BENCHMARK_PROJECT_ID", "fastpubsub-benchmark")
 
 
 @dataclass(frozen=True)
