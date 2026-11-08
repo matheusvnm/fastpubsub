@@ -135,7 +135,7 @@ class Subscription:
     def __new__(
         cls,
         subscription_path: str,
-        max_outstanding_messages: int,
+        max_messages: int,
         bridge: Bridge,
         dispatch: Callable[[list[_ReceivedEntry]], None],
         endpoint: str | None = None,
@@ -145,14 +145,17 @@ class Subscription:
         Args:
             subscription_path: The full subscription path, in the format
                 ``projects/<project>/subscriptions/<name>``.
-            max_outstanding_messages: The maximum number of messages that
-                the server sends before the client acks them.
+            max_messages: The maximum number of handlers that the client
+                runs at the same time. The server gets twice this limit,
+                so the next messages are ready when a handler stops.
             bridge: The bridge of the event loop that runs ``dispatch``.
             dispatch: The function that receives each batch of messages.
             endpoint: The URL of the Pub/Sub emulator. ``None`` connects
                 to the Pub/Sub service with the default credentials.
 
         Raises:
+            ValueError: The path has a wrong format, or ``max_messages``
+                is 0.
             CoreError: The client cannot connect or cannot get the
                 credentials.
         """
@@ -207,6 +210,7 @@ class Publisher:
                 to the Pub/Sub service with the default credentials.
 
         Raises:
+            ValueError: The path has a wrong format.
             CoreError: The client cannot connect or cannot get the
                 credentials.
         """
@@ -270,6 +274,7 @@ class AdminClient:
             topic_path: The full topic path.
 
         Raises:
+            ValueError: The path has a wrong format.
             AlreadyExistsError: The topic exists already.
             CoreError: Pub/Sub returned a different error.
         """
@@ -281,6 +286,7 @@ class AdminClient:
             topic_path: The full topic path.
 
         Raises:
+            ValueError: The path has a wrong format.
             NotFoundError: The topic does not exist.
             CoreError: Pub/Sub returned a different error.
         """
@@ -299,6 +305,7 @@ class AdminClient:
             settings: The subscription settings.
 
         Raises:
+            ValueError: A path has a wrong format.
             AlreadyExistsError: The subscription exists already.
             NotFoundError: The topic does not exist.
             CoreError: Pub/Sub returned a different error, or a setting
@@ -322,6 +329,7 @@ class AdminClient:
                 example ``ack_deadline_seconds`` or ``retry_policy``.
 
         Raises:
+            ValueError: A path has a wrong format.
             NotFoundError: The subscription does not exist.
             CoreError: Pub/Sub returned a different error, or a setting
                 has a value out of range.
@@ -334,6 +342,7 @@ class AdminClient:
             subscription_path: The full subscription path.
 
         Raises:
+            ValueError: The path has a wrong format.
             NotFoundError: The subscription does not exist.
             CoreError: Pub/Sub returned a different error.
         """

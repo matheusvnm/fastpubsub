@@ -333,7 +333,7 @@ Outside Google Cloud, the burst delivery p50 is much higher than the steady deli
 
 ### 10.6 The flow-control stall (section 7.4)
 
-Run on a VM in the region, with the Rust transport installed:
+Run on a VM in the region, with the Rust transport installed. Check out commit `415622c` first. In later commits, the core always gives the server twice the client limit, so the probe cannot set the exact limit.
 
 ```bash
 BENCHMARK_PROJECT_ID=<project> OUTSTANDING_LIMIT=1000 ACK_AFTER_PUBLISH=1 taskset -c 0,1 .venv/bin/python -m benchmarks.probes.rust_tail

@@ -333,13 +333,31 @@ dependencies = [
 name = "fastpubsub-core"
 version = "0.1.0"
 dependencies = [
+ "fastpubsub-google-pubsub",
+ "fastpubsub-messaging",
  "futures",
+ "pyo3",
+ "tokio",
+]
+
+[[package]]
+name = "fastpubsub-google-pubsub"
+version = "0.1.0"
+dependencies = [
+ "fastpubsub-messaging",
  "google-cloud-auth",
  "google-cloud-gax",
  "google-cloud-pubsub",
  "google-cloud-wkt",
- "pyo3",
  "tokio",
+]
+
+[[package]]
+name = "fastpubsub-messaging"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "thiserror",
 ]
 
 [[package]]

@@ -1,38 +1,37 @@
-[package]
-name = "fastpubsub-core"
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.91"
 license = "Apache-2.0"
 publish = false
 
-[lib]
-name = "fastpubsub_core"
-crate-type = ["cdylib"]
-
-[dependencies]
+[workspace.dependencies]
+fastpubsub-google-pubsub = { path = "crates/google-pubsub" }
+fastpubsub-messaging = { path = "crates/messaging" }
+bytes = "1"
+futures = "0.3"
 google-cloud-auth = "1"
 google-cloud-gax = "1.15"
 google-cloud-pubsub = "1.7.0"
+pyo3 = "0.30"
+thiserror = "2"
+tokio = "1"
 wkt = { version = "1.10", package = "google-cloud-wkt" }
-pyo3 = { version = "0.30", features = ["extension-module"] }
-futures = "0.3"
-tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }
 
-[features]
-default = ["abi3"]
-abi3 = ["pyo3/abi3-py312"]
-
-[lints.rust]
-unsafe_code = "deny"
+[workspace.lints.rust]
+unsafe_code = "forbid"
 missing_docs = "deny"
 unreachable_pub = "deny"
 
-[lints.rustdoc]
+[workspace.lints.rustdoc]
 broken_intra_doc_links = "deny"
 private_intra_doc_links = "deny"
 
-[lints.clippy]
+[workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
 missing_docs_in_private_items = "deny"
 missing_errors_doc = "deny"

@@ -29,7 +29,6 @@ if TYPE_CHECKING:
 
 NotFound = NotFoundError
 MAX_BATCH_SIZE = 256
-SERVER_OUTSTANDING_FACTOR = 2
 
 logger = logging.getLogger(__name__)
 

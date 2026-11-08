@@ -13,7 +13,6 @@ from fastpubsub.datastructures import Message
 from fastpubsub.exceptions import Drop, Retry
 from fastpubsub.logger import FastPubSubLogger
 from fastpubsub.rust.client import (
-    SERVER_OUTSTANDING_FACTOR,
     PubSubClientFactory,
     build_subscription_path,
     read_endpoint,
@@ -30,8 +29,8 @@ type ReceivedMessage = tuple[str, bytes, dict[str, str], int, AckHandle]
 class PubSubStreamingPullTask:
     """A task that runs the handler for each message that Rust receives.
 
-    The server gets a higher outstanding limit than ``max_messages``,
-    because it stops the stream too early at the exact limit. The task
+    The core gives the server twice the ``max_messages`` limit, because
+    the server stops the stream too early at the exact limit. The task
     keeps the ``max_messages`` limit itself: it runs at most that many
     handlers at the same time, and the other messages wait in a queue.
     """
@@ -59,8 +58,7 @@ class PubSubStreamingPullTask:
             build_subscription_path(
                 self.subscriber.project_id, self.subscriber.subscription_name
             ),
-            self.subscriber.control_flow_policy.max_messages
-            * SERVER_OUTSTANDING_FACTOR,
+            self.subscriber.control_flow_policy.max_messages,
             PubSubClientFactory.get_bridge(),
             self._dispatch,
             read_endpoint(),

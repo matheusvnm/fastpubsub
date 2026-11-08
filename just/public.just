@@ -2,8 +2,8 @@ set dotenv-load
 set working-directory := ".."
 
 typecheck_dirs := "fastpubsub benchmarks"
-target_dirs := "fastpubsub tests docs/snippets benchmarks"
-lint_dirs := "fastpubsub tests docs/snippets benchmarks"
+target_dirs := "fastpubsub tests docs/snippets benchmarks fastpubsub-core/tests"
+lint_dirs := "fastpubsub tests docs/snippets benchmarks fastpubsub-core/tests"
 run_command := "uv run --active --frozen"
 run_test_command := "docker compose exec fastpubsub python -m"
 

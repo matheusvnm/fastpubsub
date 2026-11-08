@@ -32,9 +32,9 @@ jobs:
       - name: Check typing rules
         run: uv run mypy fastpubsub benchmarks
       - name: Check linting rules
-        run: uv run ruff check fastpubsub tests docs/snippets benchmarks
+        run: uv run ruff check fastpubsub tests docs/snippets benchmarks fastpubsub-core/tests
       - name: Check formatting rules
-        run: uv run ruff format --check fastpubsub tests docs/snippets benchmarks
+        run: uv run ruff format --check fastpubsub tests docs/snippets benchmarks fastpubsub-core/tests
       - name: Check docstrings
         run: uv run docstr-coverage fastpubsub --exclude "__about__" --verbose 1
       - name: Check the core stub
@@ -70,8 +70,19 @@ jobs:
         run: cargo doc --workspace --no-deps --document-private-items --locked
         env:
           RUSTDOCFLAGS: "-D warnings"
+      - name: Start Pub/Sub emulator
+        working-directory: .
+        run: docker compose up --detach --wait pubsub
       - name: Run tests
         run: cargo nextest run --workspace --all-features --locked --no-tests=pass
+        env:
+          PUBSUB_EMULATOR_HOST: "localhost:8085"
+      - name: Run doctests
+        run: cargo test --doc --workspace --locked
+      - name: Stop Pub/Sub emulator
+        if: always()
+        working-directory: .
+        run: docker compose down --volumes
       - name: Check dependencies
         run: cargo deny check
       - name: Check unused dependencies

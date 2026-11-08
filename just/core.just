@@ -37,6 +37,7 @@ stubtest_allowlist := "stubtest-allowlist.txt"
 @test:
     just _start_msg "Running the core tests"
     cargo nextest run --workspace --all-features --locked --no-tests=pass
+    cargo test --doc --workspace --locked
 
 [doc("Check that the core stub matches the compiled module")]
 [group("tests")]

@@ -7,8 +7,8 @@ which no message arrives.
 
 Environment variables:
     BENCHMARK_PROJECT_ID: The Google Cloud project.
-    OUTSTANDING_LIMIT: The ``max_outstanding_messages`` value that the
-        server gets. The default is 1000.
+    MAX_MESSAGES: The client limit of the subscription. The server gets
+        twice this limit. The default is 1000.
     ACK_AFTER_PUBLISH: ``1`` acknowledges a message after its echo
         publish is confirmed, as fastpubsub does. The default
         acknowledges at once.
@@ -60,7 +60,7 @@ async def run_probe() -> None:
     """Run the echo loop and print the latency split."""
     loop = asyncio.get_running_loop()
     project = os.environ["BENCHMARK_PROJECT_ID"]
-    outstanding_limit = int(os.getenv("OUTSTANDING_LIMIT", "1000"))
+    max_messages = int(os.getenv("MAX_MESSAGES", "1000"))
     is_ack_after_publish = os.getenv("ACK_AFTER_PUBLISH") == "1"
     suffix = uuid.uuid4().hex[:8]
     topic = f"projects/{project}/topics/probe-{suffix}"
@@ -106,7 +106,7 @@ async def run_probe() -> None:
                 publish()
 
     subscription = Subscription(
-        subscription_path, outstanding_limit, bridge, dispatch, None
+        subscription_path, max_messages, bridge, dispatch, None
     )
     try:
         await asyncio.sleep(2)
@@ -123,14 +123,14 @@ async def run_probe() -> None:
         admin.delete_subscription(subscription_path)
         admin.delete_topic(topic)
 
-    print_report(records, confirmed_at, measure_start[0], outstanding_limit)
+    print_report(records, confirmed_at, measure_start[0], max_messages)
 
 
 def print_report(
     records: list[tuple[str, float, float]],
     confirmed_at: dict[str, float],
     measure_start: float,
-    outstanding_limit: int,
+    max_messages: int,
 ) -> None:
     """Print the latency split and the arrival gaps."""
     total, publish_part, delivery_part = [], [], []
@@ -152,7 +152,7 @@ def print_report(
         1 for window in range(MEASURE_SECONDS * 4) if windows[window] < 20
     )
     slow = sum(1 for value in total if value > SLOW_MILLISECONDS)
-    print(f"outstanding limit: {outstanding_limit}")
+    print(f"client limit: {max_messages}")
     print(f"events/s: {len(records) / MEASURE_SECONDS:.0f}")
     print(describe("total", total))
     print(describe("publish", publish_part))
