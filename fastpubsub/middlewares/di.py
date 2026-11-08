@@ -1,7 +1,7 @@
 """Internal middlewares for handling and publishing messages."""
 
 import inspect
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 from fastpubsub.concurrency.utils import apply_async
 from fastpubsub.datastructures import Message
@@ -67,6 +67,14 @@ class PublishMessageSerializerMiddleware(BaseMiddleware):
         self.project_id = project_id
         self.topic_name = topic_name
         self.autocreate = autocreate
+        self._client_factory: Any = None
+        self._client: Any = None
+
+    def _get_client(self) -> PubSubClient:
+        if self._client_factory is not PubSubClient:
+            self._client_factory = PubSubClient
+            self._client = PubSubClient(project_id=self.project_id)
+        return cast(PubSubClient, self._client)
 
     async def on_publish(
         self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
@@ -78,7 +86,7 @@ class PublishMessageSerializerMiddleware(BaseMiddleware):
             ordering_key: The ordering key for the message.
             attributes: A dictionary of message attributes.
         """
-        client = PubSubClient(project_id=self.project_id)
+        client = self._get_client()
         topic_key = (self.project_id, self.topic_name)
         if self.autocreate and topic_key not in self._created_topics:
             await client.create_topic(self.topic_name)

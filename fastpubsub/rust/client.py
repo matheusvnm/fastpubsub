@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from collections.abc import Callable
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from fastpubsub_core import (
     AdminClient,
     AlreadyExistsError,
+    Bridge,
     NotFoundError,
     Publisher,
 )
@@ -27,6 +29,7 @@ if TYPE_CHECKING:
 
 NotFound = NotFoundError
 MAX_BATCH_SIZE = 256
+SERVER_OUTSTANDING_FACTOR = 2
 
 logger = logging.getLogger(__name__)
 
@@ -71,22 +74,63 @@ def resolve_futures(
             future.set_exception(value)
 
 
-class PubSubClientFactory:
-    """Cache the Rust admin client and the Rust publishers."""
+def run_callbacks(
+    calls: list[tuple[Callable[[list[Any]], None], list[Any]]],
+) -> None:
+    """Run the callbacks that the Rust bridge sends to the event loop.
 
-    _admin_client: ClassVar[AdminClient | None] = None
+    Args:
+        calls: For each callback, the entries to give it.
+    """
+    for callback, entries in calls:
+        try:
+            callback(entries)
+        except Exception:
+            logger.exception("A Rust bridge callback failed")
+
+
+class PubSubClientFactory:
+    """Cache the Rust bridges, admin clients and publishers.
+
+    Each event loop gets one bridge thread. The cache keeps the creation
+    task of each client, so concurrent first calls for the same key wait
+    for the same task and get the same client.
+    """
+
+    _bridges: ClassVar[dict[asyncio.AbstractEventLoop, Bridge]] = {}
+    _admin_clients: ClassVar[
+        dict[asyncio.AbstractEventLoop, asyncio.Task[AdminClient]]
+    ] = {}
+    _publisher_creations: ClassVar[
+        dict[tuple[asyncio.AbstractEventLoop, str], asyncio.Task[Publisher]]
+    ] = {}
     _publishers: ClassVar[
         dict[tuple[asyncio.AbstractEventLoop, str], Publisher]
     ] = {}
 
     @classmethod
-    async def get_admin_client(cls) -> AdminClient:
-        """Get or create the admin client."""
-        if cls._admin_client is None:
-            cls._admin_client = await asyncio.to_thread(
-                AdminClient, read_endpoint()
+    def get_bridge(cls) -> Bridge:
+        """Get or create the bridge of the running loop."""
+        loop = asyncio.get_running_loop()
+        bridge = cls._bridges.get(loop)
+        if bridge is None:
+            bridge = Bridge(
+                MAX_BATCH_SIZE, loop.call_soon_threadsafe, run_callbacks
             )
-        return cls._admin_client
+            cls._bridges[loop] = bridge
+        return bridge
+
+    @classmethod
+    async def get_admin_client(cls) -> AdminClient:
+        """Get or create the admin client for the running loop."""
+        loop = asyncio.get_running_loop()
+        creation = cls._admin_clients.get(loop)
+        if creation is None:
+            creation = loop.create_task(
+                asyncio.to_thread(AdminClient, read_endpoint())
+            )
+            cls._admin_clients[loop] = creation
+        return await asyncio.shield(creation)
 
     @classmethod
     async def get_publisher(cls, topic_path: str) -> Publisher:
@@ -94,26 +138,37 @@ class PubSubClientFactory:
         loop = asyncio.get_running_loop()
         key = (loop, topic_path)
         publisher = cls._publishers.get(key)
-        if publisher is None:
-            publisher = await asyncio.to_thread(
-                Publisher,
-                topic_path,
-                MAX_BATCH_SIZE,
-                loop.call_soon_threadsafe,
-                resolve_futures,
-                read_endpoint(),
+        if publisher is not None:
+            return publisher
+
+        creation = cls._publisher_creations.get(key)
+        if creation is None:
+            creation = loop.create_task(
+                asyncio.to_thread(
+                    Publisher,
+                    topic_path,
+                    cls.get_bridge(),
+                    resolve_futures,
+                    read_endpoint(),
+                )
             )
-            cls._publishers[key] = publisher
+            cls._publisher_creations[key] = creation
+        publisher = await asyncio.shield(creation)
+        cls._publishers[key] = publisher
         return publisher
 
     @classmethod
     async def close_all(cls) -> None:
         """Send the pending messages and clear the cache."""
-        publishers = list(cls._publishers.values())
+        creations = list(cls._publisher_creations.values())
+        cls._publisher_creations.clear()
         cls._publishers.clear()
-        cls._admin_client = None
-        for publisher in publishers:
-            await asyncio.to_thread(publisher.flush)
+        cls._admin_clients.clear()
+        cls._bridges.clear()
+        for creation in creations:
+            with suppress(Exception):
+                publisher = await creation
+                await asyncio.to_thread(publisher.flush)
 
 
 class PubSubClient:

@@ -20,13 +20,22 @@ class AckHandle:
     def ack(self) -> None: ...
     def nack(self) -> None: ...
 
+class Bridge:
+    def __init__(
+        self,
+        max_batch_size: int,
+        call_soon_threadsafe: Callable[..., Any],
+        run_callbacks: Callable[
+            [list[tuple[Callable[[list[Any]], None], list[Any]]]], None
+        ],
+    ) -> None: ...
+
 class Subscription:
     def __init__(
         self,
         subscription_path: str,
-        max_messages: int,
-        max_batch_size: int,
-        call_soon_threadsafe: Callable[..., Any],
+        max_outstanding_messages: int,
+        bridge: Bridge,
         dispatch: Callable[
             [list[tuple[str, bytes, dict[str, str], int, AckHandle]]], None
         ],
@@ -39,8 +48,7 @@ class Publisher:
     def __init__(
         self,
         topic_path: str,
-        max_batch_size: int,
-        call_soon_threadsafe: Callable[..., Any],
+        bridge: Bridge,
         resolve_batch: Callable[
             [list[tuple[asyncio.Future[str], bool, Any]]], None
         ],

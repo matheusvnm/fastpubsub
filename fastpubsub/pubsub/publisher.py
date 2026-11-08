@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import MutableSequence, Sequence
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
@@ -13,6 +13,40 @@ from fastpubsub.middlewares import (
     PublishMessageSerializerMiddleware,
 )
 from fastpubsub.middlewares.base import BaseMiddleware
+
+
+def has_valid_publish_types(
+    data: object, ordering_key: object, attributes: object, autocreate: object
+) -> bool:
+    """Check the publish arguments without Pydantic.
+
+    The check accepts only exact built-in types, so it never accepts a
+    value that the strict Pydantic validation rejects.
+
+    Args:
+        data: The message data.
+        ordering_key: The ordering key.
+        attributes: The message attributes.
+        autocreate: The flag to create the topic.
+
+    Returns:
+        True when all arguments have a valid type.
+    """
+    if type(ordering_key) is not str or type(autocreate) is not bool:
+        return False
+    if attributes is not None:
+        if type(attributes) is not dict:
+            return False
+        for key, value in attributes.items():
+            if type(key) is not str or type(value) is not str:
+                return False
+    data_type = type(data)
+    if data_type is bytes or data_type is str:
+        return True
+    if data_type is dict:
+        keys = cast(dict[object, object], data).keys()
+        return all(type(key) is str for key in keys)
+    return isinstance(data, BaseModel)
 
 
 class Publisher:
@@ -41,7 +75,6 @@ class Publisher:
             for middleware, args, kwargs in middlewares:
                 self.include_middleware(middleware, *args, **kwargs)
 
-    @validate_call(config=ConfigDict(strict=True))
     async def publish(
         self,
         data: dict[str, Any] | str | bytes | BaseModel,
@@ -51,12 +84,40 @@ class Publisher:
     ) -> None:
         """Publishes a message to the topic.
 
+        The common argument types skip the Pydantic validation. Other
+        values go through the strict Pydantic validation, which raises a
+        ``ValidationError`` for invalid values.
+
         Args:
             data: The message data.
             ordering_key: The ordering key for the message.
             attributes: A dictionary of message attributes.
             autocreate: Whether to automatically create the topic.
         """
+        if has_valid_publish_types(data, ordering_key, attributes, autocreate):
+            await self._send(data, ordering_key, attributes, autocreate)
+            return
+        await self._validate_and_send(
+            data, ordering_key, attributes, autocreate
+        )
+
+    @validate_call(config=ConfigDict(strict=True))
+    async def _validate_and_send(
+        self,
+        data: dict[str, Any] | str | bytes | BaseModel,
+        ordering_key: str = "",
+        attributes: dict[str, str] | None = None,
+        autocreate: bool = True,
+    ) -> None:
+        await self._send(data, ordering_key, attributes, autocreate)
+
+    async def _send(
+        self,
+        data: dict[str, Any] | str | bytes | BaseModel,
+        ordering_key: str,
+        attributes: dict[str, str] | None,
+        autocreate: bool,
+    ) -> None:
         callstack = self._get_callstack(autocreate=autocreate)
         serialized_message = await self._serialize_message(data)
 
