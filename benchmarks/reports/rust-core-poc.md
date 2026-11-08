@@ -13,6 +13,7 @@ Branch: `poc/rust-core`. All numbers are medians of 5 rounds unless the text say
 - Echo still has 8% fewer events per second than the optimized Python transport.
 - The first official run on the emulator gave a no-go. Two defects in the PoC code caused most of the gap. The first was a race in the publisher cache. The second was a server flow-control limit that was too low. We fixed both.
 - Phase 0, the Python-only work, gives 35% to 38% less CPU than `main` without a new dependency. Phase 0 is valid without Rust.
+- Verdict: make the Rust transport the default. Keep the Python transport as a fallback until the gates in section 13 pass.
 
 ## 2. Versions under test
 
@@ -368,3 +369,38 @@ With a limit of 1,000, the probe shows gaps of about 500 ms without arrivals. Hu
 | `benchmarks/results/runs.csv` | Dispatch and batch size tests |
 | `benchmarks/results/official-gcp.csv` | Real Pub/Sub in the region, before the flow-control fix |
 | `benchmarks/results/official-gcp-flow.csv` | Real Pub/Sub in the region, final |
+
+## 13. Verdict
+
+**Go. Make the Rust transport the default transport.**
+
+FastPubSub is public, but nobody uses it yet. A change of the default transport breaks no user, so the usual reason to keep a new transport opt-in does not apply.
+
+### Why
+
+- In a real deployment, the Rust transport uses 76% to 77% less CPU for each event in the I/O scenarios. In the CPU-bound scenario, it uses 32% less.
+- It uses about 40% less peak memory.
+- Its p99 latency is equal in echo and 30% to 45% lower in the scenarios with a wait.
+- It has 45% to 47% more events per second with 1,000 messages in flight.
+- The gain on real Pub/Sub is almost twice the gain on the emulator. Real TLS and authentication cost the Python stack much more than the Rust stack.
+- With Rust as the default, the library does not import the Google Python client on the main path. It also gets a path to free-threaded Python.
+
+### Risks
+
+- The Google Rust crate is young (version 1.7). It has no emulator support. It applies `max_outstanding_messages` only on the server. We found that by accident, so other surprises can exist.
+- Exactly-once delivery, ordering keys and dead-letter topics did not run with the Rust transport on real Pub/Sub.
+- Each run in this PoC lasted 40 seconds. No soak test shows the memory, the lease extension and the reconnects over hours.
+- A Rust core needs a Rust toolchain, wheels for each platform and Python version, and PyO3 upgrades.
+- Echo has 8% fewer events per second. The Python 3.14t collapse of sync handlers is not investigated.
+
+### Steps
+
+1. Merge Phase 0 as a separate change. It makes the Python transport 35% to 38% cheaper than `main`, and the Python transport stays as the fallback.
+2. Make `rust` the default value of `FASTPUBSUB_TRANSPORT`. Keep `python` as the fallback for platforms without a wheel and for problems in the Rust path.
+3. Before the next release, pass these gates:
+   - Feature parity tests on real Pub/Sub: exactly-once delivery, ordering keys, dead-letter topics, filters, retry policies and graceful shutdown under load.
+   - CI wheels for Linux x86_64 and arm64 and for macOS arm64, abi3 for Python 3.12 and later. Free-threaded wheels are optional.
+   - A soak test of several hours in a Google Cloud region, with the memory and the redeliveries recorded.
+   - A transport-independent version of `test_factory_clients_closed_on_shutdown`.
+4. After the gates pass and one release runs, decide if the Python transport can go. One transport halves the work to keep features in parity.
+
