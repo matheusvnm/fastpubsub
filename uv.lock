@@ -7,6 +7,12 @@ resolution-markers = [
     "python_full_version < '3.14'",
 ]
 
+[manifest]
+members = [
+    "fastpubsub",
+    "fastpubsub-core",
+]
+
 [[package]]
 name = "annotated-doc"
 version = "0.0.5"
@@ -659,11 +665,12 @@ standard-no-fastapi-cloud-cli = [
 
 [[package]]
 name = "fastpubsub"
-version = "0.9.9"
+version = "0.10.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "fastapi", extra = ["standard-no-fastapi-cloud-cli"] },
+    { name = "fastpubsub-core" },
     { name = "google-api-core" },
     { name = "google-cloud-pubsub" },
     { name = "pydantic-settings" },
@@ -719,6 +726,7 @@ test = [
 requires-dist = [
     { name = "click", specifier = ">=8.2.1" },
     { name = "fastapi", extras = ["standard-no-fastapi-cloud-cli"], specifier = ">=0.120.2" },
+    { name = "fastpubsub-core", directory = "fastpubsub-core" },
     { name = "google-api-core", specifier = ">=2.25.1" },
     { name = "google-cloud-pubsub", specifier = ">=2.31.1" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
@@ -767,6 +775,11 @@ test = [
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
 ]
+
+[[package]]
+name = "fastpubsub-core"
+version = "0.10.0"
+source = { directory = "fastpubsub-core" }
 
 [[package]]
 name = "filelock"

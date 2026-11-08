@@ -331,7 +331,7 @@ dependencies = [
 
 [[package]]
 name = "fastpubsub-core"
-version = "0.1.0"
+version = "0.10.0"
 dependencies = [
  "fastpubsub-google-pubsub",
  "fastpubsub-messaging",
@@ -342,7 +342,7 @@ dependencies = [
 
 [[package]]
 name = "fastpubsub-google-pubsub"
-version = "0.1.0"
+version = "0.10.0"
 dependencies = [
  "fastpubsub-messaging",
  "google-cloud-auth",
@@ -354,7 +354,7 @@ dependencies = [
 
 [[package]]
 name = "fastpubsub-messaging"
-version = "0.1.0"
+version = "0.10.0"
 dependencies = [
  "bytes",
  "thiserror",

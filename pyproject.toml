@@ -6,7 +6,7 @@ build-backend = "uv_build"
 name = "fastpubsub"
 description = "FastPubSub: A high-performance, asyncio-native framework for Google Cloud Pub/Sub applications"
 readme = "README.md"
-version = "0.9.9"
+version = "0.10.0"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
@@ -16,6 +16,7 @@ authors = [
 
 dependencies = [
     "click>=8.2.1",
+    "fastpubsub-core==0.10.0",
     "fastapi[standard-no-fastapi-cloud-cli]>=0.120.2",
     "google-api-core>=2.25.1",
     "google-cloud-pubsub>=2.31.1",
@@ -175,6 +176,12 @@ convention = "google"
 
 [tool.uv]
 package = true
+
+[tool.uv.workspace]
+members = ["fastpubsub-core"]
+
+[tool.uv.sources]
+fastpubsub-core = { workspace = true, editable = false }
 
 [tool.uv.build-backend]
 module-root = ""

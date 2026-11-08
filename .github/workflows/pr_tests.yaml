@@ -23,12 +23,15 @@ jobs:
         uses: actions/checkout@v7
       - name: Install uv command
         uses: astral-sh/setup-uv@v7
-      - name: Install dependencies
+      - name: Install the Rust toolchain from rust-toolchain.toml
+        working-directory: fastpubsub-core
+        run: rustup toolchain install
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fastpubsub-core
+      - name: Install dependencies and build the core
         run: uv sync --group lint --group bench
-      - name: Build and install the core
-        run: |
-          uvx maturin build -m fastpubsub-core/Cargo.toml --out fastpubsub-core/target/wheels
-          uv pip install fastpubsub-core/target/wheels/fastpubsub_core-*.whl
       - name: Check typing rules
         run: uv run mypy fastpubsub benchmarks
       - name: Check linting rules
@@ -123,12 +126,15 @@ jobs:
         uses: actions/checkout@v7
       - name: Install uv command
         uses: astral-sh/setup-uv@v7
-      - name: Install dependencies
+      - name: Install the Rust toolchain from rust-toolchain.toml
+        working-directory: fastpubsub-core
+        run: rustup toolchain install
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fastpubsub-core
+      - name: Install dependencies and build the core
         run: uv sync --group test
-      - name: Build and install the core
-        run: |
-          uvx maturin build -m fastpubsub-core/Cargo.toml --out fastpubsub-core/target/wheels
-          uv pip install fastpubsub-core/target/wheels/fastpubsub_core-*.whl
       - name: Start Pub/Sub emulator
         run: docker compose up --detach --wait pubsub
       - name: Run tests with coverage

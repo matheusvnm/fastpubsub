@@ -15,8 +15,9 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
     | sh -s -- -y --profile minimal --default-toolchain 1.94.0 \
     --component clippy,rustfmt
 
-COPY ./pyproject.toml ./README.md ./LICENSE /src/
+COPY ./pyproject.toml ./uv.lock ./README.md ./LICENSE /src/
 COPY ./fastpubsub/__init__.py /src/fastpubsub/__init__.py
+COPY ./fastpubsub-core /src/fastpubsub-core
 
 WORKDIR /src
 

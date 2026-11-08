@@ -45,12 +45,11 @@ stubtest_allowlist := "stubtest-allowlist.txt"
     just _start_msg "Checking the core stub"
     uv run --active --frozen --directory .. python -m mypy.stubtest fastpubsub_core --allowlist fastpubsub-core/{{ stubtest_allowlist }}
 
-[doc("Build the core for .venv (abi3) and for .venv-3.14t and .venv-3.15t when they exist")]
+[doc("Build the core into .venv with uv sync, and into .venv-3.14t and .venv-3.15t when they exist")]
 [group("build")]
 @build:
     just _start_msg "Building the core"
-    uvx maturin build --release --out {{ wheels_dir }}
-    uv pip install --python ../.venv --reinstall {{ wheels_dir }}/fastpubsub_core-*-abi3-*.whl
+    cd .. && uv sync --all-groups --frozen
     for version in 3.14t 3.15t; do \
         if [ -d "../.venv-$version" ]; then \
             uvx maturin build --release --no-default-features \
@@ -66,7 +65,4 @@ stubtest_allowlist := "stubtest-allowlist.txt"
 @build-container:
     just dev up
     just _start_msg "Building the core in the container"
-    docker compose exec fastpubsub bash -c \
-        "uvx maturin build --release -m fastpubsub-core/Cargo.toml --out /root/.cache/core-wheels \
-        && uv pip install --python /src/.venv --reinstall \
-        /root/.cache/core-wheels/fastpubsub_core-*-abi3-*.whl"
+    docker compose exec fastpubsub uv sync --group dev --frozen
