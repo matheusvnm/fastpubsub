@@ -63,7 +63,7 @@ stubtest_allowlist := "stubtest-allowlist.txt"
 [doc("Build the core in the container and install it in the container environment")]
 [group("build")]
 @build-container:
-    just up
+    just dev up
     just _start_msg "Building the core in the container"
     docker compose exec fastpubsub bash -c \
         "uvx maturin build --release -m fastpubsub-core/Cargo.toml --out /root/.cache/core-wheels \

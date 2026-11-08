@@ -13,39 +13,39 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 [doc("Run unit tests (fast, no emulator)")]
 [group("tests")]
 @test-unit *args:
-    just up "--no-deps fastpubsub"
+    just dev up "--no-deps fastpubsub"
     just _start_msg "Running unit tests"
     {{ run_test_command }} pytest -m "not (connected or slow or docs)" -n auto --tb=short {{ args }}
-    just down
+    just dev down
 
 [doc("Run integration tests (requires emulator)")]
 [group("tests")]
 @test-integration *args:
-    just up
+    just dev up
     just _start_msg "Running integration tests"
     {{ run_test_command }} pytest -m "connected" -n auto --tb=short --maxfail=5 {{ args }}
-    just down
+    just dev down
 
 [doc("Run doc snippets tests (fast, no emulator)")]
 [group("tests")]
 @test-docs *args:
-    just up "--no-deps fastpubsub"
+    just dev up "--no-deps fastpubsub"
     just _start_msg "Running the tests for doc snippets"
     {{ run_test_command }} pytest -m "docs" -n auto --tb=short {{ args }}
-    just down
+    just dev down
 
 [doc("Run all tests in Docker")]
 [group("tests")]
 @test-all *args:
-    just up
+    just dev up
     just _start_msg "Running all tests"
     {{ run_test_command }} pytest -n auto --tb=short {{ args }}
-    just down
+    just dev down
 
 [doc("Run tests with coverage in Docker")]
 [group("tests")]
 @test-cov *args:
-    just up
+    just dev up
     just _start_msg "Running coverage report"
     {{ run_test_command }} pytest \
         -n auto \
@@ -54,15 +54,15 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
         --cov-report=html \
         --cov-fail-under=80 \
         {{ args }}
-    just down
+    just dev down
 
 [doc("Run tests matching a keyword in Docker")]
 [group("tests")]
 @test-k keyword *args:
-    just up
+    just dev up
     just _start_msg "Running tests matching '{{ keyword }}'"
     {{ run_test_command }} pytest -k "{{ keyword }}" -v {{ args }}
-    just down
+    just dev down
 
 [doc("Execute all Python checks (lint, docstrings, typos and security)")]
 [group("lint")]
