@@ -1,0 +1,20 @@
+[package]
+name = "fastpubsub-core"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.91"
+publish = false
+
+[lib]
+name = "fastpubsub_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+google-cloud-auth = "1"
+google-cloud-pubsub = "1.7.0"
+pyo3 = { version = "0.30", features = ["extension-module", "abi3-py312"] }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1

@@ -230,6 +230,15 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
     just _start_msg "Benchmark Results"
     {{ run_command }} python -m benchmarks.report {{ args }}
 
+[doc("Build the Rust core and install it in the local virtual environment")]
+[group("bench")]
+@core-build:
+    just _start_msg "Building the Rust core"
+    uvx maturin build --release -m rust/fastpubsub-core/Cargo.toml \
+        --out rust/fastpubsub-core/target/wheels
+    uv pip install --python .venv --reinstall \
+        rust/fastpubsub-core/target/wheels/fastpubsub_core-*.whl
+
 [doc("Clear benchmark results")]
 [group("bench")]
 @bench-clean:
