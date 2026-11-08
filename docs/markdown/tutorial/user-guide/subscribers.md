@@ -102,7 +102,7 @@ These control how FastPubSub processes messages.
 
 ## The Importance of Async
 
-FastPubSub is an asyncio-native framework, which means your message handlers must be `async def` functions. This design is critical for performance. An asyncio application runs on a single thread managed by an event loop. This single thread juggles multiple tasks, such as handling incoming Pub/Sub messages and serving HTTP requests (if using the [FastAPI integration](../integrations/fastapi.md)).
+FastPubSub is an asyncio-native framework. Write your message handlers as `async def` functions when they do I/O. This design is critical for performance. An asyncio application runs on a single thread managed by an event loop. This single thread juggles multiple tasks, such as handling incoming Pub/Sub messages and serving HTTP requests (if using the [FastAPI integration](../integrations/fastapi.md)).
 
 A task can only be paused when it encounters an await keyword, allowing the event loop to switch to another task. If you use a blocking operation like `time.sleep()` instead of `await asyncio.sleep()`, you freeze the entire thread. No other tasks can run, causing your application to become unresponsive.
 
@@ -163,6 +163,38 @@ sequenceDiagram
 4. The event loop is free and immediately processes the request, calls the API endpoint, and returns a `200 OK` response to the client. The API remains fast and responsive.
 5. After the 5-second non-blocking sleep is over, the event loop will resume the handler where it left off.
 
+### Sync Handlers for CPU Work and Blocking Libraries
+
+Some handlers cannot `await`. They do CPU work, or they call a library that has no async API. Write these handlers as plain `def` functions:
+
+```python
+import hashlib
+
+from fastpubsub import Message, PubSubBroker
+
+broker = PubSubBroker(project_id="your-project-id")
+
+
+@broker.subscriber(
+    alias="checksum",
+    topic_name="files",
+    subscription_name="files-checksum",
+)
+def calculate_checksum(message: Message) -> None:
+    checksum = hashlib.sha256(message.data).hexdigest()
+    save_checksum(message.id, checksum)
+```
+
+FastPubSub runs each `def` handler in a worker thread, as FastAPI does for `def` endpoints. The event loop stays free while the handler runs.
+
+Use this rule to select the handler type:
+
+- Use `async def` when the handler waits on I/O with `await`.
+- Use `def` when the handler does CPU work or calls blocking code.
+
+!!! warning "Limits of sync handlers"
+    The worker threads share the anyio thread limit. The default limit is 40 threads, so at most 40 `def` handlers run at the same time. Python threads also share the GIL, so pure Python CPU work does not run in parallel.
+
 
 ---
 
@@ -212,5 +244,7 @@ In this section, you've learned:
   - How to configure a subscription's server-side behavior and client-side handling.
 
   - Why using non-blocking, `async` code is essential for building responsive applications with FastPubSub.
+
+  - When to use a sync `def` handler for CPU work or blocking libraries.
 
   - How to receive messages from a push subscription using the FastAPI integration.

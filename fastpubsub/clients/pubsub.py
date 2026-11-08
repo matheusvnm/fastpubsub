@@ -18,7 +18,7 @@ from google.pubsub import RetryPolicy, Subscription
 
 from fastpubsub.clients.factory import PubSubClientFactory
 from fastpubsub.clients.scheduler import AsyncScheduler
-from fastpubsub.concurrency.utils import apply_async
+from fastpubsub.concurrency.utils import apply_async, wait_future
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     MessageDeliveryPolicy,
@@ -286,7 +286,7 @@ class PubSubClient:
                 **new_attributes,
             )
 
-            message_id = await apply_async(response.result)
+            message_id = await wait_future(response)
             logger.info(
                 "Message published for "
                 f"topic {topic_path} with "

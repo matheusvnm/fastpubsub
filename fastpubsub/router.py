@@ -8,7 +8,7 @@ from weakref import WeakSet
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
-from fastpubsub.concurrency.utils import ensure_async_callable_function
+from fastpubsub.concurrency.utils import ensure_function
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,
@@ -20,7 +20,7 @@ from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares.base import BaseMiddleware, Middleware
 from fastpubsub.pubsub.publisher import Publisher
 from fastpubsub.pubsub.subscriber import Subscriber
-from fastpubsub.types import AsyncDecoratedCallable, SubscribedCallable
+from fastpubsub.types import MessageHandler, SubscribedCallable
 
 _PREFIX_REGEX = re.compile(r"^[a-zA-Z0-9]+([_./][a-zA-Z0-9]+)*$")
 
@@ -186,8 +186,8 @@ class PubSubRouter:
             A decorator that registers the function as a subscriber.
         """
 
-        def decorator(func: AsyncDecoratedCallable) -> AsyncDecoratedCallable:
-            ensure_async_callable_function(func)
+        def decorator(func: MessageHandler) -> MessageHandler:
+            ensure_function(func)
 
             prefixed_alias = alias
             prefixed_subscription_name = subscription_name

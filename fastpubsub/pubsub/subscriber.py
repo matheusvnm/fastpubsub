@@ -18,7 +18,7 @@ from fastpubsub.middlewares import (
     Middleware,
 )
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.types import AsyncCallable
+from fastpubsub.types import MessageHandler
 
 
 class Subscriber:
@@ -26,7 +26,7 @@ class Subscriber:
 
     def __init__(
         self,
-        func: AsyncCallable,
+        func: MessageHandler,
         topic_name: str,
         subscription_name: str,
         retry_policy: MessageRetryPolicy,
@@ -63,6 +63,7 @@ class Subscriber:
         self.dead_letter_policy = dead_letter_policy
         self.control_flow_policy = control_flow_policy
         self.middlewares: MutableSequence[Middleware] = []
+        self._callstack: BaseMiddleware | None = None
 
         if middlewares and isinstance(middlewares, Sequence):
             for middleware, args, kwargs in middlewares:
@@ -86,6 +87,17 @@ class Subscriber:
             return
 
         self.middlewares.append(wrapper_middleware)
+        self._callstack = None
+
+    @property
+    def callstack(self) -> BaseMiddleware:
+        """The middleware chain that handles each message.
+
+        The chain is built once and reused for all messages.
+        """
+        if self._callstack is None:
+            self._callstack = self._build_callstack()
+        return self._callstack
 
     def _build_callstack(self) -> BaseMiddleware:
         callstack: BaseMiddleware = HandleMessageSerializerMiddleware(

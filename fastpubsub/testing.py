@@ -559,7 +559,7 @@ class PubSubTestClient:
                 subscriber_name=subscriber.name,
             )
 
-            callstack = subscriber._build_callstack()
+            callstack = subscriber.callstack
             return_value = None
             error = None
             try:

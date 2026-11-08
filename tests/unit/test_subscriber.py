@@ -4,11 +4,13 @@ import pytest
 from pydantic import ValidationError
 
 from fastpubsub.broker import PubSubBroker
+from fastpubsub.datastructures import Message
 from fastpubsub.middlewares import Middleware
 from fastpubsub.middlewares.base import BaseMiddleware
 from fastpubsub.middlewares.di import HandleMessageSerializerMiddleware
 from fastpubsub.pubsub.subscriber import Subscriber
 from fastpubsub.router import PubSubRouter
+from fastpubsub.testing import PubSubTestClient
 from tests.conftest import callstack_matches, callstack_to_collection
 
 
@@ -285,3 +287,36 @@ class TestSubscriber:
         for obj in objs:
             with pytest.raises(ValidationError):
                 obj.subscriber(**data)
+
+    def test_callstack_is_built_once(self, subscriber: Subscriber):
+        assert subscriber.callstack is subscriber.callstack
+
+    def test_include_middleware_rebuilds_callstack(
+        self,
+        subscriber: Subscriber,
+        first_middleware: type[BaseMiddleware],
+    ):
+        old_callstack = subscriber.callstack
+
+        subscriber.include_middleware(first_middleware)
+
+        assert subscriber.callstack is not old_callstack
+        assert callstack_matches(
+            subscriber.callstack,
+            [first_middleware, HandleMessageSerializerMiddleware],
+        )
+
+    @pytest.mark.asyncio
+    async def test_sync_handler_receives_message(self, broker: PubSubBroker):
+        received_data = []
+
+        @broker.subscriber(
+            "sync_handler", topic_name="topic", subscription_name="sub"
+        )
+        def handler(message: Message) -> None:
+            received_data.append(message.data)
+
+        async with PubSubTestClient(broker) as client:
+            await client.publish(b"payload", topic="topic")
+
+        assert received_data == [b"payload"]

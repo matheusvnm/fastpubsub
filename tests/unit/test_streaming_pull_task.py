@@ -24,7 +24,6 @@ def mock_subscriber():
     subscriber.topic_name = "test-topic"
     subscriber.name = "test-subscriber"
     subscriber.subscription_name = "test-subscription"
-    subscriber._build_callstack = MagicMock()
     subscriber.control_flow_policy.max_messages = 10
     return subscriber
 
@@ -162,7 +161,7 @@ class TestPubSubStreamingPullTask:
 
         mock_callstack = MagicMock()
         mock_callstack.on_message = AsyncMock(return_value=None)
-        mock_subscriber._build_callstack.return_value = mock_callstack
+        mock_subscriber.callstack = mock_callstack
 
         ack_future = Future()
         ack_future.set_result(None)
@@ -170,7 +169,6 @@ class TestPubSubStreamingPullTask:
 
         await task._consume(mock_pubsub_message)
 
-        mock_subscriber._build_callstack.assert_called_once()
         mock_callstack.on_message.assert_called_once()
 
         mock_pubsub_message.ack_with_response.assert_called_once()
@@ -186,7 +184,7 @@ class TestPubSubStreamingPullTask:
 
         mock_callstack = MagicMock()
         mock_callstack.on_message = AsyncMock(side_effect=Drop())
-        mock_subscriber._build_callstack.return_value = mock_callstack
+        mock_subscriber.callstack = mock_callstack
 
         ack_future = Future()
         ack_future.set_result(None)
@@ -207,7 +205,7 @@ class TestPubSubStreamingPullTask:
 
         mock_callstack = MagicMock()
         mock_callstack.on_message = AsyncMock(side_effect=Retry())
-        mock_subscriber._build_callstack.return_value = mock_callstack
+        mock_subscriber.callstack = mock_callstack
 
         nack_future = Future()
         nack_future.set_result(None)
@@ -230,7 +228,7 @@ class TestPubSubStreamingPullTask:
         mock_callstack.on_message = AsyncMock(
             side_effect=ValueError("Test error")
         )
-        mock_subscriber._build_callstack.return_value = mock_callstack
+        mock_subscriber.callstack = mock_callstack
 
         nack_future = Future()
         nack_future.set_result(None)

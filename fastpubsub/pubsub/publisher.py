@@ -35,6 +35,7 @@ class Publisher:
         self.topic_name = topic_name
         self.project_id = project_id
         self.middlewares: MutableSequence[Middleware] = []
+        self._callstacks: dict[bool, BaseMiddleware] = {}
 
         if middlewares and isinstance(middlewares, Sequence):
             for middleware, args, kwargs in middlewares:
@@ -56,7 +57,7 @@ class Publisher:
             attributes: A dictionary of message attributes.
             autocreate: Whether to automatically create the topic.
         """
-        callstack = self._build_callstack(autocreate=autocreate)
+        callstack = self._get_callstack(autocreate=autocreate)
         serialized_message = await self._serialize_message(data)
 
         await callstack.on_publish(
@@ -64,6 +65,13 @@ class Publisher:
             ordering_key=ordering_key,
             attributes=attributes,
         )
+
+    def _get_callstack(self, autocreate: bool) -> BaseMiddleware:
+        callstack = self._callstacks.get(autocreate)
+        if callstack is None:
+            callstack = self._build_callstack(autocreate=autocreate)
+            self._callstacks[autocreate] = callstack
+        return callstack
 
     def _build_callstack(self, autocreate: bool = True) -> BaseMiddleware:
         callstack: BaseMiddleware = PublishMessageSerializerMiddleware(
@@ -119,7 +127,9 @@ class Publisher:
             return
 
         self.middlewares.append(wrapper_middleware)
+        self._callstacks.clear()
 
     def _set_project_id(self, project_id: str) -> None:
         if not self.project_id:
             self.project_id = project_id
+            self._callstacks.clear()

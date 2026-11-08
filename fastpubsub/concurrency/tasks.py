@@ -14,7 +14,7 @@ from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 
 from fastpubsub.clients.pubsub import PubSubClient
 from fastpubsub.clients.scheduler import AsyncScheduler
-from fastpubsub.concurrency.utils import apply_async
+from fastpubsub.concurrency.utils import wait_future
 from fastpubsub.datastructures import Message
 from fastpubsub.exceptions import Drop, Retry
 from fastpubsub.logger import FastPubSubLogger
@@ -103,8 +103,7 @@ class PubSubStreamingPullTask:
             subscriber_name=message.subscriber_name,
         ):
             try:
-                callstack = self.subscriber._build_callstack()
-                response = await callstack.on_message(message)
+                response = await self.subscriber.callstack.on_message(message)
                 future = received_message.ack_with_response()
                 await self._wait_acknowledge_response(future=future)
                 logger.info("The message successfully processed.")
@@ -129,7 +128,7 @@ class PubSubStreamingPullTask:
 
     async def _wait_acknowledge_response(self, future: Future[Any]) -> None:
         try:
-            await apply_async(future.result)
+            await wait_future(future)
         except AcknowledgeError as e:
             self._on_acknowledge_failed(e)
         except TimeoutError:

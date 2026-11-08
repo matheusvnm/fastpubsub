@@ -44,7 +44,6 @@ def subscriber():
         ),
     )
     subscriber._set_project_id("test-project")
-    subscriber._build_callstack = MagicMock()
     return subscriber
 
 

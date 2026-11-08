@@ -36,6 +36,7 @@ reset := `tput -Txterm sgr0`
 
 run_command := "uv run --active --frozen"
 run_test_command := "docker compose exec fastpubsub python -m"
+benchmark_cpus := "2"
 
 # ENVIRONMENT VAR EXPORTS
 
@@ -198,34 +199,42 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 # Benchmark Commands
 # ----------------------------------------------------------------------------
 
-[doc("Run all benchmarks and compare results")]
+[doc("Run benchmarks with fixed CPU limits. Example: just bench --scenario all")]
 [group("bench")]
-@bench duration="60": up && down
-    just _start_msg "Running all benchmarks for {{ duration }}s each"
-    {{ run_test_command }} benchmarks.bench --case all --duration {{ duration }}
+@bench *args:
+    just _start_msg "Starting containers with {{ benchmark_cpus }} CPUs each"
+    BENCHMARK_CPUS={{ benchmark_cpus }} docker compose up -d --wait
+    {{ run_test_command }} benchmarks.bench \
+        --git-commit "$(git rev-parse --short HEAD)" {{ args }}
+    docker compose down
 
-
-[doc("Run quick benchmark (10s duration)")]
+[doc("Run the FastPubSub cases with the code of a git ref. Example: just bench-ref main --scenario echo")]
 [group("bench")]
-@bench-quick case="basic": up && down
-    just _start_msg "Running quick {{ case }} benchmark (10s)"
-    {{ run_test_command }} benchmarks.bench --case {{ case }} --duration 10
+@bench-ref ref *args:
+    just _start_msg "Checking out {{ ref }} in {{ worktrees_dir }}/bench-{{ ref }}"
+    git worktree add --force --detach "{{ worktrees_dir }}/bench-{{ ref }}" "{{ ref }}"
+    just bench --case fastpubsub-async --label "{{ ref }}" \
+        --fastpubsub-source "{{ worktrees_dir }}/bench-{{ ref }}" \
+        --git-commit "$(git rev-parse --short {{ ref }})" {{ args }} \
+        || true
+    git worktree remove --force "{{ worktrees_dir }}/bench-{{ ref }}"
 
-[doc("Show benchmark results")]
+[doc("Run a quick benchmark: one repeat of 10 seconds")]
 [group("bench")]
-@bench-results:
+@bench-quick *args:
+    just bench --duration 10 --warmup 5 --repeats 1 {{ args }}
+
+[doc("Show the median and the range of the benchmark results")]
+[group("bench")]
+@bench-results *args:
     just _start_msg "Benchmark Results"
-    @if [ -f benchmarks/results/benches.csv ]; then \
-        {{ run_command }} python -c "import csv; print('\\n'.join([';'.join(row) for row in csv.reader(open('benchmarks/results/benches.csv'), delimiter=';')]))"; \
-    else \
-        just _warn_msg "No benchmark results found. Run 'just bench' first"; \
-    fi
+    {{ run_command }} python -m benchmarks.report {{ args }}
 
 [doc("Clear benchmark results")]
 [group("bench")]
 @bench-clean:
     just _start_msg "Clearing benchmark results"
-    rm -f benchmarks/results/benches.csv
+    rm -f benchmarks/results/runs.csv
 
 # ----------------------------------------------------------------------------
 # Local Environment Setup Commands

@@ -1,8 +1,10 @@
 """Concurrency utilities."""
 
+import asyncio
 import functools
 import inspect
 from collections.abc import Callable
+from concurrent.futures import Future
 from types import FunctionType
 from typing import TYPE_CHECKING, Any
 
@@ -32,6 +34,20 @@ def ensure_async_callable_function(
 
     if not inspect.iscoroutinefunction(callable_object):
         raise TypeError(f"The function {callable_object} must be async.")
+
+
+def ensure_function(callable_object: object) -> None:
+    """Ensures that an object is a function.
+
+    The function can be sync or async.
+
+    Args:
+        callable_object: The object to check.
+    """
+    if not isinstance(callable_object, FunctionType):
+        raise TypeError(
+            f"The object must be a function type but it is {callable_object}."
+        )
 
 
 def ensure_async_middleware(middleware: type["BaseMiddleware"]) -> None:
@@ -92,3 +108,18 @@ async def apply_async_cancellable[**P, T](
     """
     func = functools.partial(func, *args, **kwargs)
     return await anyio.to_thread.run_sync(func, abandon_on_cancel=True)
+
+
+async def wait_future[T](future: Future[T]) -> T:
+    """Waits for a concurrent future without a blocked thread.
+
+    Args:
+        future: The future to wait for.
+
+    Returns:
+        The result of the future.
+    """
+    if future.done():
+        return future.result()
+
+    return await asyncio.wrap_future(future)

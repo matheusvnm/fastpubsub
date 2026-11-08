@@ -183,7 +183,7 @@ sequenceDiagram
 
 ### Async Message Handlers
 
-All message handlers must be `async def` functions:
+Write message handlers that do I/O as `async def` functions. For CPU work or blocking libraries, see [sync handlers](../user-guide/subscribers.md#sync-handlers-for-cpu-work-and-blocking-libraries).
 
 ```python
 from fastpubsub import PubSubBroker, Message
