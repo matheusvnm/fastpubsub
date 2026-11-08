@@ -46,3 +46,9 @@ dbg_macro = "deny"
 [profile.release]
 lto = "fat"
 codegen-units = 1
+
+[profile.local]
+inherits = "release"
+lto = "off"
+codegen-units = 16
+incremental = true

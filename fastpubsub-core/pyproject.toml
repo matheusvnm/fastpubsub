@@ -30,5 +30,6 @@ cache-keys = [
 
 [tool.maturin]
 manifest-path = "crates/bindings/Cargo.toml"
+profile = "local"
 include = [{ path = "fastpubsub_core.pyi", format = "sdist" }]
 features = ["pyo3/extension-module"]
