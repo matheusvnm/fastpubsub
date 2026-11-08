@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
-from fastpubsub.concurrency.utils import ensure_async_middleware
+from fastpubsub._internal.concurrency import ensure_async_middleware
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares import (
     Middleware,

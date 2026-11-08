@@ -8,7 +8,7 @@ from weakref import WeakSet
 
 from pydantic import BaseModel, ConfigDict, validate_call
 
-from fastpubsub.concurrency.utils import ensure_function
+from fastpubsub._internal.concurrency import ensure_function
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,

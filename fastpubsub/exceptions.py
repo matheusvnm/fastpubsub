@@ -9,6 +9,14 @@ class FastPubSubException(Exception):
     """Base exception for FastPubSub."""
 
 
+class NotFoundError(FastPubSubException):
+    """The topic or the subscription does not exist.
+
+    A publish raises it when the topic does not exist and the publisher
+    does not create topics.
+    """
+
+
 class Drop(Exception):
     """Exception to drop a message.
 

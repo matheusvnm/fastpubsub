@@ -6,11 +6,11 @@ from uuid import uuid4
 import pytest
 
 from fastpubsub.datastructures import Message
+from fastpubsub.exceptions import NotFoundError
 from fastpubsub.middlewares.di import (
     HandleMessageSerializerMiddleware,
     PublishMessageSerializerMiddleware,
 )
-from fastpubsub.transport import NotFound
 
 
 @pytest.fixture
@@ -107,9 +107,9 @@ class TestPublishMessageSerializerMiddleware:
         middleware = PublishMessageSerializerMiddleware(
             None, project_id="project", topic_name=f"topic-{uuid4()}"
         )
-        pubsub_client.publish.side_effect = [NotFound("deleted"), None]
+        pubsub_client.publish.side_effect = [NotFoundError("deleted"), None]
 
-        with pytest.raises(NotFound):
+        with pytest.raises(NotFoundError):
             await middleware.on_publish(b"first", "", None)
         await middleware.on_publish(b"second", "", None)
 

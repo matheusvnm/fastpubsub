@@ -3,10 +3,11 @@
 import inspect
 from typing import Any, ClassVar, cast
 
-from fastpubsub.concurrency.utils import apply_async
+from fastpubsub._internal.clients import PubSubClient
+from fastpubsub._internal.concurrency import apply_async
 from fastpubsub.datastructures import Message
+from fastpubsub.exceptions import NotFoundError
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.transport import NotFound, PubSubClient
 from fastpubsub.types import MessageHandler
 
 
@@ -107,6 +108,6 @@ class PublishMessageSerializerMiddleware(BaseMiddleware):
                 ordering_key=ordering_key,
                 attributes=attributes,
             )
-        except NotFound:
+        except NotFoundError:
             self._created_topics.discard(topic_key)
             raise

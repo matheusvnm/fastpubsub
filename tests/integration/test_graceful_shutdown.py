@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from fastpubsub import Message
-from fastpubsub.clients.factory import PubSubClientFactory
+from fastpubsub._internal.clients import PubSubClientFactory
+from fastpubsub._internal.event_loop_bridge import EventLoopBridge
 
 if TYPE_CHECKING:
     from fastpubsub.broker import PubSubBroker
@@ -193,7 +194,7 @@ class TestGracefulShutdown:
         unique_subscription: str,
         connected_broker: PubSubBroker,
     ) -> None:
-        """Test that PubSubClientFactory clients are closed."""
+        """Test that the factory and the bridge caches are cleared."""
         received_messages: list[str] = []
 
         @connected_broker.subscriber(
@@ -213,12 +214,12 @@ class TestGracefulShutdown:
 
         await asyncio.sleep(1.0)
 
-        assert (
-            len(PubSubClientFactory._publisher_cache) > 0
-            or len(PubSubClientFactory._subscriber_cache) > 0
-        )
+        assert PubSubClientFactory._publishers
+        assert EventLoopBridge._bridges
 
         await connected_broker.shutdown()
 
-        assert len(PubSubClientFactory._publisher_cache) == 0
-        assert len(PubSubClientFactory._subscriber_cache) == 0
+        assert not PubSubClientFactory._publishers
+        assert not PubSubClientFactory._publisher_creations
+        assert not PubSubClientFactory._admin_clients
+        assert not EventLoopBridge._bridges

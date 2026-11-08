@@ -1,102 +1,37 @@
-"""A Pub/Sub client that uses the Rust core."""
+"""The Pub/Sub clients of the library, built on the compiled core."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
-import os
-from collections.abc import Callable
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-from fastpubsub_core import (
-    AdminClient,
-    AlreadyExistsError,
-    Bridge,
-    NotFoundError,
-    Publisher,
-)
+from fastpubsub_core import AdminClient, AlreadyExistsError, Publisher
+from fastpubsub_core import NotFoundError as CoreNotFoundError
 
+from fastpubsub._internal.connection import Connection
+from fastpubsub._internal.event_loop_bridge import EventLoopBridge
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     MessageDeliveryPolicy,
     MessageRetryPolicy,
 )
-from fastpubsub.exceptions import FastPubSubException
+from fastpubsub.exceptions import FastPubSubException, NotFoundError
 
 if TYPE_CHECKING:
     from fastpubsub_core import SubscriptionSettings
 
-NotFound = NotFoundError
-MAX_BATCH_SIZE = 256
-
 logger = logging.getLogger(__name__)
 
 
-def read_endpoint() -> str | None:
-    """Read the emulator endpoint.
-
-    Returns:
-        The emulator URL, or None for the Pub/Sub service.
-    """
-    emulator_host = os.getenv("PUBSUB_EMULATOR_HOST")
-    if not emulator_host:
-        return None
-    return f"http://{emulator_host}"
-
-
-def build_topic_path(project_id: str, topic_name: str) -> str:
-    """Build the full path of a topic."""
-    return f"projects/{project_id}/topics/{topic_name}"
-
-
-def build_subscription_path(project_id: str, subscription_name: str) -> str:
-    """Build the full path of a subscription."""
-    return f"projects/{project_id}/subscriptions/{subscription_name}"
-
-
-def resolve_futures(
-    outcomes: list[tuple[asyncio.Future[str], bool, Any]],
-) -> None:
-    """Complete a batch of publish futures on the event loop.
-
-    Args:
-        outcomes: For each publish: the future, True when the publish
-            succeeded, and the message id or the exception.
-    """
-    for future, is_success, value in outcomes:
-        if future.done():
-            continue
-        if is_success:
-            future.set_result(value)
-        else:
-            future.set_exception(value)
-
-
-def run_callbacks(
-    calls: list[tuple[Callable[[list[Any]], None], list[Any]]],
-) -> None:
-    """Run the callbacks that the Rust bridge sends to the event loop.
-
-    Args:
-        calls: For each callback, the entries to give it.
-    """
-    for callback, entries in calls:
-        try:
-            callback(entries)
-        except Exception:
-            logger.exception("A Rust bridge callback failed")
-
-
 class PubSubClientFactory:
-    """Cache the Rust bridges, admin clients and publishers.
+    """Caches the admin clients and the publishers of each event loop.
 
-    Each event loop gets one bridge thread. The cache keeps the creation
-    task of each client, so concurrent first calls for the same key wait
-    for the same task and get the same client.
+    The cache keeps the creation task of each client, so concurrent first
+    calls for the same key wait for the same task and get the same client.
     """
 
-    _bridges: ClassVar[dict[asyncio.AbstractEventLoop, Bridge]] = {}
     _admin_clients: ClassVar[
         dict[asyncio.AbstractEventLoop, asyncio.Task[AdminClient]]
     ] = {}
@@ -108,32 +43,31 @@ class PubSubClientFactory:
     ] = {}
 
     @classmethod
-    def get_bridge(cls) -> Bridge:
-        """Get or create the bridge of the running loop."""
-        loop = asyncio.get_running_loop()
-        bridge = cls._bridges.get(loop)
-        if bridge is None:
-            bridge = Bridge(
-                MAX_BATCH_SIZE, loop.call_soon_threadsafe, run_callbacks
-            )
-            cls._bridges[loop] = bridge
-        return bridge
-
-    @classmethod
     async def get_admin_client(cls) -> AdminClient:
-        """Get or create the admin client for the running loop."""
+        """Gets or creates the admin client of the running event loop.
+
+        Returns:
+            The admin client.
+        """
         loop = asyncio.get_running_loop()
         creation = cls._admin_clients.get(loop)
         if creation is None:
             creation = loop.create_task(
-                asyncio.to_thread(AdminClient, read_endpoint())
+                asyncio.to_thread(AdminClient, Connection.read_endpoint())
             )
             cls._admin_clients[loop] = creation
         return await asyncio.shield(creation)
 
     @classmethod
     async def get_publisher(cls, topic_path: str) -> Publisher:
-        """Get or create the publisher of a topic for the running loop."""
+        """Gets or creates the publisher of a topic for the running loop.
+
+        Args:
+            topic_path: The full path of the topic.
+
+        Returns:
+            The publisher of the topic.
+        """
         loop = asyncio.get_running_loop()
         key = (loop, topic_path)
         publisher = cls._publishers.get(key)
@@ -146,9 +80,9 @@ class PubSubClientFactory:
                 asyncio.to_thread(
                     Publisher,
                     topic_path,
-                    cls.get_bridge(),
-                    resolve_futures,
-                    read_endpoint(),
+                    EventLoopBridge.get(),
+                    EventLoopBridge.resolve_futures,
+                    Connection.read_endpoint(),
                 )
             )
             cls._publisher_creations[key] = creation
@@ -158,12 +92,12 @@ class PubSubClientFactory:
 
     @classmethod
     async def close_all(cls) -> None:
-        """Send the pending messages and clear the cache."""
+        """Sends the pending messages and clears the cache."""
         creations = list(cls._publisher_creations.values())
         cls._publisher_creations.clear()
         cls._publishers.clear()
         cls._admin_clients.clear()
-        cls._bridges.clear()
+        EventLoopBridge.clear()
         for creation in creations:
             with suppress(Exception):
                 publisher = await creation
@@ -171,7 +105,7 @@ class PubSubClientFactory:
 
 
 class PubSubClient:
-    """A Pub/Sub client that uses the Rust core."""
+    """Creates topics and subscriptions, and publishes messages."""
 
     def __init__(self, project_id: str) -> None:
         """Initializes the PubSubClient.
@@ -180,7 +114,8 @@ class PubSubClient:
             project_id: The Google Cloud project ID.
         """
         self.project_id = project_id
-        self.is_emulator = bool(os.getenv("PUBSUB_EMULATOR_HOST"))
+        self.connection = Connection(project_id)
+        self.is_emulator = Connection.is_emulator()
 
     def _build_settings(
         self,
@@ -202,8 +137,8 @@ class PubSubClient:
         dead_letter_topic = ""
         max_delivery_attempts = 0
         if dead_letter_policy:
-            dead_letter_topic = build_topic_path(
-                self.project_id, dead_letter_policy.topic_name
+            dead_letter_topic = self.connection.topic_path(
+                dead_letter_policy.topic_name
             )
             max_delivery_attempts = dead_letter_policy.max_delivery_attempts
         return {
@@ -230,7 +165,7 @@ class PubSubClient:
                 subscription for the topic.
         """
         admin_client = await PubSubClientFactory.get_admin_client()
-        topic_path = build_topic_path(self.project_id, topic_name)
+        topic_path = self.connection.topic_path(topic_name)
         with suppress(AlreadyExistsError):
             await asyncio.to_thread(admin_client.create_topic, topic_path)
             logger.debug(f"Created topic '{topic_path}' successfully.")
@@ -238,7 +173,7 @@ class PubSubClient:
                 return
             await asyncio.to_thread(
                 admin_client.create_subscription,
-                build_subscription_path(self.project_id, topic_name),
+                self.connection.subscription_path(topic_name),
                 topic_path,
                 {},
             )
@@ -264,8 +199,8 @@ class PubSubClient:
         with suppress(AlreadyExistsError):
             await asyncio.to_thread(
                 admin_client.create_subscription,
-                build_subscription_path(self.project_id, subscription_name),
-                build_topic_path(self.project_id, topic_name),
+                self.connection.subscription_path(subscription_name),
+                self.connection.topic_path(topic_name),
                 self._build_settings(
                     retry_policy, delivery_policy, dead_letter_policy
                 ),
@@ -298,10 +233,10 @@ class PubSubClient:
             update_fields.append("filter")
 
         admin_client = await PubSubClientFactory.get_admin_client()
-        subscription_path = build_subscription_path(
-            self.project_id, subscription_name
+        subscription_path = self.connection.subscription_path(
+            subscription_name
         )
-        topic_path = build_topic_path(self.project_id, topic_name)
+        topic_path = self.connection.topic_path(topic_name)
         try:
             await asyncio.to_thread(
                 admin_client.update_subscription,
@@ -312,7 +247,7 @@ class PubSubClient:
                 ),
                 update_fields,
             )
-        except NotFoundError as e:
+        except CoreNotFoundError as e:
             raise FastPubSubException(
                 "We could not update the subscription configuration. "
                 f"The topic {topic_path} or "
@@ -337,8 +272,11 @@ class PubSubClient:
             data: The message data.
             ordering_key: The ordering key for the message.
             attributes: A dictionary of message attributes.
+
+        Raises:
+            NotFoundError: The topic does not exist.
         """
-        topic_path = build_topic_path(self.project_id, topic_name)
+        topic_path = self.connection.topic_path(topic_name)
         publisher = await PubSubClientFactory.get_publisher(topic_path)
         future: asyncio.Future[str] = (
             asyncio.get_running_loop().create_future()
@@ -350,6 +288,9 @@ class PubSubClient:
                 f"Message published for topic {topic_path} "
                 f"with id {message_id}"
             )
+        except CoreNotFoundError as e:
+            logger.exception("Publisher failure", stacklevel=5)
+            raise NotFoundError(str(e)) from e
         except Exception:
             logger.exception("Publisher failure", stacklevel=5)
             raise

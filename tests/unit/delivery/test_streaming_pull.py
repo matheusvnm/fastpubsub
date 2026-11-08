@@ -1,11 +1,13 @@
-"""Unit tests for the Rust transport PubSubStreamingPullTask."""
+"""Unit tests for PubSubStreamingPullTask."""
 
 import asyncio
 from unittest.mock import MagicMock
 
 import pytest
 
-from fastpubsub.rust.tasks import PubSubStreamingPullTask
+from fastpubsub._internal.delivery.streaming_pull import (
+    PubSubStreamingPullTask,
+)
 
 
 class FakeAckHandle:

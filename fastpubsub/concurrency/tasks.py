@@ -14,9 +14,9 @@ from google.cloud.pubsub_v1.subscriber.exceptions import (
 from google.cloud.pubsub_v1.subscriber.futures import StreamingPullFuture
 from google.cloud.pubsub_v1.subscriber.message import Message as PubSubMessage
 
+from fastpubsub._internal.concurrency import wait_future
 from fastpubsub.clients.pubsub import PubSubClient
 from fastpubsub.clients.scheduler import AsyncScheduler
-from fastpubsub.concurrency.utils import wait_future
 from fastpubsub.datastructures import Message
 from fastpubsub.exceptions import Drop, Retry
 from fastpubsub.logger import FastPubSubLogger

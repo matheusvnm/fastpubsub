@@ -8,8 +8,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, validate_call
 
 from fastpubsub._internal import SubscriberSelector
+from fastpubsub._internal.delivery.task_manager import AsyncTaskManager
 from fastpubsub.builder import PubSubSubscriptionBuilder
-from fastpubsub.concurrency.manager import AsyncTaskManager
 from fastpubsub.exceptions import FastPubSubException
 from fastpubsub.middlewares import Middleware
 from fastpubsub.middlewares.base import BaseMiddleware

@@ -10,8 +10,8 @@ from pydantic import ConfigDict, validate_call
 from starlette.applications import Starlette
 from starlette.status import HTTP_200_OK, HTTP_500_INTERNAL_SERVER_ERROR
 
+from fastpubsub._internal.concurrency import ensure_async_callable_function
 from fastpubsub.broker import PubSubBroker
-from fastpubsub.concurrency.utils import ensure_async_callable_function
 from fastpubsub.types import NoArgAsyncCallable
 
 

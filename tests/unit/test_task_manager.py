@@ -3,10 +3,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from fastpubsub.concurrency.manager import AsyncTaskManager
+from fastpubsub._internal.delivery.task_manager import AsyncTaskManager
 
-PUBSUB_POLL_TASK_MODULE_PATH = "fastpubsub.concurrency.tasks"
-ASYNC_TASK_MANAGER_MODULE_PATH = "fastpubsub.concurrency.manager"
+PUBSUB_POLL_TASK_MODULE_PATH = "fastpubsub._internal.delivery.streaming_pull"
+ASYNC_TASK_MANAGER_MODULE_PATH = "fastpubsub._internal.delivery.task_manager"
 
 
 class TestAsyncTaskManager:

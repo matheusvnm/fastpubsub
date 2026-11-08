@@ -436,7 +436,7 @@ class PubSubTestClient:
         self._mock_client.publish = AsyncMock(side_effect=self._fake_publish)
 
         for target in (
-            "fastpubsub.transport.PubSubClient",
+            "fastpubsub._internal.clients.PubSubClient",
             "fastpubsub.middlewares.di.PubSubClient",
         ):
             patcher = patch(target)

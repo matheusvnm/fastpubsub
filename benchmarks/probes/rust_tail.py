@@ -29,7 +29,7 @@ from fastpubsub_core import (
     Subscription,
 )
 
-from fastpubsub.rust.client import resolve_futures, run_callbacks
+from fastpubsub._internal.event_loop_bridge import EventLoopBridge
 
 IN_FLIGHT = 100
 WARMUP_SECONDS = 10
@@ -70,8 +70,12 @@ async def run_probe() -> None:
     admin.create_subscription(
         subscription_path, topic, {"ack_deadline_seconds": 60}
     )
-    bridge = Bridge(256, loop.call_soon_threadsafe, run_callbacks)
-    publisher = Publisher(topic, bridge, resolve_futures, None)
+    bridge = Bridge(
+        EventLoopBridge.MAX_BATCH_SIZE,
+        loop.call_soon_threadsafe,
+        EventLoopBridge.run_callbacks,
+    )
+    publisher = Publisher(topic, bridge, EventLoopBridge.resolve_futures, None)
     confirmed_at: dict[str, float] = {}
     records: list[tuple[str, float, float]] = []
     measure_start: list[float] = []

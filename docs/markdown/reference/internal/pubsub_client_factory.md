@@ -1,4 +1,4 @@
 # `PubSubClientFactory` class
 
 
-::: fastpubsub.clients.factory.PubSubClientFactory
+::: fastpubsub._internal.clients.PubSubClientFactory

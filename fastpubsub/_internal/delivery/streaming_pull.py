@@ -1,4 +1,4 @@
-"""Subscriber task that receives messages from the Rust core."""
+"""The task that receives the messages of one subscriber."""
 
 from __future__ import annotations
 
@@ -9,14 +9,11 @@ from typing import TYPE_CHECKING, Any, cast
 
 from fastpubsub_core import AckHandle, Subscription
 
+from fastpubsub._internal.connection import Connection
+from fastpubsub._internal.event_loop_bridge import EventLoopBridge
 from fastpubsub.datastructures import Message
 from fastpubsub.exceptions import Drop, Retry
 from fastpubsub.logger import FastPubSubLogger
-from fastpubsub.rust.client import (
-    PubSubClientFactory,
-    build_subscription_path,
-    read_endpoint,
-)
 
 if TYPE_CHECKING:
     from fastpubsub.pubsub.subscriber import Subscriber
@@ -27,7 +24,7 @@ type ReceivedMessage = tuple[str, bytes, dict[str, str], int, AckHandle]
 
 
 class PubSubStreamingPullTask:
-    """A task that runs the handler for each message that Rust receives.
+    """A task that runs the handler for each message that the core receives.
 
     The core gives the server twice the ``max_messages`` limit, because
     the server stops the stream too early at the exact limit. The task
@@ -55,13 +52,13 @@ class PubSubStreamingPullTask:
         )
         self.subscription = await asyncio.to_thread(
             Subscription,
-            build_subscription_path(
-                self.subscriber.project_id, self.subscriber.subscription_name
+            Connection(self.subscriber.project_id).subscription_path(
+                self.subscriber.subscription_name
             ),
             self.subscriber.control_flow_policy.max_messages,
-            PubSubClientFactory.get_bridge(),
+            EventLoopBridge.get(),
             self._dispatch,
-            read_endpoint(),
+            Connection.read_endpoint(),
         )
 
     def _dispatch(self, batch: list[ReceivedMessage]) -> None:

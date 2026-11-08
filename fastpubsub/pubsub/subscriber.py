@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import ConfigDict, validate_call
 
-from fastpubsub.concurrency.utils import ensure_async_middleware
+from fastpubsub._internal.concurrency import ensure_async_middleware
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,

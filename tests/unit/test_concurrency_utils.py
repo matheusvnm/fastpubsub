@@ -3,7 +3,7 @@ from concurrent.futures import Future
 
 import pytest
 
-from fastpubsub.concurrency.utils import (
+from fastpubsub._internal.concurrency import (
     ensure_async_callable_function,
     ensure_async_middleware,
     ensure_function,

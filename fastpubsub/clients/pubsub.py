@@ -16,9 +16,9 @@ from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub import DeadLetterPolicy as DLTPolicy
 from google.pubsub import RetryPolicy, Subscription
 
+from fastpubsub._internal.concurrency import apply_async, wait_future
 from fastpubsub.clients.factory import PubSubClientFactory
 from fastpubsub.clients.scheduler import AsyncScheduler
-from fastpubsub.concurrency.utils import apply_async, wait_future
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     MessageDeliveryPolicy,
