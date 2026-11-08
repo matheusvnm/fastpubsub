@@ -671,8 +671,6 @@ dependencies = [
     { name = "click" },
     { name = "fastapi", extra = ["standard-no-fastapi-cloud-cli"] },
     { name = "fastpubsub-core" },
-    { name = "google-api-core" },
-    { name = "google-cloud-pubsub" },
     { name = "pydantic-settings" },
     { name = "rich-toolkit" },
     { name = "typer" },
@@ -681,6 +679,7 @@ dependencies = [
 
 [package.dev-dependencies]
 bench = [
+    { name = "google-cloud-pubsub" },
     { name = "psutil" },
 ]
 dev = [
@@ -688,6 +687,7 @@ dev = [
     { name = "codespell" },
     { name = "coverage" },
     { name = "docstr-coverage" },
+    { name = "google-cloud-pubsub" },
     { name = "mypy" },
     { name = "pre-commit" },
     { name = "psutil" },
@@ -727,8 +727,6 @@ requires-dist = [
     { name = "click", specifier = ">=8.2.1" },
     { name = "fastapi", extras = ["standard-no-fastapi-cloud-cli"], specifier = ">=0.120.2" },
     { name = "fastpubsub-core", directory = "fastpubsub-core" },
-    { name = "google-api-core", specifier = ">=2.25.1" },
-    { name = "google-cloud-pubsub", specifier = ">=2.31.1" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
     { name = "rich-toolkit", specifier = ">=0.15.0" },
     { name = "typer", specifier = ">=0.16.0" },
@@ -736,12 +734,16 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-bench = [{ name = "psutil", specifier = ">=6.0.0" }]
+bench = [
+    { name = "google-cloud-pubsub", specifier = ">=2.31.1" },
+    { name = "psutil", specifier = ">=6.0.0" },
+]
 dev = [
     { name = "bandit", specifier = "==1.9.4" },
     { name = "codespell", specifier = "==2.4.3" },
     { name = "coverage", specifier = ">=7.10.0" },
     { name = "docstr-coverage", specifier = "==2.3.2" },
+    { name = "google-cloud-pubsub", specifier = ">=2.31.1" },
     { name = "mypy", specifier = "==2.4.1" },
     { name = "pre-commit", specifier = "==4.7.0" },
     { name = "psutil", specifier = ">=6.0.0" },

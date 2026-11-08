@@ -72,7 +72,6 @@ nav = [
         ]},
         { "Internal" = [
             { "AsyncTaskManager" = "reference/internal/async_task_manager.md" },
-            { "AsyncScheduler" = "reference/internal/async_scheduler.md" },
             { "PubSubClient" = "reference/internal/pubsub_client.md" },
             { "PubSubClientFactory" = "reference/internal/pubsub_client_factory.md" },
             { "PubSubStreamingPullTask" = "reference/internal/streamingpull_task.md" },

@@ -6,9 +6,10 @@ import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
-from google.cloud.pubsub_v1 import PublisherClient, SubscriberClient
+from fastpubsub_core import AdminClient, AlreadyExistsError
 
 from fastpubsub import Message
+from fastpubsub._internal.connection import Connection
 from tests.integration.conftest import managed_broker
 
 if TYPE_CHECKING:
@@ -37,19 +38,18 @@ class TestSubscriptionLifecycle:
             pass
 
         async with managed_broker(connected_broker):
-            pub_client = PublisherClient()
-            topic_path = pub_client.topic_path(project_id, unique_topic)
-            topic_obj = pub_client.get_topic(request={"topic": topic_path})
-            assert topic_obj.name == topic_path
+            connection = Connection(project_id)
+            topic_path = connection.topic_path(unique_topic)
+            admin_client = AdminClient(Connection.read_endpoint())
 
-            sub_client = SubscriberClient()
-            sub_path = sub_client.subscription_path(
-                project_id, unique_subscription
-            )
-            sub_obj = sub_client.get_subscription(
-                request={"subscription": sub_path}
-            )
-            assert sub_obj.name == sub_path
+            with pytest.raises(AlreadyExistsError):
+                admin_client.create_topic(topic_path)
+            with pytest.raises(AlreadyExistsError):
+                admin_client.create_subscription(
+                    connection.subscription_path(unique_subscription),
+                    topic_path,
+                    {},
+                )
 
     @pytest.mark.asyncio
     async def test_broker_health_checks(
