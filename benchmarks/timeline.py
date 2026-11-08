@@ -20,6 +20,7 @@ from benchmarks.worker import PHASE_PREFIX, RESULT_PREFIX
 
 THREAD_GROUPS = {
     "fastpubsub-core": "tokio",
+    "fastpubsub-netw": "tokio",
     "fastpubsub-brid": "bridge",
     "asyncio_": "executor",
     "ThreadPoolExecu": "executor",

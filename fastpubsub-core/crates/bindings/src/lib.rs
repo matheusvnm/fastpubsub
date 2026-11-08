@@ -8,8 +8,8 @@
 //! crates, for example `fastpubsub-google-pubsub`, and the shared types are
 //! in `fastpubsub-messaging`.
 //!
-//! - `runtime`: the shared tokio runtime with two worker threads. It runs
-//!   all network I/O.
+//! - `runtime`: the shared tokio runtime. It runs all network I/O. It has
+//!   two worker threads, or the number in `FASTPUBSUB_NETWORK_THREADS`.
 //! - `bridge`: one OS thread for each asyncio event loop. It sends the
 //!   received messages and the publish results to the event loop in
 //!   batches, and holds the GIL one time for each batch.

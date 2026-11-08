@@ -16,13 +16,24 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class ServerConfiguration:
-    """Server configuration."""
+    """Server configuration.
+
+    Attributes:
+        host: The host to bind to.
+        port: The port to bind to.
+        workers: The number of worker processes.
+        reload: Whether to enable auto-reloading.
+        log_level: The server (uvicorn) log level.
+        network_threads: The number of network threads of the core in
+            each worker process.
+    """
 
     host: str
     port: int
     workers: int
     reload: bool
     log_level: str
+    network_threads: int = 2
 
 
 @dataclass(frozen=True)
@@ -62,6 +73,9 @@ class ApplicationRunner:
         )
         os.environ["FASTPUBSUB_SUBSCRIBERS"] = ",".join(
             self.app_config.subscribers
+        )
+        os.environ["FASTPUBSUB_NETWORK_THREADS"] = str(
+            self.server_config.network_threads
         )
         configure()
 

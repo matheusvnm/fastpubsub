@@ -58,6 +58,8 @@ class TestCLI:
                 "some_module:app",
                 "--workers",
                 "2",
+                "--network-threads",
+                "4",
                 "--port",
                 "8001",
                 "--host",
@@ -89,6 +91,7 @@ class TestCLI:
             workers=2,
             reload=True,
             log_level="error",
+            network_threads=4,
         )
         mock_runner_class.assert_called_once_with(
             expected_app_config, expected_server_config
@@ -120,9 +123,48 @@ class TestApplicationRunner:
             app_config=app_config, server_config=server_config
         )
         runner_instance.run()
+        uvicorn_settings = asdict(server_config)
+        uvicorn_settings.pop("network_threads")
         mock_uvicorn_run.assert_called_once_with(
-            app_config.app, lifespan="on", **asdict(server_config)
+            app_config.app, lifespan="on", **uvicorn_settings
         )
+
+    @patch("fastpubsub.cli.runner.configure")
+    def test_setup_writes_the_network_threads_for_the_core(
+        self, mock_configure: MagicMock
+    ):
+        app_config = AppConfiguration(
+            app="my_app:app",
+            log_level="INFO",
+            log_serialize=False,
+            log_colorize=False,
+        )
+        server_config = ServerConfiguration(
+            host="localhost",
+            port=8000,
+            workers=1,
+            reload=False,
+            log_level="info",
+            network_threads=3,
+        )
+
+        with patch.dict(os.environ, {}, clear=False):
+            ApplicationRunner(app_config, server_config).setup()
+
+            assert os.environ["FASTPUBSUB_NETWORK_THREADS"] == "3"
+
+    @patch("fastpubsub.cli.main.ensure_pubsub_credentials")
+    @patch("fastpubsub.cli.main.ApplicationRunner")
+    def test_network_threads_below_one_are_rejected(
+        self, mock_runner: MagicMock, mock_ensure_credentials: MagicMock
+    ):
+        result = runner.invoke(
+            app, ["run", "some_module:app", "--network-threads", "0"]
+        )
+
+        assert result.exit_code == 2
+        assert "--network-threads" in result.output
+        mock_runner.assert_not_called()
 
     @patch(
         "fastpubsub.cli.runner.ApplicationRunner._resolve_application_posix_path"

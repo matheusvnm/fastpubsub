@@ -16,6 +16,7 @@ from fastpubsub.cli.options import (
     AppLogColorizeOption,
     AppLogLevelOption,
     AppLogSerializeOption,
+    AppNetworkThreadsOption,
     AppNumWorkersOption,
     AppPortOption,
     AppSelectedSubscribersOption,
@@ -98,6 +99,7 @@ def main(
 def run(
     app: AppArgument,
     workers: AppNumWorkersOption = 1,
+    network_threads: AppNetworkThreadsOption = 2,
     subscribers: AppSelectedSubscribersOption = [],
     reload: AppHotReloadOption = False,
     host: AppHostOption = "127.0.0.1",
@@ -112,6 +114,8 @@ def run(
     Args:
         app: The application to run.
         workers: The number of worker processes.
+        network_threads: The number of network threads in each worker
+            process.
         subscribers: The subscribers to run.
         reload: Whether to enable auto-reloading.
         host: The host to bind to.
@@ -134,6 +138,7 @@ def run(
         host=host,
         port=port,
         workers=workers,
+        network_threads=network_threads,
         reload=reload,
         log_level=server_log_level.lower(),
     )
