@@ -3,12 +3,10 @@
 import inspect
 from typing import Any, ClassVar
 
-from google.api_core.exceptions import NotFound
-
-from fastpubsub.clients.pubsub import PubSubClient
 from fastpubsub.concurrency.utils import apply_async
 from fastpubsub.datastructures import Message
 from fastpubsub.middlewares.base import BaseMiddleware
+from fastpubsub.transport import NotFound, PubSubClient
 from fastpubsub.types import MessageHandler
 
 

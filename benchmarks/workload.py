@@ -1,6 +1,5 @@
 """Benchmark scenarios, handler workloads and metric recording."""
 
-import hashlib
 import json
 import threading
 import time
@@ -10,7 +9,6 @@ THREAD_LIMIT = 40
 MAX_MESSAGES = 1000
 ACK_DEADLINE_SECONDS = 60
 SENT_AT_ATTRIBUTE = "sent_at_ns"
-CPU_WORK_INPUT = b"fastpubsub-benchmark" * 4
 
 TEST_MESSAGE = {
     "name": "John",
@@ -102,25 +100,33 @@ def build_scenarios() -> dict[str, Scenario]:
 SCENARIOS = build_scenarios()
 
 
-def run_cpu_work(iterations: int) -> None:
+def run_cpu_work(iterations: int) -> int:
     """Run a fixed amount of pure Python CPU work.
 
+    The work uses only local integers. It shares no object between
+    threads, so it scales on free-threaded Python. ``hashlib`` does not
+    scale there, so the work does not use it.
+
     Args:
-        iterations: The number of hash rounds.
+        iterations: The number of loop rounds.
+
+    Returns:
+        The result of the loop.
     """
-    digest = CPU_WORK_INPUT
-    for _ in range(iterations):
-        digest = hashlib.sha256(digest).digest()
+    total = 0
+    for value in range(iterations):
+        total = (total * 31 + value) % 1_000_003
+    return total
 
 
 def calibrate_cpu_iterations(target_milliseconds: float = 1.0) -> int:
-    """Find the number of hash rounds that takes the target time.
+    """Find the number of loop rounds that takes the target time.
 
     Args:
         target_milliseconds: The target CPU time, in milliseconds.
 
     Returns:
-        The number of hash rounds.
+        The number of loop rounds.
     """
     sample_iterations = 100_000
     best_seconds = float("inf")

@@ -4,10 +4,9 @@ import asyncio
 import logging
 from typing import cast
 
-from fastpubsub.clients.factory import PubSubClientFactory
-from fastpubsub.concurrency.tasks import PubSubStreamingPullTask
 from fastpubsub.logger import FastPubSubLogger
 from fastpubsub.pubsub.subscriber import Subscriber
+from fastpubsub.transport import PubSubClientFactory, PubSubStreamingPullTask
 
 logger: FastPubSubLogger = cast(FastPubSubLogger, logging.getLogger(__name__))
 

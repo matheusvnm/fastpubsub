@@ -1,11 +1,14 @@
-"""Topic and subscription setup for one benchmark run."""
+"""Topic and subscription setup for one benchmark run.
 
+The Rust transport uses the admin client of the Rust core. The Python
+transport uses the Google Python client. The free-threaded builds of
+Python cannot install the Google Python client.
+"""
+
+import os
 import uuid
 from contextlib import suppress
 from dataclasses import dataclass
-
-from google.api_core.exceptions import NotFound
-from google.cloud.pubsub import PublisherClient, SubscriberClient
 
 from benchmarks.workload import ACK_DEADLINE_SECONDS
 
@@ -22,18 +25,23 @@ class RunResources:
     @property
     def topic_path(self) -> str:
         """The full topic path."""
-        topic_path: str = PublisherClient.topic_path(
-            PROJECT_ID, self.topic_name
-        )
-        return topic_path
+        return f"projects/{PROJECT_ID}/topics/{self.topic_name}"
 
     @property
     def subscription_path(self) -> str:
         """The full subscription path."""
-        subscription_path: str = SubscriberClient.subscription_path(
-            PROJECT_ID, self.subscription_name
-        )
-        return subscription_path
+        return f"projects/{PROJECT_ID}/subscriptions/{self.subscription_name}"
+
+
+def is_rust_transport() -> bool:
+    """Check if the worker runs the Rust transport."""
+    return os.getenv("FASTPUBSUB_TRANSPORT", "python") == "rust"
+
+
+def read_endpoint() -> str | None:
+    """Read the emulator endpoint for the Rust admin client."""
+    emulator_host = os.getenv("PUBSUB_EMULATOR_HOST")
+    return f"http://{emulator_host}" if emulator_host else None
 
 
 def create_run_resources(case_name: str) -> RunResources:
@@ -52,6 +60,20 @@ def create_run_resources(case_name: str) -> RunResources:
         topic_name=f"bench-{case_name}-{suffix}",
         subscription_name=f"bench-{case_name}-{suffix}-subscription",
     )
+
+    if is_rust_transport():
+        from fastpubsub_core import AdminClient
+
+        admin_client = AdminClient(read_endpoint())
+        admin_client.create_topic(resources.topic_path)
+        admin_client.create_subscription(
+            resources.subscription_path,
+            resources.topic_path,
+            {"ack_deadline_seconds": ACK_DEADLINE_SECONDS},
+        )
+        return resources
+
+    from google.cloud.pubsub import PublisherClient, SubscriberClient
 
     publisher_client = PublisherClient()
     subscriber_client = SubscriberClient()
@@ -75,6 +97,19 @@ def delete_run_resources(resources: RunResources) -> None:
     Args:
         resources: The resources to delete.
     """
+    if is_rust_transport():
+        from fastpubsub_core import AdminClient, NotFoundError
+
+        admin_client = AdminClient(read_endpoint())
+        with suppress(NotFoundError):
+            admin_client.delete_subscription(resources.subscription_path)
+        with suppress(NotFoundError):
+            admin_client.delete_topic(resources.topic_path)
+        return
+
+    from google.api_core.exceptions import NotFound
+    from google.cloud.pubsub import PublisherClient, SubscriberClient
+
     publisher_client = PublisherClient()
     subscriber_client = SubscriberClient()
     try:

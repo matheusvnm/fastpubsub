@@ -11,9 +11,15 @@ crate-type = ["cdylib"]
 
 [dependencies]
 google-cloud-auth = "1"
+google-cloud-gax = "1.15"
 google-cloud-pubsub = "1.7.0"
-pyo3 = { version = "0.30", features = ["extension-module", "abi3-py312"] }
+wkt = { version = "1.10", package = "google-cloud-wkt" }
+pyo3 = { version = "0.30", features = ["extension-module"] }
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }
+
+[features]
+default = ["abi3"]
+abi3 = ["pyo3/abi3-py312"]
 
 [profile.release]
 lto = "fat"

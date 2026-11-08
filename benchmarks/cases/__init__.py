@@ -16,7 +16,6 @@ CASE_LOCATIONS = {
     "google-nonblocking": ("benchmarks.cases.google", "GoogleNonBlockingCase"),
     "fastpubsub-async": ("benchmarks.cases.fastpubsub", "FastPubSubAsyncCase"),
     "fastpubsub-sync": ("benchmarks.cases.fastpubsub", "FastPubSubSyncCase"),
-    "fastpubsub-rust": ("benchmarks.cases.rust", "FastPubSubRustCase"),
 }
 
 

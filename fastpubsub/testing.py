@@ -462,7 +462,7 @@ class PubSubTestClient:
         # so that all publish paths (including broker.publish() from within
         # handlers) are intercepted by _fake_publish.
         for target in (
-            "fastpubsub.clients.pubsub.PubSubClient",
+            "fastpubsub.transport.PubSubClient",
             "fastpubsub.middlewares.di.PubSubClient",
         ):
             patcher = patch(target)

@@ -19,6 +19,7 @@ import os
 import platform
 import subprocess
 import sys
+import sysconfig
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -39,6 +40,7 @@ CSV_COLUMNS = [
     "FastPubSub Version",
     "Scenario",
     "Case",
+    "Transport",
     "Repeat",
     "Events",
     "Elapsed Seconds",
@@ -87,6 +89,16 @@ def read_git_commit(folder: Path) -> str:
     return f"{commit}-dirty" if changes else commit
 
 
+def read_python_version() -> str:
+    """Read the Python version, with a ``t`` suffix for free threading.
+
+    Returns:
+        The Python version, for example ``3.14.1t``.
+    """
+    is_free_threaded = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+    return platform.python_version() + ("t" if is_free_threaded else "")
+
+
 def read_host_cpu() -> str:
     """Read the CPU model of the host.
 
@@ -127,7 +139,7 @@ def run_worker(
         case_name: The benchmark case name.
         scenario: The scenario.
         args: The command line arguments.
-        cpu_iterations: The hash rounds for 1 ms of CPU work.
+        cpu_iterations: The loop rounds for 1 ms of CPU work.
 
     Returns:
         The worker result, or None when the worker fails.
@@ -146,6 +158,8 @@ def run_worker(
         str(args.warmup),
         "--cpu-iterations",
         str(cpu_iterations),
+        "--transport",
+        args.transport,
     ]
     if args.fastpubsub_source:
         command += ["--fastpubsub-source", args.fastpubsub_source]
@@ -207,6 +221,7 @@ def build_row(
         "FastPubSub Version": result["fastpubsub_version"],
         "Scenario": scenario.name,
         "Case": case_name,
+        "Transport": run_context["transport"],
         "Repeat": str(repeat),
         "Events": str(events),
         "Elapsed Seconds": f"{elapsed_seconds:.2f}",
@@ -223,7 +238,7 @@ def build_row(
         "CPU Work ms": f"{scenario.cpu_milliseconds:g}",
         "Wait ms": f"{scenario.wait_milliseconds:g}",
         "CPU Iterations": run_context["cpu_iterations"],
-        "Python Version": platform.python_version(),
+        "Python Version": run_context["python_version"],
         "Host CPU": run_context["host_cpu"],
         "Host CPU Limit": run_context["host_cpu_limit"],
         "Timestamp": datetime.now(tz=UTC).isoformat(),
@@ -238,6 +253,14 @@ def append_row(results_file: Path, row: dict[str, str]) -> None:
         row: The CSV row.
     """
     is_new_file = not results_file.exists()
+    if not is_new_file:
+        with results_file.open(newline="") as csv_file:
+            header = csv_file.readline().strip().split(";")
+        if header != CSV_COLUMNS:
+            raise SystemExit(
+                f"The columns of {results_file} do not match. "
+                "Use --results-file with a new file."
+            )
     with results_file.open("a", newline="") as csv_file:
         writer = csv.DictWriter(
             csv_file, fieldnames=CSV_COLUMNS, delimiter=";"
@@ -296,6 +319,12 @@ def parse_arguments() -> argparse.Namespace:
         help="A name for the code under test, for example python-optimized",
     )
     parser.add_argument(
+        "--transport",
+        choices=["python", "rust"],
+        default="python",
+        help="The FastPubSub transport (default: python)",
+    )
+    parser.add_argument(
         "--fastpubsub-source",
         help="A folder that contains a different fastpubsub package",
     )
@@ -328,13 +357,16 @@ def main() -> None:
         "label": args.label,
         "git_commit": args.git_commit or read_git_commit(code_folder),
         "cpu_iterations": str(cpu_iterations),
+        "transport": args.transport,
+        "python_version": read_python_version(),
         "host_cpu": read_host_cpu(),
         "host_cpu_limit": read_host_cpu_limit(),
     }
 
     print(f"Run id: {run_context['run_id']}")
     print(f"Label: {args.label} (commit {run_context['git_commit']})")
-    print(f"Python: {platform.python_version()}")
+    print(f"Python: {run_context['python_version']}")
+    print(f"Transport: {args.transport}")
     print(
         f"Host CPU: {run_context['host_cpu']} "
         f"(limit {run_context['host_cpu_limit']})"

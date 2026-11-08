@@ -4,6 +4,7 @@ Examples:
     python -m benchmarks.report
     python -m benchmarks.report --run-id 3f2a9c1b7d4e
     python -m benchmarks.report --scenario cpu-and-wait-100ms
+    python -m benchmarks.report --by-scenario
 """
 
 import argparse
@@ -63,30 +64,56 @@ def format_metric(values: list[float]) -> str:
     return f"{median:,.1f} [{min(values):,.1f}-{max(values):,.1f}]"
 
 
-def print_summary(rows: list[dict[str, str]]) -> None:
+def build_row_name(row: dict[str, str]) -> str:
+    """Name a row by its case, transport and Python version."""
+    transport = row.get("Transport") or "python"
+    return f"{row['Case']} {transport} {row['Python Version']}"
+
+
+def print_summary(
+    rows: list[dict[str, str]], is_grouped_by_scenario: bool = False
+) -> None:
     """Print the median and the range for each label, scenario and case.
 
     The change column compares the median CPU per event with the
-    ``google-nonblocking`` case of the same label and scenario.
+    ``google-nonblocking`` case of the same group. Without that case, it
+    compares with the first case of the group.
 
     Args:
         rows: The result rows.
+        is_grouped_by_scenario: Put all labels of a scenario in one table.
+            Each row name then has the case, the transport and the Python
+            version.
     """
     groups: dict[tuple[str, str], dict[str, list[dict[str, str]]]] = (
         defaultdict(lambda: defaultdict(list))
     )
     for row in rows:
-        groups[(row["Label"], row["Scenario"])][row["Case"]].append(row)
+        if is_grouped_by_scenario:
+            key = ("all labels", row["Scenario"])
+            name = build_row_name(row)
+        else:
+            key = (row["Label"], row["Scenario"])
+            name = row["Case"]
+        groups[key][name].append(row)
 
     for (label, scenario), cases in groups.items():
         print(f"\n{label} / {scenario}")
-        header = f"{'Case':<20} | {'Runs':>4} | " + " | ".join(
+        width = max(20, *(len(name) for name in cases))
+        header = f"{'Case':<{width}} | {'Runs':>4} | " + " | ".join(
             f"{title:>28}" for title, _ in METRICS
         )
-        print(header + f" | {'CPU vs ' + REFERENCE_CASE:>28}")
+        print(header + f" | {'CPU change':>28}")
         print("-" * (len(header) + 31))
 
-        reference_rows = cases.get(REFERENCE_CASE, [])
+        reference_rows = next(
+            (
+                case_rows
+                for name, case_rows in cases.items()
+                if name.split()[0] == REFERENCE_CASE
+            ),
+            next(iter(cases.values())),
+        )
         reference_cpu = (
             statistics.median(
                 float(row["CPU Microseconds per Event"])
@@ -110,7 +137,7 @@ def print_summary(rows: list[dict[str, str]]) -> None:
                 else "-"
             )
             print(
-                f"{case_name:<20} | {len(case_rows):>4} | "
+                f"{case_name:<{width}} | {len(case_rows):>4} | "
                 + " | ".join(f"{cell:>28}" for cell in cells)
                 + f" | {change:>28}"
             )
@@ -122,8 +149,12 @@ def main() -> None:
     parser.add_argument("--results-file", type=Path, default=RESULTS_FILE)
     parser.add_argument("--run-id")
     parser.add_argument("--scenario")
+    parser.add_argument("--by-scenario", action="store_true")
     args = parser.parse_args()
-    print_summary(read_rows(args.results_file, args.run_id, args.scenario))
+    print_summary(
+        read_rows(args.results_file, args.run_id, args.scenario),
+        is_grouped_by_scenario=args.by_scenario,
+    )
 
 
 if __name__ == "__main__":

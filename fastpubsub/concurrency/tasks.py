@@ -1,9 +1,11 @@
 """Subscriber task for polling messages."""
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from concurrent.futures import Future
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from google.cloud.pubsub_v1.subscriber.exceptions import (
     AcknowledgeError,
@@ -18,7 +20,9 @@ from fastpubsub.concurrency.utils import wait_future
 from fastpubsub.datastructures import Message
 from fastpubsub.exceptions import Drop, Retry
 from fastpubsub.logger import FastPubSubLogger
-from fastpubsub.pubsub.subscriber import Subscriber
+
+if TYPE_CHECKING:
+    from fastpubsub.pubsub.subscriber import Subscriber
 
 logger: FastPubSubLogger = cast(FastPubSubLogger, logging.getLogger(__name__))
 

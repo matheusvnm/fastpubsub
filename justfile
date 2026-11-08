@@ -230,14 +230,21 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
     just _start_msg "Benchmark Results"
     {{ run_command }} python -m benchmarks.report {{ args }}
 
-[doc("Build the Rust core and install it in the local virtual environment")]
+[doc("Build the Rust core for .venv (abi3) and for .venv-3.14t and .venv-3.15t when they exist")]
 [group("bench")]
 @core-build:
     just _start_msg "Building the Rust core"
-    uvx maturin build --release -m rust/fastpubsub-core/Cargo.toml \
-        --out rust/fastpubsub-core/target/wheels
-    uv pip install --python .venv --reinstall \
-        rust/fastpubsub-core/target/wheels/fastpubsub_core-*.whl
+    uvx maturin build --release -m core/Cargo.toml --out core/target/wheels
+    uv pip install --python .venv --reinstall core/target/wheels/fastpubsub_core-*-abi3-*.whl
+    for version in 3.14t 3.15t; do \
+        if [ -d ".venv-$version" ]; then \
+            uvx maturin build --release --no-default-features -m core/Cargo.toml \
+                -i ".venv-$version/bin/python" --out core/target/wheels; \
+            tag="cp$(echo $version | tr -d '.t')"; \
+            uv pip install --python ".venv-$version" --reinstall \
+                core/target/wheels/fastpubsub_core-*-$tag-${tag}t-*.whl; \
+        fi; \
+    done
 
 [doc("Clear benchmark results")]
 [group("bench")]

@@ -8,6 +8,7 @@ import argparse
 import asyncio
 import json
 import math
+import os
 import resource
 import sys
 import time
@@ -109,7 +110,7 @@ async def run_case(
         scenario_name: The scenario name.
         duration: The measured time in seconds.
         warmup: The time in seconds before the measurement starts.
-        cpu_iterations: The hash rounds for 1 ms of CPU work.
+        cpu_iterations: The loop rounds for 1 ms of CPU work.
 
     Returns:
         The measurements.
@@ -164,11 +165,15 @@ def main() -> None:
     parser.add_argument("--warmup", type=float, required=True)
     parser.add_argument("--cpu-iterations", type=int, required=True)
     parser.add_argument(
+        "--transport", choices=["python", "rust"], default="python"
+    )
+    parser.add_argument(
         "--fastpubsub-source",
         help="A folder that contains a different fastpubsub package",
     )
     args = parser.parse_args()
 
+    os.environ["FASTPUBSUB_TRANSPORT"] = args.transport
     if args.fastpubsub_source:
         sys.path.insert(0, str(Path(args.fastpubsub_source).resolve()))
 
