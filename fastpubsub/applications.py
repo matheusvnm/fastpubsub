@@ -114,11 +114,18 @@ class Application:
         return func
 
     async def _start(self) -> None:
+        """Runs the startup hooks around the start of the broker."""
         async with self._start_hooks():
             await self.broker.start()
 
     @asynccontextmanager
     async def _start_hooks(self) -> AsyncIterator[None]:
+        """Runs the startup hooks around the start of the broker.
+
+        Yields:
+            Control after the ``on_startup`` hooks. The ``after_startup``
+            hooks run when control comes back.
+        """
         for func in self._on_startup:
             await func()
 
@@ -128,11 +135,18 @@ class Application:
             await func()
 
     async def _shutdown(self) -> None:
+        """Runs the shutdown hooks around the shutdown of the broker."""
         async with self._shutdown_hooks():
             await self.broker.shutdown()
 
     @asynccontextmanager
     async def _shutdown_hooks(self) -> AsyncIterator[None]:
+        """Runs the shutdown hooks around the shutdown of the broker.
+
+        Yields:
+            Control after the ``on_shutdown`` hooks. The ``after_shutdown``
+            hooks run when control comes back.
+        """
         for func in self._on_shutdown:
             await func()
 
@@ -192,6 +206,17 @@ class FastPubSub(FastAPI, Application):
 
     @asynccontextmanager
     async def _run(self, app: "FastPubSub") -> AsyncGenerator[None]:
+        """Runs the application lifespan.
+
+        The user lifespan, when it exists, wraps the start and the shutdown of
+        the application.
+
+        Args:
+            app: The application that FastAPI passes to the lifespan.
+
+        Yields:
+            Control while the application runs.
+        """
         if not self.lifespan_context:
             await self._start()
             yield
@@ -203,6 +228,12 @@ class FastPubSub(FastAPI, Application):
                 await self._shutdown()
 
     async def _get_liveness(self, _: Request) -> JSONResponse:
+        """Answers the liveness probe.
+
+        Returns:
+            A JSON response with the ``alive`` key. The status is 200 when all
+            subscriber tasks are alive, and 500 when one is not.
+        """
         alive = self.broker.alive()
 
         status_code = HTTP_200_OK
@@ -212,6 +243,12 @@ class FastPubSub(FastAPI, Application):
         return JSONResponse(content={"alive": alive}, status_code=status_code)
 
     async def _get_readiness(self, _: Request) -> JSONResponse:
+        """Answers the readiness probe.
+
+        Returns:
+            A JSON response with the ``ready`` key. The status is 200 when all
+            subscriber tasks are ready, and 500 when one is not.
+        """
         ready = self.broker.ready()
 
         status_code = HTTP_200_OK

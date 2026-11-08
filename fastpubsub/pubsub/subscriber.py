@@ -100,6 +100,11 @@ class Subscriber:
         return self._callstack
 
     def _build_callstack(self) -> BaseMiddleware:
+        """Builds the middleware chain that ends with the handler.
+
+        Returns:
+            The first middleware of the chain.
+        """
         callstack: BaseMiddleware = HandleMessageSerializerMiddleware(
             None, self.func
         )
@@ -113,10 +118,20 @@ class Subscriber:
         return getattr(self.func, "__name__", "")
 
     def _set_project_id(self, project_id: str) -> None:
+        """Sets the project ID if the subscriber has none.
+
+        Args:
+            project_id: The project ID of the router.
+        """
         if not self.project_id:
             self.project_id = project_id
 
     def _add_prefix(self, new_prefix: str) -> None:
+        """Replaces the prefix of the subscription name.
+
+        Args:
+            new_prefix: The full prefix of the router.
+        """
         subscription_name = self.subscription_name.split(".")[-1]
         self.subscription_name = f"{new_prefix}.{subscription_name}"
 

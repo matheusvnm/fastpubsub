@@ -27,18 +27,15 @@ async def cleanup_resources(
     """
     yield
 
-    # Import here to avoid issues when emulator is not available
     from google.cloud.pubsub_v1 import PublisherClient, SubscriberClient
 
-    # Cleanup topic
     try:
         pub_client = PublisherClient()
         topic_path = pub_client.topic_path(project_id, unique_topic)
         pub_client.delete_topic(request={"topic": topic_path})
     except Exception:
-        pass  # Ignore cleanup errors
+        pass
 
-    # Cleanup subscription
     try:
         sub_client = SubscriberClient()
         sub_path = sub_client.subscription_path(
@@ -46,7 +43,7 @@ async def cleanup_resources(
         )
         sub_client.delete_subscription(request={"subscription": sub_path})
     except Exception:
-        pass  # Ignore cleanup errors
+        pass
 
 
 @pytest.fixture
@@ -72,9 +69,8 @@ async def connected_broker(
         topic_path = pub_client.topic_path(project_id, unique_topic)
         pub_client.delete_topic(request={"topic": topic_path})
     except Exception:
-        pass  # Ignore cleanup errors
+        pass
 
-    # Cleanup subscription
     try:
         sub_client = SubscriberClient()
         sub_path = sub_client.subscription_path(
@@ -82,7 +78,7 @@ async def connected_broker(
         )
         sub_client.delete_subscription(request={"subscription": sub_path})
     except Exception:
-        pass  # Ignore cleanup errors
+        pass
 
 
 @asynccontextmanager

@@ -60,7 +60,6 @@ class LifecyclePolicy:
     autoupdate: bool
 
 
-# TODO: Create an example for that
 class PushMessageContent(BaseModel):
     """A class to represent a Pub/Sub message data sent via Push."""
 

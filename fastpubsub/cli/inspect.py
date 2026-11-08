@@ -32,14 +32,12 @@ DEFAULT_COLUMNS = [
 class SubscriberRecord(BaseModel):
     """Flat representation of a subscriber for inspection output."""
 
-    # Core fields (shown by default)
     alias: str
     project: str
     topic: str
     subscription: str
     handler: str
 
-    # Policy fields (available via --columns)
     ack_deadline: int = 0
     filter: str = ""
     ordering: bool = False

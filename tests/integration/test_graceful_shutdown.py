@@ -38,24 +38,19 @@ class TestGracefulShutdown:
         async def slow_handler(msg: Message) -> None:
             """Handler that takes time to process."""
             processing_started.set()
-            await asyncio.sleep(1.0)  # Simulate processing
+            await asyncio.sleep(1.0)
             received_messages.append(msg.data.decode())
 
-        # Start broker
         await connected_broker.start()
 
-        # Publish a message
         await connected_broker.publish(
             topic_name=unique_topic, data=b"test-message-1"
         )
 
-        # Wait for processing to start
         await asyncio.wait_for(processing_started.wait(), timeout=5.0)
 
-        # Shutdown while message is being processed
         await connected_broker.shutdown()
 
-        # Message should have completed processing
         assert len(received_messages) == 1
         assert received_messages[0] == "test-message-1"
 
@@ -79,27 +74,20 @@ class TestGracefulShutdown:
         async def handler(msg: Message) -> None:
             first_message_received.set()
             received_messages.append(msg.data.decode())
-            # Don't process too quickly
             await asyncio.sleep(0.5)
 
-        # Start broker
         await connected_broker.start()
 
-        # Publish first message
         await connected_broker.publish(
             topic_name=unique_topic, data=b"message-1"
         )
 
-        # Wait for first message to be received
         await asyncio.wait_for(first_message_received.wait(), timeout=5.0)
 
-        # Shutdown broker (this should reject new messages)
         shutdown_task = asyncio.create_task(connected_broker.shutdown())
 
-        # Give shutdown time to set closed flag
         await asyncio.sleep(0.2)
 
-        # Publish more messages (these should be nacked by closed scheduler)
         await connected_broker.publish(
             topic_name=unique_topic, data=b"message-2"
         )
@@ -107,11 +95,8 @@ class TestGracefulShutdown:
             topic_name=unique_topic, data=b"message-3"
         )
 
-        # Wait for shutdown to complete
         await shutdown_task
 
-        # Only the first message should have been processed
-        # (messages published after shutdown started should be nacked)
         assert len(received_messages) >= 1
         assert "message-1" in received_messages
 
@@ -138,21 +123,16 @@ class TestGracefulShutdown:
         async def very_slow_handler(msg: Message) -> None:
             """Handler that takes longer than timeout."""
             received_messages.append(msg.data.decode())
-            await asyncio.sleep(10.0)  # Longer than timeout
+            await asyncio.sleep(10.0)
 
-        # Start broker
         await broker.start()
         await broker.publish(topic_name=unique_topic, data=b"test-message")
-        # Give message time to start processing
         await asyncio.sleep(0.5)
 
-        # Shutdown with 2 second timeout
         start_time = time.time()
         await broker.shutdown()
         elapsed = time.time() - start_time
 
-        # Shutdown should complete within reasonable time after timeout
-        # (2s timeout + some buffer for cancellation)
         assert elapsed < 4.0, f"Shutdown took {elapsed}s, expected < 4s"
         assert len(received_messages) == 1
 
@@ -169,7 +149,6 @@ class TestGracefulShutdown:
 
         broker = broker_factory()
 
-        # Create two different subscriptions
         topic1 = f"{unique_topic}-1"
         topic2 = f"{unique_topic}-2"
         sub1 = f"{unique_subscription}-1"
@@ -195,20 +174,15 @@ class TestGracefulShutdown:
             received_sub2.append(msg.data.decode())
             await asyncio.sleep(0.5)
 
-        # Start broker
         await broker.start()
 
-        # Publish to both topics
         await broker.publish(topic_name=topic1, data=b"message-1")
         await broker.publish(topic_name=topic2, data=b"message-2")
 
-        # Wait for messages to arrive
         await asyncio.sleep(1.0)
 
-        # Shutdown all
         await broker.shutdown()
 
-        # Both subscriptions should have processed their messages
         assert len(received_sub1) == 1
         assert len(received_sub2) == 1
 
@@ -231,26 +205,20 @@ class TestGracefulShutdown:
         async def handler(msg: Message) -> None:
             received_messages.append(msg.data.decode())
 
-        # Start broker (this will create cached clients in factory)
         await connected_broker.start()
 
-        # Publish a message
         await connected_broker.publish(
             topic_name=unique_topic, data=b"test-message"
         )
 
-        # Wait for message
         await asyncio.sleep(1.0)
 
-        # Verify factory has cached clients
         assert (
             len(PubSubClientFactory._publisher_cache) > 0
             or len(PubSubClientFactory._subscriber_cache) > 0
         )
 
-        # Shutdown
         await connected_broker.shutdown()
 
-        # Factory cache should be empty (clients closed)
         assert len(PubSubClientFactory._publisher_cache) == 0
         assert len(PubSubClientFactory._subscriber_cache) == 0

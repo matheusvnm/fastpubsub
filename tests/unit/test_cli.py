@@ -137,7 +137,7 @@ class TestApplicationRunner:
         mock_translate: MagicMock,
         mock_resolve: MagicMock,
     ):
-        mock_import.return_value = object()  # Not a FastPubSub instance
+        mock_import.return_value = object()
         app_config = MagicMock(spec=AppConfiguration)
         app_config.app = "my_app:app"
         runner_instance = ApplicationRunner(

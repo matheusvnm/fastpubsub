@@ -71,6 +71,14 @@ class PublishMessageSerializerMiddleware(BaseMiddleware):
         self._client: Any = None
 
     def _get_client(self) -> PubSubClient:
+        """Gets the Pub/Sub client of this middleware.
+
+        The method makes a new client when the ``PubSubClient`` class
+        changes, so test patches of the class take effect.
+
+        Returns:
+            The cached Pub/Sub client.
+        """
         if self._client_factory is not PubSubClient:
             self._client_factory = PubSubClient
             self._client = PubSubClient(project_id=self.project_id)

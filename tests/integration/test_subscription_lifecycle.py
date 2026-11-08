@@ -67,16 +67,13 @@ class TestSubscriptionLifecycle:
         async def handler(msg: str) -> None:
             pass
 
-        # Before start, health checks should fail
         assert connected_broker.alive() is False
         assert connected_broker.ready() is False
 
-        # After start, health check should fail
         async with managed_broker(connected_broker):
             assert connected_broker.alive() is True
             assert connected_broker.ready() is True
 
-        # After shutdown, health checks should fail again
         assert connected_broker.alive() is False
         assert connected_broker.ready() is False
 

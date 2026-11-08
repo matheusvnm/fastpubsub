@@ -67,6 +67,14 @@ class PubSubStreamingPullTask:
         )
 
     def _dispatch(self, batch: list[ReceivedMessage]) -> None:
+        """Receives a batch of messages from the core.
+
+        The messages wait in a queue. During the shutdown, the task nacks
+        them at once. Otherwise it starts handlers up to ``max_messages``.
+
+        Args:
+            batch: The received messages.
+        """
         self.waiting.extend(batch)
         if self.is_closing:
             self._nack_waiting()
@@ -74,11 +82,16 @@ class PubSubStreamingPullTask:
         self._start_waiting()
 
     def _nack_waiting(self) -> None:
+        """Nacks all messages in the queue, so Pub/Sub sends them again."""
         while self.waiting:
             *_, ack = self.waiting.popleft()
             ack.nack()
 
     def _start_waiting(self) -> None:
+        """Starts handlers for the waiting messages.
+
+        At most ``max_messages`` handlers run at the same time.
+        """
         limit = self.subscriber.control_flow_policy.max_messages
         while self.waiting and len(self.tasks) < limit:
             message_id, data, attributes, delivery_attempt, ack = (
@@ -101,11 +114,28 @@ class PubSubStreamingPullTask:
             task.add_done_callback(self._finish_task)
 
     def _finish_task(self, task: asyncio.Task[Any]) -> None:
+        """Removes a finished handler and starts the next waiting message.
+
+        Args:
+            task: The finished handler task.
+        """
         self.tasks.discard(task)
         if not self.is_closing:
             self._start_waiting()
 
     async def _consume(self, message: Message, ack: AckHandle) -> Any:
+        """Runs the handler and acks or nacks the message.
+
+        A success or ``Drop`` acks the message. ``Retry`` or a different
+        exception nacks it.
+
+        Args:
+            message: The message for the handler.
+            ack: The acknowledgement handle of the message.
+
+        Returns:
+            The return value of the handler, or None on an error.
+        """
         with logger.contextualize(
             message_id=message.id,
             topic_name=message.topic_name,

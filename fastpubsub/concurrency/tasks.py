@@ -93,6 +93,14 @@ class PubSubStreamingPullTask:
         )
 
     def _on_message(self, received_message: PubSubMessage) -> Any:
+        """Schedules the handler for one received message.
+
+        Args:
+            received_message: The message from the Google client.
+
+        Returns:
+            The asyncio task that runs the handler.
+        """
         coroutine = self._consume(received_message)
         task = self.loop.create_task(coroutine)
         self.scheduler.register_task_execution(task, received_message)
@@ -100,6 +108,17 @@ class PubSubStreamingPullTask:
         return task
 
     async def _consume(self, received_message: PubSubMessage) -> Any:
+        """Runs the handler and acks or nacks the message.
+
+        A success or ``Drop`` acks the message. ``Retry`` or a different
+        exception nacks it.
+
+        Args:
+            received_message: The message from the Google client.
+
+        Returns:
+            The return value of the handler, or None on an error.
+        """
         message = self.mapper.convert(received_message)
         with logger.contextualize(
             message_id=message.id,
@@ -131,6 +150,11 @@ class PubSubStreamingPullTask:
                 return
 
     async def _wait_acknowledge_response(self, future: Future[Any]) -> None:
+        """Waits for the result of an ack or a nack and logs a failure.
+
+        Args:
+            future: The future of the ack or nack request.
+        """
         try:
             await wait_future(future)
         except AcknowledgeError as e:
@@ -142,6 +166,11 @@ class PubSubStreamingPullTask:
             )
 
     def _on_acknowledge_failed(self, e: AcknowledgeError) -> None:
+        """Logs a failed ack or nack with the cause.
+
+        Args:
+            e: The error from the Google client.
+        """
         match e.error_code:
             case AcknowledgeStatus.PERMISSION_DENIED:
                 logger.exception(

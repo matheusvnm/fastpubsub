@@ -44,7 +44,6 @@ class TestAsyncSchedulerTracking:
 
         scheduler.register_task_execution(task, mock_message)
 
-        # Verify task is tracked
         assert id(task) in scheduler._executing_tasks
         assert scheduler._executing_tasks[id(task)] == mock_message
 
@@ -75,7 +74,6 @@ class TestAsyncSchedulerTracking:
 
         scheduler.schedule(dummy_callback, mock_message)
 
-        # Create and register an executing task
         async def dummy_coro():
             await asyncio.sleep(0.5)
 
@@ -84,8 +82,7 @@ class TestAsyncSchedulerTracking:
 
         pending, executing = scheduler.get_in_flight_count()
 
-        # Should have 1 pending (scheduled callback) and 1 executing (task)
-        assert pending >= 1  # At least 1 pending
+        assert pending >= 1
         assert executing == 1
 
         task.cancel()
@@ -218,7 +215,6 @@ class TestAsyncSchedulerBackwardCompatibility:
 
         scheduler.schedule(callback, mock_message)
 
-        # Give callback time to execute (increased delay)
         await asyncio.sleep(0.2)
 
         assert len(callback_called) == 1

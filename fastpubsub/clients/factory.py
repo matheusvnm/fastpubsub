@@ -61,13 +61,10 @@ class PubSubClientFactory:
         """
         key = (project_id, enable_ordering)
 
-        # Fast path: return cached client without acquiring lock
         if key in cls._publisher_cache:
             return cls._publisher_cache[key]
 
-        # Slow path: acquire lock and create client if needed
         async with cls._get_lock():
-            # Double-check after acquiring lock
             if key not in cls._publisher_cache:
                 logger.debug(
                     f"Creating new PublisherClient for project={project_id}, "
@@ -92,13 +89,10 @@ class PubSubClientFactory:
         Returns:
             A cached or newly created SubscriberClient instance.
         """
-        # Fast path: return cached client without acquiring lock
         if project_id in cls._subscriber_cache:
             return cls._subscriber_cache[project_id]
 
-        # Slow path: acquire lock and create client if needed
         async with cls._get_lock():
-            # Double-check after acquiring lock
             if project_id not in cls._subscriber_cache:
                 logger.debug(
                     f"Creating new SubscriberClient for project={project_id}"

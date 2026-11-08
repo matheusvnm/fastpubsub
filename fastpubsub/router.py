@@ -85,6 +85,14 @@ class PubSubRouter:
                 self.include_middleware(middleware, *args, **kwargs)
 
     def _set_project_id(self, project_id: str) -> None:
+        """Sets the project ID if the router has none.
+
+        The router then gives the project ID to its routers, publishers
+        and subscribers that have none.
+
+        Args:
+            project_id: The project ID of the parent router.
+        """
         if self.project_id or not project_id:
             return
 
@@ -92,6 +100,10 @@ class PubSubRouter:
         self._propagate_project_id()
 
     def _propagate_project_id(self) -> None:
+        """Gives the prefix and the project ID to the children.
+
+        The children are the child routers, publishers and subscribers.
+        """
         for router in self.routers:
             router._add_prefix(self.prefix)
             router._set_project_id(self.project_id)
@@ -114,9 +126,6 @@ class PubSubRouter:
             )
 
         if self == router:
-            # V2: Create a algorithm to detect cycles on these routers.
-            # For now, let us assume that the router is well configured
-            # and this is the only error case.
             raise FastPubSubException(
                 f"There is a cyclical reference on router {self.prefix}."
             )
@@ -187,6 +196,17 @@ class PubSubRouter:
         """
 
         def decorator(func: MessageHandler) -> MessageHandler:
+            """Registers the handler as a subscriber of this router.
+
+            Args:
+                func: The handler function.
+
+            Returns:
+                The same handler function.
+
+            Raises:
+                FastPubSubException: The alias exists already in this router.
+            """
             ensure_function(func)
 
             prefixed_alias = alias
@@ -353,6 +373,15 @@ class PubSubRouter:
 
     @validate_call
     def _add_prefix(self, prefix: str) -> None:
+        """Adds a parent prefix to this router and its children.
+
+        The new prefix goes before the current prefix, without repeated
+        segments. The subscriber aliases and subscription names change to
+        the new prefix.
+
+        Args:
+            prefix: The prefix of the parent router.
+        """
         if not prefix:
             return
 

@@ -58,7 +58,7 @@ def subscriber_create_test_cases():
                 **default_parameters,
                 "middlewares": Middleware(ValidMiddlewareWithParameter, True),
             }
-        ],  # Invalid type
+        ],
     ]
 
 
@@ -219,7 +219,6 @@ class TestSubscriber:
 
         subscribers = broker.router.get_subscribers()
 
-        # Broker Subscriber
         broker_subscriber = subscribers["sub_a"]
         broker_callstack = broker_subscriber._build_callstack()
         callstack_collection = callstack_to_collection(broker_callstack)
@@ -235,7 +234,6 @@ class TestSubscriber:
         assert second_broker_call.arg_1 == ""
         assert second_broker_call.arg_2 == "broker_kwargs_only"
 
-        # Router Subscriber
         router_subscriber = subscribers["sub_b"]
         router_callstack = router_subscriber._build_callstack()
         callstack_collection = callstack_to_collection(router_callstack)

@@ -41,9 +41,10 @@ def _match_segments(pattern: str, alias: str) -> bool:
     ``**`` matches zero or more dot-separated segments.
     ``*`` matches within a single segment (no dots).
     ``?`` matches a single character (not a dot).
+    Consecutive ``**`` segments collapse into one, which prevents
+    exponential backtracking.
     """
     pattern_parts = pattern.split(".")
-    # Collapse consecutive ** segments to prevent exponential backtracking
     collapsed: list[str] = []
     for part in pattern_parts:
         if part == "**" and collapsed and collapsed[-1] == "**":
@@ -96,6 +97,13 @@ class SubscriberSelector:
     """
 
     def __init__(self, patterns: set[str]) -> None:
+        """Initializes the SubscriberSelector.
+
+        Args:
+            patterns: The selection patterns. The selector ignores empty
+                patterns, and it compares the others in lowercase without
+                surrounding spaces.
+        """
         self._patterns = {p.lower().strip() for p in patterns if p.strip()}
 
     def select(self, subscribers: dict[str, Subscriber]) -> list[Subscriber]:

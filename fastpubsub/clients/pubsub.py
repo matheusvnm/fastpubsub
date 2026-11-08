@@ -53,6 +53,18 @@ class PubSubClient:
         delivery_policy: MessageDeliveryPolicy,
         dead_letter_policy: DeadLetterPolicy | None = None,
     ) -> Subscription:
+        """Builds the subscription model from the subscriber policies.
+
+        Args:
+            topic_name: The name of the topic.
+            subscription_name: The name of the subscription.
+            retry_policy: The retry policy.
+            delivery_policy: The delivery policy.
+            dead_letter_policy: The dead-letter policy, or None.
+
+        Returns:
+            The subscription model for the create and update requests.
+        """
         subscriber_client = await PubSubClientFactory.get_subscriber(
             self.project_id
         )

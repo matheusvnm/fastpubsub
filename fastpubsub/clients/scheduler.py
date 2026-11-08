@@ -29,16 +29,13 @@ class AsyncScheduler(Scheduler):  # type: ignore[misc]
 
         self._queue: queue.Queue[Any] = queue.Queue()
 
-        # Track scheduled handles (pending callbacks not yet executed)
         self._pending_task_creations: WeakKeyDictionary[
             asyncio.Handle, PubSubMessage
         ] = WeakKeyDictionary()
 
-        # Track executing tasks (running coroutines)
         self._executing_tasks: dict[int, PubSubMessage] = {}
         self._executing_lock = threading.Lock()
 
-        # Tracks if the tasks can be executed (before closing).
         self.closed = False
 
     @property
@@ -100,7 +97,6 @@ class AsyncScheduler(Scheduler):  # type: ignore[misc]
         with self._executing_lock:
             self._executing_tasks[task_id] = message
 
-        # Add done callback to automatically remove from tracking when complete
         task.add_done_callback(lambda t: self.deregister_executed_task(t))
 
     def deregister_executed_task(

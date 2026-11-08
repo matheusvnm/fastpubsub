@@ -49,31 +49,6 @@ app = typer.Typer(
 
 app.add_typer(inspect_app)
 
-# V2: this command and its subcommands will be released on the future"
-"""
-pubsub = typer.Typer(
-    name="pubsub",
-    help="Commands for interacting with Google Cloud Pub/Sub.",
-    rich_markup_mode="markdown",
-)
-
-pubsub_cloud = typer.Typer(
-    name="cloud",
-    help="Subcommand to interact with Cloud-based Pub/Sub.",
-    rich_markup_mode="markdown",
-)
-
-pubsub_local = typer.Typer(
-    name="local",
-    help="Subcommand to interact with Pub/Sub locally (e.g., emulator).",
-    rich_markup_mode="markdown",
-)
-
-pubsub.add_typer(pubsub_cloud)
-pubsub.add_typer(pubsub_local)
-app.add_typer(pubsub)
-"""
-
 
 @app.callback()
 def main(

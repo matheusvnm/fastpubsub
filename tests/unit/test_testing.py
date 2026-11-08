@@ -21,7 +21,6 @@ from fastpubsub.testing import (
 class TestMatchesFilter:
     """Tests for the filter expression evaluation function."""
 
-    # Empty/None filter tests
     def test_empty_filter_matches_all(self):
         assert matches_filter({"key": "value"}, "") is True
         assert matches_filter({}, "") is True
@@ -212,7 +211,6 @@ class TestMatchesFilter:
             'attributes.a = "1" OR attributes.b = "2" AND attributes.c = "3"'
         )
 
-        # True OR (False AND False) -> True OR False -> True
         assert matches_filter(attrs, expr) is True
 
     def test_and_has_higher_precedence_than_or_second_case(self):
@@ -220,7 +218,6 @@ class TestMatchesFilter:
         expr = (
             'attributes.a = "1" OR attributes.b = "2" AND attributes.c = "3"'
         )
-        # False OR (True AND True) -> False OR True -> True
         assert matches_filter(attrs, expr) is True
 
     def test_precedence_with_explicit_parentheses(self):
@@ -230,7 +227,6 @@ class TestMatchesFilter:
         expr = (
             '(attributes.a = "1" OR attributes.b = "2") AND attributes.c = "3"'
         )
-        # (True OR True) AND False -> True AND False -> False
         assert matches_filter(attrs, expr) is False
 
     def test_parentheses_grouping(self):
@@ -305,7 +301,6 @@ class TestPubSubTestClient:
     def mock_handler(self) -> MagicMock:
         return MagicMock()
 
-    # Initialization tests
     def test_init_with_broker(self, broker: PubSubBroker):
         client = PubSubTestClient(broker)
         assert client.broker is broker
@@ -316,7 +311,6 @@ class TestPubSubTestClient:
         client = PubSubTestClient(broker, some_option=True)
         assert client.broker is broker
 
-    # Context manager tests
     @pytest.mark.asyncio
     async def test_context_manager_enter_exit(self, broker: PubSubBroker):
         client = PubSubTestClient(broker)
@@ -339,7 +333,6 @@ class TestPubSubTestClient:
 
         assert len(client._patchers) == 0
 
-    # Publish without subscribers
     @pytest.mark.asyncio
     async def test_publish_without_subscribers(self, broker: PubSubBroker):
         async with PubSubTestClient(broker) as client:
@@ -349,7 +342,6 @@ class TestPubSubTestClient:
             assert len(messages) == 1
             assert messages[0].topic_name == "test-topic"
 
-    # Publish with single subscriber
     @pytest.mark.asyncio
     async def test_publish_with_single_subscriber(self, broker: PubSubBroker):
         received_messages: list[Message] = []
@@ -367,7 +359,6 @@ class TestPubSubTestClient:
 
         assert len(received_messages) == 1
 
-    # Publish with multiple subscribers (same topic)
     @pytest.mark.asyncio
     async def test_publish_with_multiple_subscribers_same_topic(
         self, broker: PubSubBroker
@@ -397,7 +388,6 @@ class TestPubSubTestClient:
         assert len(received_a) == 1
         assert len(received_b) == 1
 
-    # Publish routes to correct topic
     @pytest.mark.asyncio
     async def test_publish_routes_to_correct_topic(self, broker: PubSubBroker):
         received_a: list[Message] = []
@@ -425,7 +415,6 @@ class TestPubSubTestClient:
         assert len(received_a) == 1
         assert len(received_b) == 0
 
-    # Filter expression tests
     @pytest.mark.asyncio
     async def test_filter_expression_exact_match(self, broker: PubSubBroker):
         received: list[Message] = []
@@ -440,13 +429,11 @@ class TestPubSubTestClient:
             received.append(msg)
 
         async with PubSubTestClient(broker) as client:
-            # Should be received
             await client.publish(
                 {"data": "order1"},
                 topic="events",
                 attributes={"event_type": "order"},
             )
-            # Should NOT be received
             await client.publish(
                 {"data": "user1"},
                 topic="events",
@@ -497,13 +484,11 @@ class TestPubSubTestClient:
             received.append(msg)
 
         async with PubSubTestClient(broker) as client:
-            # Matches
             await client.publish(
                 "msg1",
                 topic="events",
                 attributes={"type": "order", "status": "pending"},
             )
-            # Doesn't match (wrong status)
             await client.publish(
                 "msg2",
                 topic="events",
@@ -652,7 +637,6 @@ class TestPubSubTestClient:
         assert len(orders) == 2
         assert len(users) == 1
 
-    # Message inspection tests
     @pytest.mark.asyncio
     async def test_get_published_messages(self, broker: PubSubBroker):
         async with PubSubTestClient(broker) as client:
@@ -693,7 +677,6 @@ class TestPubSubTestClient:
 
             assert len(client.get_published_messages()) == 0
 
-    # Middleware execution tests
     @pytest.mark.asyncio
     async def test_middleware_execution_in_test_client(
         self, broker: PubSubBroker
@@ -719,7 +702,6 @@ class TestPubSubTestClient:
 
         assert middleware_calls == ["middleware", "handler"]
 
-    # Message content tests
     @pytest.mark.asyncio
     async def test_message_attributes_passed_correctly(
         self, broker: PubSubBroker
@@ -808,7 +790,6 @@ class TestPubSubTestClient:
         assert received_msg is not None
         assert received_msg.delivery_attempt == 1
 
-    # Data serialization tests
     @pytest.mark.asyncio
     async def test_publish_dict_data(self, broker: PubSubBroker):
         received_msg: Message | None = None
@@ -869,7 +850,6 @@ class TestPubSubTestClient:
         assert received_msg is not None
         assert received_msg.data == b"raw bytes"
 
-    # No attributes tests
     @pytest.mark.asyncio
     async def test_publish_without_attributes(self, broker: PubSubBroker):
         received_msg: Message | None = None
@@ -905,11 +885,10 @@ class TestPubSubTestClient:
             received.append(msg)
 
         async with PubSubTestClient(broker) as client:
-            await client.publish("test", topic="topic")  # No attributes
+            await client.publish("test", topic="topic")
 
-        assert len(received) == 0  # Should not match
+        assert len(received) == 0
 
-    # Published message dataclass tests
     @pytest.mark.asyncio
     async def test_published_message_has_project_id(
         self, broker: PubSubBroker
@@ -935,7 +914,6 @@ class TestPubSubTestClient:
             assert len(messages) == 1
             assert messages[0].project_id == "other-project"
 
-    # Cross-project tests
     @pytest.mark.asyncio
     async def test_cross_project_publish_matches_subscriber(
         self, broker: PubSubBroker
@@ -975,9 +953,7 @@ class TestPubSubTestClient:
             received.append(msg)
 
         async with PubSubTestClient(broker) as client:
-            await client.publish(
-                "test", topic="events"
-            )  # defaults to broker project
+            await client.publish("test", topic="events")
 
         assert len(received) == 0
 
@@ -1006,7 +982,7 @@ class TestPubSubTestClient:
             received_other.append(msg)
 
         async with PubSubTestClient(broker) as client:
-            await client.publish("msg1", topic="events")  # default project
+            await client.publish("msg1", topic="events")
             await client.publish(
                 "msg2", topic="events", project_id="other-project"
             )
@@ -1014,7 +990,6 @@ class TestPubSubTestClient:
         assert len(received_default) == 1
         assert len(received_other) == 1
 
-    # Processing results tests
     @pytest.mark.asyncio
     async def test_processing_result_basic(self, broker: PubSubBroker):
         @broker.subscriber(

@@ -262,12 +262,25 @@ class PubSubBroker:
         return True
 
     def _filter_subscribers(self) -> list[Subscriber]:
+        """Selects the subscribers to start.
+
+        Returns:
+            The subscribers whose alias matches a pattern in
+            ``FASTPUBSUB_SUBSCRIBERS``, or all subscribers when the variable
+            is empty.
+        """
         subscribers = self.router.get_subscribers()
         patterns = self._get_selected_subscribers()
         selector = SubscriberSelector(patterns=patterns)
         return selector.select(subscribers)
 
     def _get_selected_subscribers(self) -> set[str]:
+        """Reads the selection patterns from ``FASTPUBSUB_SUBSCRIBERS``.
+
+        Returns:
+            The comma-separated patterns without surrounding spaces. An empty
+            set when the variable is empty or not set.
+        """
         subscribers_text = os.getenv("FASTPUBSUB_SUBSCRIBERS", "")
         if not subscribers_text:
             return set()

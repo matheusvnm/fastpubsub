@@ -189,6 +189,17 @@ class PubSubClient:
         delivery_policy: MessageDeliveryPolicy,
         dead_letter_policy: DeadLetterPolicy | None,
     ) -> SubscriptionSettings:
+        """Converts the subscriber policies to the core subscription settings.
+
+        Args:
+            retry_policy: The retry policy.
+            delivery_policy: The delivery policy.
+            dead_letter_policy: The dead-letter policy, or None.
+
+        Returns:
+            The settings for ``AdminClient.create_subscription`` and
+            ``AdminClient.update_subscription``.
+        """
         dead_letter_topic = ""
         max_delivery_attempts = 0
         if dead_letter_policy:

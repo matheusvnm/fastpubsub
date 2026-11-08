@@ -44,11 +44,6 @@ class ProcessingResult:
     error: BaseException | None = None
 
 
-# =============================================================================
-# Filter Expression Evaluation
-# =============================================================================
-
-
 class _TokenType(Enum):
     """Token types for filter expression parsing."""
 
@@ -93,15 +88,12 @@ def _tokenize(expression: str) -> list[_Token]:
     length = len(expression)
 
     while pos < length:
-        # Skip whitespace
         if expression[pos].isspace():
             pos += 1
             continue
 
-        # Check for keywords and operators
         remaining = expression[pos:]
 
-        # Logical operators (must check before identifiers)
         if remaining.startswith("AND") and (
             len(remaining) == 3 or not remaining[3].isalnum()
         ):
@@ -123,25 +115,21 @@ def _tokenize(expression: str) -> list[_Token]:
             pos += 3
             continue
 
-        # hasPrefix function
         if remaining.startswith("hasPrefix"):
             tokens.append(_Token(_TokenType.HAS_PREFIX, "hasPrefix"))
             pos += 9
             continue
 
-        # attributes. prefix (for comparisons)
         if remaining.startswith("attributes."):
             tokens.append(_Token(_TokenType.ATTRIBUTES_DOT, "attributes."))
             pos += 11
             continue
 
-        # attributes: prefix (for existence check)
         if remaining.startswith("attributes:"):
             tokens.append(_Token(_TokenType.ATTRIBUTES_COLON, "attributes:"))
             pos += 11
             continue
 
-        # Comparison operators
         if remaining.startswith("!="):
             tokens.append(_Token(_TokenType.NOT_EQUALS, "!="))
             pos += 2
@@ -152,7 +140,6 @@ def _tokenize(expression: str) -> list[_Token]:
             pos += 1
             continue
 
-        # Parentheses and comma
         if expression[pos] == "(":
             tokens.append(_Token(_TokenType.LPAREN, "("))
             pos += 1
@@ -168,7 +155,6 @@ def _tokenize(expression: str) -> list[_Token]:
             pos += 1
             continue
 
-        # String literals (double or single quotes)
         if expression[pos] in ('"', "'"):
             quote_char = expression[pos]
             end_pos = pos + 1
@@ -181,7 +167,6 @@ def _tokenize(expression: str) -> list[_Token]:
             pos = end_pos + 1
             continue
 
-        # Identifiers (attribute names)
         if expression[pos].isalpha() or expression[pos] == "_":
             end_pos = pos
             while end_pos < length and (
@@ -291,22 +276,18 @@ class _FilterParser:
 
     def _primary(self) -> bool:
         """Parse primary expressions."""
-        # Parenthesized expression
         if self._match(_TokenType.LPAREN):
             result = self._or_expr()
             self._expect(_TokenType.RPAREN)
             return result
 
-        # hasPrefix function
         if self._match(_TokenType.HAS_PREFIX):
             return self._parse_has_prefix()
 
-        # Existence check: attributes:key
         if self._match(_TokenType.ATTRIBUTES_COLON):
             key = self._expect(_TokenType.IDENTIFIER).value
             return key in self.attributes
 
-        # Comparison: attributes.key = "value" or attributes.key != "value"
         if self._match(_TokenType.ATTRIBUTES_DOT):
             return self._parse_comparison()
 
@@ -371,16 +352,11 @@ def matches_filter(attributes: dict[str, str], filter_expression: str) -> bool:
         True
     """
     if not filter_expression or not filter_expression.strip():
-        return True  # No filter = match all
+        return True
 
     tokens = _tokenize(filter_expression.strip())
     parser = _FilterParser(tokens, attributes)
     return parser.parse()
-
-
-# =============================================================================
-# PubSubTestClient
-# =============================================================================
 
 
 class PubSubTestClient:
@@ -391,6 +367,10 @@ class PubSubTestClient:
     evaluation to match Google Pub/Sub behavior.
 
     Example:
+        The first publish matches the filter, so the handler runs. The
+        second publish has a different ``type``, so the handler does not
+        run.
+
         ```python
         broker = PubSubBroker(project_id="test")
 
@@ -406,14 +386,12 @@ class PubSubTestClient:
 
 
         async with PubSubTestClient(broker) as test_client:
-            # This message will be routed to handler
             await test_client.publish(
                 "Hello",
                 topic="events",
                 attributes={"type": "order"},
             )
 
-            # This message will NOT be routed (wrong type)
             await test_client.publish(
                 "Ignored",
                 topic="events",
@@ -451,16 +429,12 @@ class PubSubTestClient:
 
     async def _start_patches(self) -> None:
         """Start all mocking patches."""
-        # Configure mock client
         self._mock_client = MagicMock()
         self._mock_client.create_topic = AsyncMock()
         self._mock_client.create_subscription = AsyncMock()
         self._mock_client.update_subscription = AsyncMock()
         self._mock_client.publish = AsyncMock(side_effect=self._fake_publish)
 
-        # Mock PubSubClient at the source module and at every import site
-        # so that all publish paths (including broker.publish() from within
-        # handlers) are intercepted by _fake_publish.
         for target in (
             "fastpubsub.transport.PubSubClient",
             "fastpubsub.middlewares.di.PubSubClient",
@@ -470,7 +444,6 @@ class PubSubTestClient:
             mock_class.return_value = self._mock_client
             self._patchers.append(patcher)
 
-        # Mock the builder to avoid real PubSub operations
         builder_patcher = patch("fastpubsub.builder.PubSubSubscriptionBuilder")
         mock_builder_class = builder_patcher.start()
         self._patchers.append(builder_patcher)
@@ -479,7 +452,6 @@ class PubSubTestClient:
         mock_builder.build = AsyncMock()
         mock_builder_class.return_value = mock_builder
 
-        # Mock the task manager to not actually start async tasks
         task_manager_patcher = patch.object(
             self.broker.task_manager, "start", AsyncMock()
         )
@@ -663,6 +635,10 @@ class PubSubTestClient:
             A copy of the list of processing results.
 
         Example:
+            The first publish goes to the default project, so only
+            ``process_payment`` runs. The second publish goes to
+            ``analytics-project``, so only ``track_payment`` runs.
+
             ```python
             from fastpubsub import PubSubBroker, Message
             from fastpubsub.testing import PubSubTestClient
@@ -690,10 +666,7 @@ class PubSubTestClient:
 
 
             async with PubSubTestClient(broker) as client:
-                # Publish to the default project: Only process_payment runs
                 await client.publish({"amount": 100}, topic="payment-events")
-
-                # Publish to the analytics project: Only track_payment runs
                 await client.publish(
                     {"amount": 100},
                     topic="payment-events",
@@ -709,7 +682,7 @@ class PubSubTestClient:
 
                 assert results[1].message.subscriber_name == "track_payment"
                 assert results[1].return_value is None
-                assert isinstance(errors[1].error, ValueError)
+                assert isinstance(results[1].error, ValueError)
             ```
         """
         return self._processing_results.copy()

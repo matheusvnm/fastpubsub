@@ -27,21 +27,17 @@ class TestPubSubClientFactory:
             mock_publisher = MagicMock()
             mock_publisher_class.return_value = mock_publisher
 
-            # First call should create a new client
             client1 = await PubSubClientFactory.get_publisher(
                 "test-project", enable_ordering=False
             )
             assert client1 == mock_publisher
             assert mock_publisher_class.call_count == 1
 
-            # Second call with same parameters should return cached client
             client2 = await PubSubClientFactory.get_publisher(
                 "test-project", enable_ordering=False
             )
             assert client2 == mock_publisher
-            assert (
-                mock_publisher_class.call_count == 1
-            )  # No new client created
+            assert mock_publisher_class.call_count == 1
 
     @pytest.mark.asyncio
     async def test_get_publisher_different_ordering_creates_separate_clients(
@@ -58,19 +54,16 @@ class TestPubSubClientFactory:
                 mock_publisher2,
             ]
 
-            # Create client with ordering disabled
             client1 = await PubSubClientFactory.get_publisher(
                 "test-project", enable_ordering=False
             )
             assert client1 == mock_publisher1
 
-            # Create client with ordering enabled (should be different)
             client2 = await PubSubClientFactory.get_publisher(
                 "test-project", enable_ordering=True
             )
             assert client2 == mock_publisher2
 
-            # Verify two separate clients were created
             assert mock_publisher_class.call_count == 2
             assert client1 != client2
 
@@ -83,17 +76,13 @@ class TestPubSubClientFactory:
             mock_subscriber = MagicMock()
             mock_subscriber_class.return_value = mock_subscriber
 
-            # First call should create a new client
             client1 = await PubSubClientFactory.get_subscriber("test-project")
             assert client1 == mock_subscriber
             assert mock_subscriber_class.call_count == 1
 
-            # Second call with same project should return cached client
             client2 = await PubSubClientFactory.get_subscriber("test-project")
             assert client2 == mock_subscriber
-            assert (
-                mock_subscriber_class.call_count == 1
-            )  # No new client created
+            assert mock_subscriber_class.call_count == 1
 
     @pytest.mark.asyncio
     async def test_get_subscriber_same_project_returns_cached(self):
@@ -104,16 +93,13 @@ class TestPubSubClientFactory:
             mock_subscriber = MagicMock()
             mock_subscriber_class.return_value = mock_subscriber
 
-            # Create multiple references to same subscriber
             client1 = await PubSubClientFactory.get_subscriber("project-a")
             client2 = await PubSubClientFactory.get_subscriber("project-a")
             client3 = await PubSubClientFactory.get_subscriber("project-a")
 
-            # All should be the same instance
             assert client1 is client2
             assert client2 is client3
 
-            # Only one client should have been created
             assert mock_subscriber_class.call_count == 1
 
     @pytest.mark.asyncio
@@ -124,7 +110,6 @@ class TestPubSubClientFactory:
             mock_publisher = MagicMock()
             mock_publisher_class.return_value = mock_publisher
 
-            # Simulate concurrent access with asyncio.gather
             clients = await asyncio.gather(
                 PubSubClientFactory.get_publisher(
                     "test-project", enable_ordering=False
@@ -140,7 +125,6 @@ class TestPubSubClientFactory:
                 ),
             )
 
-            # All should return the same instance
             assert all(client == mock_publisher for client in clients)
             assert mock_publisher_class.call_count == 1
 
@@ -155,7 +139,6 @@ class TestPubSubClientFactory:
                 "fastpubsub.clients.factory.SubscriberClient"
             ) as mock_subscriber_class,
         ):
-            # Create mock clients with transport
             mock_publisher = MagicMock()
             mock_publisher.transport.close = MagicMock()
             mock_publisher_class.return_value = mock_publisher
@@ -164,7 +147,6 @@ class TestPubSubClientFactory:
             mock_subscriber.transport.close = MagicMock()
             mock_subscriber_class.return_value = mock_subscriber
 
-            # Create some cached clients
             await PubSubClientFactory.get_publisher(
                 "project-1", enable_ordering=False
             )
@@ -173,11 +155,8 @@ class TestPubSubClientFactory:
             )
             await PubSubClientFactory.get_subscriber("project-1")
 
-            # Close all clients
             await PubSubClientFactory.close_all()
 
-            # Verify all transports were closed
-            # 2 publishers (different ordering) + 1 subscriber = 3 close calls
             assert mock_publisher.transport.close.call_count == 2
             assert mock_subscriber.transport.close.call_count == 1
 
@@ -200,20 +179,16 @@ class TestPubSubClientFactory:
             mock_subscriber.transport.close = MagicMock()
             mock_subscriber_class.return_value = mock_subscriber
 
-            # Create cached clients
             await PubSubClientFactory.get_publisher(
                 "project-1", enable_ordering=False
             )
             await PubSubClientFactory.get_subscriber("project-1")
 
-            # Verify cache has clients
             assert len(PubSubClientFactory._publisher_cache) == 1
             assert len(PubSubClientFactory._subscriber_cache) == 1
 
-            # Close all
             await PubSubClientFactory.close_all()
 
-            # Verify cache is empty
             assert len(PubSubClientFactory._publisher_cache) == 0
             assert len(PubSubClientFactory._subscriber_cache) == 0
 
@@ -228,7 +203,6 @@ class TestPubSubClientFactory:
                 "fastpubsub.clients.factory.SubscriberClient"
             ) as mock_subscriber_class,
         ):
-            # Create mock clients where transport.close raises exception
             mock_publisher = MagicMock()
             mock_publisher.transport.close.side_effect = Exception(
                 "Transport error"
@@ -239,16 +213,13 @@ class TestPubSubClientFactory:
             mock_subscriber.transport.close = MagicMock()
             mock_subscriber_class.return_value = mock_subscriber
 
-            # Create cached clients
             await PubSubClientFactory.get_publisher(
                 "project-1", enable_ordering=False
             )
             await PubSubClientFactory.get_subscriber("project-1")
 
-            # close_all should not raise exception
             await PubSubClientFactory.close_all()
 
-            # Verify cache was still cleared despite exception
             assert len(PubSubClientFactory._publisher_cache) == 0
             assert len(PubSubClientFactory._subscriber_cache) == 0
 

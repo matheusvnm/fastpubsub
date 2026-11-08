@@ -108,7 +108,6 @@ class TestMessageConsumption:
             autocreate=True,
         )
         async def handler(msg: Message) -> None:
-            # Simulate processing
             await asyncio.sleep(2)
             received.append(msg.data.decode())
 
@@ -118,10 +117,8 @@ class TestMessageConsumption:
                 await connected_broker.publish(
                     topic_name=unique_topic, data=f"Message {i}"
                 )
-            # Give some time to start processing
             await asyncio.sleep(2)
 
-        # After context exit, all messages should be processed
         assert len(received) == message_quantity
         for i, message in enumerate(received):
             assert f"Message {i}" in message

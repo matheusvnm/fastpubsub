@@ -1,4 +1,3 @@
-# TEST: GZIP (ON/PUBLISH/MESSAGE)
 import gzip
 from typing import Any
 
