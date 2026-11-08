@@ -70,6 +70,7 @@ lint = [
     "mypy==2.4.1",
     "bandit==1.9.4",
     "codespell==2.4.3",
+    "docstr-coverage==2.3.2",
 ]
 
 test = [

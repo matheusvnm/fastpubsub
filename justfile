@@ -12,10 +12,6 @@ docs_port := env("DOCS_PORT", "8001")
 
 worktrees_dir := ".worktrees"
 
-typecheck_dirs := "fastpubsub benchmarks"
-target_dirs := "fastpubsub tests docs/snippets benchmarks"
-lint_dirs := "fastpubsub tests docs/snippets benchmarks"
-
 pre_commit_hook_path := ".git/hooks/pre-commit"
 docs_dir := "docs/"
 
@@ -43,9 +39,23 @@ benchmark_cpus := "2"
 export PUBSUB_EMULATOR_HOST := pubsub_emulator_host
 export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 
+# MODULES
+
+[doc("Rust commands for the compiled core in fastpubsub-core/")]
+mod core "just/core.just"
+
+[doc("Python commands for the fastpubsub package")]
+mod public "just/public.just"
+
 [doc("All commands information")]
 @default:
-    just --list --unsorted --list-heading $'FastPubSub commands…\n'
+    just --list --unsorted --list-submodules --list-heading $'FastPubSub commands…\n'
+
+[doc("Execute all checks of the Python package and the core")]
+[group("lint")]
+@check:
+    just public check
+    just core lint
 
 # ----------------------------------------------------------------------------
 # Testing Commands
@@ -56,92 +66,6 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 @test-pipeline +args:
     just _start_msg "Executing the workflow with act"
     act --secret-file .secrets --var-file .vars {{ args }}
-
-[doc("Run unit tests (fast, no emulator)")]
-[group("tests")]
-@test-unit *args: (up "--no-deps fastpubsub") && down
-    just _start_msg "Running unit tests"
-    {{ run_test_command }} pytest -m "not (connected or slow or docs)" -n auto --tb=short {{ args }}
-
-[doc("Run integration tests (requires emulator)")]
-[group("tests")]
-@test-integration *args: up && down
-    just _start_msg "Running integration tests"
-    {{ run_test_command }} pytest -m "connected" -n auto --tb=short --maxfail=5 {{ args }}
-
-[doc("Run doc snippets tests (fast, no emulator)")]
-[group("tests")]
-@test-docs *args: (up "--no-deps fastpubsub") && down
-    just _start_msg "Running the tests for doc snippets"
-    {{ run_test_command }} pytest -m "docs" -n auto --tb=short {{ args }}
-
-[doc("Run all tests in Docker")]
-[group("tests")]
-@test-all *args: up && down
-    just _start_msg "Running all tests"
-    {{ run_test_command }} pytest -n auto --tb=short {{ args }}
-
-[doc("Run tests with coverage in Docker")]
-[group("tests")]
-@test-cov *args: up && down
-    just _start_msg "Running coverage report"
-    {{ run_test_command }} pytest \
-        -n auto \
-        --cov=fastpubsub \
-        --cov-report=term-missing:skip-covered \
-        --cov-report=html \
-        --cov-fail-under=80 \
-        {{ args }}
-
-[doc("Run tests matching a keyword in Docker")]
-[group("tests")]
-@test-k keyword *args: up && down
-    just _start_msg "Running tests matching '{{ keyword }}'"
-    {{ run_test_command }} pytest -k "{{ keyword }}" -v {{ args }}
-
-# ----------------------------------------------------------------------------
-# Linting Tools Commands
-# ----------------------------------------------------------------------------
-
-[doc("Execute all checks (lint, security and static analysis)")]
-[group("lint")]
-@check: typo lint securitize
-
-[doc("Formatting and sorting with ruff")]
-[group("lint")]
-@format target=target_dirs:
-    just _start_msg "Applying formatting rules"
-    {{ run_command }} ruff format {{ target }}
-
-    just _start_msg "Applying import sorting rules"
-    {{ run_command }} ruff check {{ target }} --select I --fix
-
-    just _start_msg "Applying linting rules"
-    {{ run_command }} ruff check {{ target }} --fix
-
-[doc("Checks linting rules with mypy and ruff")]
-[group("lint")]
-@lint:
-    just _start_msg "Checking typing rules"
-    {{ run_command }} mypy {{ typecheck_dirs }}
-
-    just _start_msg "Checking linting rules"
-    {{ run_command }} ruff check {{ lint_dirs }}
-
-    just _start_msg "Checking formatting rules"
-    {{ run_command }} ruff format {{ lint_dirs }} --check
-
-[doc("Checks misspellings with codespell")]
-[group("lint")]
-@typo:
-    just _start_msg "Checking misspellings on words"
-    {{ run_command }} codespell fastpubsub
-
-[doc("Executes security analysis on code")]
-[group("lint")]
-@securitize:
-    just _start_msg "Checking for vulnerabilities"
-    {{ run_command }} bandit -c pyproject.toml -r {{ project_name }}
 
 # ----------------------------------------------------------------------------
 # Infra Commands
@@ -229,31 +153,6 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 @bench-results *args:
     just _start_msg "Benchmark Results"
     {{ run_command }} python -m benchmarks.report {{ args }}
-
-[doc("Build the Rust core for .venv (abi3) and for .venv-3.14t and .venv-3.15t when they exist")]
-[group("bench")]
-@core-build:
-    just _start_msg "Building the Rust core"
-    uvx maturin build --release -m core/Cargo.toml --out core/target/wheels
-    uv pip install --python .venv --reinstall core/target/wheels/fastpubsub_core-*-abi3-*.whl
-    for version in 3.14t 3.15t; do \
-        if [ -d ".venv-$version" ]; then \
-            uvx maturin build --release --no-default-features -m core/Cargo.toml \
-                -i ".venv-$version/bin/python" --out core/target/wheels; \
-            tag="cp$(echo $version | tr -d '.t')"; \
-            uv pip install --python ".venv-$version" --reinstall \
-                core/target/wheels/fastpubsub_core-*-$tag-${tag}t-*.whl; \
-        fi; \
-    done
-
-[doc("Build the Rust core in the container and install it in the container environment")]
-[group("bench")]
-@core-build-container: up
-    just _start_msg "Building the Rust core in the container"
-    docker compose exec fastpubsub bash -c \
-        "uvx maturin build --release -m core/Cargo.toml --out /root/.cache/core-wheels \
-        && uv pip install --python /src/.venv --reinstall \
-        /root/.cache/core-wheels/fastpubsub_core-*-abi3-*.whl"
 
 [doc("Clear benchmark results")]
 [group("bench")]

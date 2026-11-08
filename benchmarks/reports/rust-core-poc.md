@@ -403,4 +403,3 @@ FastPubSub is public, but nobody uses it yet. A change of the default transport 
    - A soak test of several hours in a Google Cloud region, with the memory and the redeliveries recorded.
    - A transport-independent version of `test_factory_clients_closed_on_shutdown`.
 4. After the gates pass and one release runs, decide if the Python transport can go. One transport halves the work to keep features in parity.
-

@@ -25,16 +25,77 @@ jobs:
         uses: astral-sh/setup-uv@v7
       - name: Install dependencies
         run: uv sync --group lint --group bench
+      - name: Build and install the core
+        run: |
+          uvx maturin build -m fastpubsub-core/Cargo.toml --out fastpubsub-core/target/wheels
+          uv pip install fastpubsub-core/target/wheels/fastpubsub_core-*.whl
       - name: Check typing rules
         run: uv run mypy fastpubsub benchmarks
       - name: Check linting rules
         run: uv run ruff check fastpubsub tests docs/snippets benchmarks
       - name: Check formatting rules
         run: uv run ruff format --check fastpubsub tests docs/snippets benchmarks
+      - name: Check docstrings
+        run: uv run docstr-coverage fastpubsub --exclude "__about__" --verbose 1
+      - name: Check the core stub
+        run: uv run python -m mypy.stubtest fastpubsub_core --allowlist fastpubsub-core/stubtest-allowlist.txt
       - name: Check misspellings
         run: uv run codespell fastpubsub
       - name: Check for vulnerabilities
         run: uv run bandit -c pyproject.toml -r fastpubsub
+
+  core:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fastpubsub-core
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Install the Rust toolchain from rust-toolchain.toml
+        run: rustup toolchain install
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fastpubsub-core
+      - name: Install the Rust tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest,cargo-deny,cargo-machete
+      - name: Check formatting rules
+        run: cargo fmt --all --check
+      - name: Check linting rules
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+      - name: Check documentation
+        run: cargo doc --workspace --no-deps --document-private-items --locked
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+      - name: Run tests
+        run: cargo nextest run --workspace --all-features --locked --no-tests=pass
+      - name: Check dependencies
+        run: cargo deny check
+      - name: Check unused dependencies
+        run: cargo machete
+
+  core-msrv:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fastpubsub-core
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Read the minimum supported Rust version
+        run: |
+          echo "RUST_VERSION=$(grep -m1 '^rust-version' Cargo.toml | cut -d '"' -f2)" >> "$GITHUB_ENV"
+      - name: Install the toolchain
+        run: rustup toolchain install "$RUST_VERSION" --profile minimal
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fastpubsub-core
+      - name: Check the build
+        run: cargo +"$RUST_VERSION" check --workspace --all-features --locked
 
   tests:
     runs-on: ubuntu-latest
@@ -53,6 +114,10 @@ jobs:
         uses: astral-sh/setup-uv@v7
       - name: Install dependencies
         run: uv sync --group test
+      - name: Build and install the core
+        run: |
+          uvx maturin build -m fastpubsub-core/Cargo.toml --out fastpubsub-core/target/wheels
+          uv pip install fastpubsub-core/target/wheels/fastpubsub_core-*.whl
       - name: Start Pub/Sub emulator
         run: docker compose up --detach --wait pubsub
       - name: Run tests with coverage

@@ -1,0 +1,2 @@
+fastpubsub_core.SubscriptionSettings
+fastpubsub_core.fastpubsub_core
