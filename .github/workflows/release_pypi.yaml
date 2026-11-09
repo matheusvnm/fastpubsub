@@ -47,12 +47,12 @@ jobs:
     with:
       ref: ${{ needs.tag.outputs.tag }}
 
-  publish:
+  publish-core:
     needs: [tag, build]
     if: needs.tag.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     environment:
-      name: pypi
+      name: pypi-core
     permissions:
       id-token: write
       contents: read
@@ -65,12 +65,25 @@ jobs:
           pattern: core-*
           path: dist/core
           merge-multiple: true
+      - name: Publish fastpubsub-core
+        run: uv publish --trusted-publishing always dist/core/*
+
+  publish:
+    needs: [tag, publish-core]
+    if: needs.tag.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Install uv command
+        uses: astral-sh/setup-uv@v7
       - name: Download the fastpubsub package
         uses: actions/download-artifact@v8
         with:
           name: package
           path: dist/package
-      - name: Publish fastpubsub-core
-        run: uv publish --trusted-publishing always dist/core/*
       - name: Publish fastpubsub
         run: uv publish --trusted-publishing always dist/package/*
