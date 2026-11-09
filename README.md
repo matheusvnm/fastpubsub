@@ -45,23 +45,6 @@ The key features are:
 - **Asynchronous:** It is built on top of asyncio, which allows it to run on fully asynchronous code.
 - **Batteries Included**: Provides its own CLI and other widely used tools such as [**pydantic**](https://docs.pydantic.dev/) for data validation and log contextualization.
 
-## Performance
-
-The Rust core is the reason that FastPubSub is fast. It receives, acknowledges and publishes messages on its own threads, without the Python GIL. It gives the received messages to the asyncio event loop in batches, so Python does only the work of your handlers.
-
-We compared FastPubSub with the Google Python client (`google-cloud-pubsub` with a non-blocking callback) on real Pub/Sub. The runs used a 4-vCPU VM in the same region, 2 CPUs for each run and 100 messages in flight. Each value is the median of 5 runs:
-
-| Scenario | Metric | Google Python client | FastPubSub |
-|---|---|---|---|
-| Echo (receive and publish) | CPU per message | 276 µs | 87 µs |
-| Echo (receive and publish) | Messages per second | 1,032 | 1,005 |
-| Handler waits 100 ms | Messages per second | 396 | 1,511 |
-| Handler waits 100 ms | CPU per message | 666 µs | 94 µs |
-| Handler uses 1 ms of CPU and waits 100 ms | Messages per second | 393 | 815 |
-| All scenarios | Peak memory | 100 to 106 MB | 62 to 69 MB |
-
-The more time a handler spends waiting, the larger the gain. When the handler does almost nothing, as in echo, the network sets the limit and the throughput is about the same. The CPU and the memory are lower in all scenarios.
-
 ## Quick Start
 
 ### Installation
