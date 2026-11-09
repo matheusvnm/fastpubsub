@@ -37,7 +37,7 @@ jobs:
       - name: Check that the wheel is pure Python
         run: ls dist/fastpubsub-*-py3-none-any.whl
       - name: Upload the package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: package
           path: dist
@@ -59,7 +59,7 @@ jobs:
       - name: Check that the sdist has the stub
         run: tar tzf fastpubsub-core/dist/fastpubsub_core-*.tar.gz | grep fastpubsub_core.pyi
       - name: Upload the sdist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: core-sdist
           path: fastpubsub-core/dist
@@ -102,7 +102,7 @@ jobs:
           ref: ${{ inputs.ref }}
       - name: Install the Python interpreters
         if: matrix.manylinux == ''
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: |
             3.12
@@ -116,7 +116,7 @@ jobs:
           manylinux: ${{ matrix.manylinux || 'auto' }}
           args: --profile release --out dist --interpreter 3.12 3.14t 3.15t
       - name: Upload the wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: core-wheels-${{ matrix.platform }}
           path: fastpubsub-core/dist
@@ -148,7 +148,7 @@ jobs:
       - name: Install uv command
         uses: astral-sh/setup-uv@v7
       - name: Download the wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: core-wheels-${{ matrix.platform }}
           path: wheels
@@ -184,7 +184,7 @@ jobs:
             runner: ubuntu-24.04-arm
     steps:
       - name: Download the wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: core-wheels-${{ matrix.platform }}
           path: wheels
