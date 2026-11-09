@@ -26,6 +26,7 @@ def read_rows(
     results_file: Path,
     run_id: str | None = None,
     scenario: str | None = None,
+    experiment: str | None = None,
 ) -> list[dict[str, str]]:
     """Read the result rows.
 
@@ -33,6 +34,7 @@ def read_rows(
         results_file: The CSV file.
         run_id: Keep only the rows of this run.
         scenario: Keep only the rows of this scenario.
+        experiment: Keep only the rows of this experiment.
 
     Returns:
         The rows.
@@ -46,6 +48,7 @@ def read_rows(
         for row in rows
         if (run_id is None or row["Run Id"] == run_id)
         and (scenario is None or row["Scenario"] == scenario)
+        and (experiment is None or row["Experiment"] == experiment)
     ]
 
 
@@ -149,10 +152,13 @@ def main() -> None:
     parser.add_argument("--results-file", type=Path, default=RESULTS_FILE)
     parser.add_argument("--run-id")
     parser.add_argument("--scenario")
+    parser.add_argument("--experiment")
     parser.add_argument("--by-scenario", action="store_true")
     args = parser.parse_args()
     print_summary(
-        read_rows(args.results_file, args.run_id, args.scenario),
+        read_rows(
+            args.results_file, args.run_id, args.scenario, args.experiment
+        ),
         is_grouped_by_scenario=args.by_scenario,
     )
 

@@ -35,6 +35,7 @@ WORKER_TIMEOUT_MARGIN_SECONDS = 180
 
 CSV_COLUMNS = [
     "Run Id",
+    "Experiment",
     "Label",
     "Git Commit",
     "FastPubSub Version",
@@ -216,6 +217,7 @@ def build_row(
     cpu_per_event = cpu_seconds * 1_000_000 / events if events else 0.0
     return {
         "Run Id": run_context["run_id"],
+        "Experiment": run_context["experiment"],
         "Label": run_context["label"],
         "Git Commit": run_context["git_commit"],
         "FastPubSub Version": result["fastpubsub_version"],
@@ -319,6 +321,11 @@ def parse_arguments() -> argparse.Namespace:
         help="A name for the code under test, for example python-optimized",
     )
     parser.add_argument(
+        "--experiment",
+        default="local",
+        help="A name for the group of runs, for example release-gate",
+    )
+    parser.add_argument(
         "--cpu-iterations",
         type=int,
         help="Loop rounds for 1 ms of CPU work (default: calibrate)",
@@ -362,6 +369,7 @@ def main() -> None:
     run_context = {
         "run_id": uuid.uuid4().hex[:12],
         "label": args.label,
+        "experiment": args.experiment,
         "git_commit": args.git_commit or read_git_commit(code_folder),
         "cpu_iterations": str(cpu_iterations),
         "transport": args.transport,
