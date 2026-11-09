@@ -1,6 +1,5 @@
 set working-directory := "../fastpubsub-core"
 
-wheels_dir := "target/wheels"
 stubtest_allowlist := "stubtest-allowlist.txt"
 
 [doc("Execute all core checks (lint, tests and dependency audit)")]
@@ -52,11 +51,9 @@ stubtest_allowlist := "stubtest-allowlist.txt"
     cd .. && uv sync --all-groups --frozen
     for version in 3.14t 3.15t; do \
         if [ -d "../.venv-$version" ]; then \
-            uvx maturin build --release --no-default-features \
-                -i "../.venv-$version/bin/python" --out {{ wheels_dir }}; \
-            tag="cp$(echo $version | tr -d '.t')"; \
-            uv pip install --python "../.venv-$version" --reinstall \
-                {{ wheels_dir }}/fastpubsub_core-*-$tag-${tag}t-*.whl; \
+            (cd .. && UV_PROJECT_ENVIRONMENT=".venv-$version" uv sync \
+                --python "$version" --no-default-groups --group test \
+                --group bench --frozen); \
         fi; \
     done
 

@@ -679,8 +679,10 @@ dependencies = [
 
 [package.dev-dependencies]
 bench = [
-    { name = "google-cloud-pubsub" },
     { name = "psutil" },
+]
+bench-google = [
+    { name = "google-cloud-pubsub" },
 ]
 dev = [
     { name = "bandit" },
@@ -734,10 +736,8 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-bench = [
-    { name = "google-cloud-pubsub", specifier = ">=2.31.1" },
-    { name = "psutil", specifier = ">=6.0.0" },
-]
+bench = [{ name = "psutil", specifier = ">=6.0.0" }]
+bench-google = [{ name = "google-cloud-pubsub", specifier = ">=2.31.1" }]
 dev = [
     { name = "bandit", specifier = "==1.9.4" },
     { name = "codespell", specifier = "==2.4.3" },

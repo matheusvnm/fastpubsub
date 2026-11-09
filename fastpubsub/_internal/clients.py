@@ -30,6 +30,10 @@ class PubSubClientFactory:
 
     The cache keeps the creation task of each client, so concurrent first
     calls for the same key wait for the same task and get the same client.
+
+    The class needs no lock on free-threaded Python. Each key holds an
+    event loop, so only the thread of that loop creates or reads the
+    entry, and each single ``dict`` operation is atomic.
     """
 
     _admin_clients: ClassVar[

@@ -17,6 +17,10 @@ class EventLoopBridge:
     messages and the publish results, and gives them to its event loop in
     batches, through ``call_soon_threadsafe``. The loop then runs
     ``run_callbacks`` with the batch.
+
+    The class needs no lock on free-threaded Python. Only the thread of an
+    event loop creates or reads the entry of that loop, and each single
+    ``dict`` operation is atomic.
     """
 
     MAX_BATCH_SIZE: ClassVar[int] = 256

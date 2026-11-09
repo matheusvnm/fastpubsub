@@ -35,6 +35,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3.15",
+    "Programming Language :: Python :: Free Threading :: 2 - Beta",
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -84,14 +85,18 @@ test = [
 ]
 
 bench = [
-    "google-cloud-pubsub>=2.31.1",
     "psutil>=6.0.0",
+]
+
+bench-google = [
+    "google-cloud-pubsub>=2.31.1",
 ]
 
 dev = [
     {include-group = "lint"},
     {include-group = "test"},
     {include-group = "bench"},
+    {include-group = "bench-google"},
     "pre-commit==4.7.0",
 ]
 

@@ -147,3 +147,36 @@ jobs:
       - name: Stop Pub/Sub emulator
         if: always()
         run: docker compose down --volumes
+
+  tests-free-threaded:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.14t", "3.15t"]
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+      PUBSUB_EMULATOR_HOST: "localhost:8085"
+      CLOUDSDK_CORE_PROJECT: "fastpubsub-test-project"
+      PYTHONPATH: "docs/snippets"
+      PYTHON_GIL: "0"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Install uv command
+        uses: astral-sh/setup-uv@v7
+      - name: Install the Rust toolchain from rust-toolchain.toml
+        working-directory: fastpubsub-core
+        run: rustup toolchain install
+      - name: Cache the Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fastpubsub-core
+      - name: Install dependencies and build the core
+        run: uv sync --no-default-groups --group test --group bench
+      - name: Start Pub/Sub emulator
+        run: docker compose up --detach --wait pubsub
+      - name: Run tests with the GIL disabled
+        run: .venv/bin/python -m pytest -n auto
+      - name: Stop Pub/Sub emulator
+        if: always()
+        run: docker compose down --volumes
