@@ -403,3 +403,55 @@ FastPubSub is public, but nobody uses it yet. A change of the default transport 
    - A soak test of several hours in a Google Cloud region, with the memory and the redeliveries recorded.
    - A transport-independent version of `test_factory_clients_closed_on_shutdown`.
 4. After the gates pass and one release runs, decide if the Python transport can go. One transport halves the work to keep features in parity.
+
+## 14. Release gate: the final branch on real Pub/Sub
+
+This section measures `feat/native-transport` at commit `05654f0`, after steps 1 to 9 of the implementation plan. The core uses the release profile (fat LTO).
+
+### 14.1 Setup
+
+- An `n2-standard-4` VM in us-central1-a, with a standard 30 GB disk. `taskset -c 0,1` pins each run to two cores.
+- The Pub/Sub service in the project `fastpubsub-bench-15c7f8`. 100 messages in flight, 10 seconds of warm-up and 30 seconds of measurement for each run. 12,165 loop iterations for 1 ms of CPU work.
+- Four versions in 5 rounds. The order of the versions rotates in each round.
+  - `native-final`: this branch with the `fastpubsub-async` case.
+  - `python-optimized`: the PoC tip `415622c` with the Google Python client transport and the `fastpubsub-async` case.
+  - `google-blocking` and `google-nonblocking`: the Google Python client without FastPubSub.
+
+`benchmarks/results/native-final-gcp.csv` has the 60 runs. No run had a redelivery.
+
+### 14.2 Results
+
+Each cell is the median of 5 runs, with the range in parentheses. The last column compares `native-final` with `python-optimized`.
+
+| Scenario | Metric | native-final | python-optimized | google-blocking | google-nonblocking | Change |
+|---|---|---|---|---|---|---|
+| echo | Events per second | 1,005 (961–1,017) | 1,084 (1,049–1,145) | 1,084 (1,015–1,197) | 1,032 (987–1,072) | -7.3% |
+| echo | CPU µs/event | 86.5 (80.9–117.9) | 529.0 (351.7–557.6) | 351.4 (347.7–580.7) | 275.9 (269.2–426.1) | -83.6% |
+| echo | p50 ms | 18.5 (17.0–19.7) | 46.0 (35.3–48.4) | 52.6 (50.5–64.5) | 32.7 (32.1–38.8) | -59.8% |
+| echo | p99 ms | 483 (474–485) | 439 (409–462) | 385 (369–448) | 469 (460–483) | +10.0% |
+| echo | Peak RSS MB | 62.4 (60.5–63.1) | 105.3 (103.3–106.3) | 104.9 (104.6–106.7) | 105.8 (103.9–107.3) | -40.7% |
+| wait-only-100ms | Events per second | 1,511 (1,310–1,523) | 1,111 (987–1,423) | 323 (318–325) | 396 (394–396) | +35.9% |
+| wait-only-100ms | CPU µs/event | 94.3 (90.5–137.2) | 452.0 (398.2–496.0) | 540.0 (483.6–864.0) | 665.5 (544.2–906.0) | -79.1% |
+| wait-only-100ms | p50 ms | 300 (259–496) | 499 (269–620) | 2,944 (2,933–3,004) | 2,284 (2,217–2,326) | -39.9% |
+| wait-only-100ms | p99 ms | 2,171 (1,786–2,397) | 3,572 (3,124–3,925) | 4,341 (4,080–4,618) | 3,840 (3,829–3,968) | -39.2% |
+| wait-only-100ms | Peak RSS MB | 65.1 (63.8–67.2) | 110.2 (107.4–111.2) | 101.2 (100.3–102.8) | 100.7 (100.0–101.4) | -40.9% |
+| cpu-and-wait-100ms | Events per second | 815 (779–835) | 503 (483–545) | 313 (300–321) | 393 (389–393) | +61.9% |
+| cpu-and-wait-100ms | CPU µs/event | 1,197 (1,186–1,310) | 1,876 (1,766–2,079) | 2,443 (2,094–2,847) | 2,057 (1,940–2,614) | -36.2% |
+| cpu-and-wait-100ms | p50 ms | 600 (592–675) | 1,706 (1,619–1,886) | 2,939 (2,875–3,133) | 2,307 (2,163–2,432) | -64.8% |
+| cpu-and-wait-100ms | p99 ms | 2,496 (2,345–2,571) | 3,609 (3,341–3,837) | 4,413 (4,364–4,598) | 3,876 (3,655–4,105) | -30.9% |
+| cpu-and-wait-100ms | Peak RSS MB | 68.5 (66.0–70.3) | 105.8 (105.4–109.5) | 101.4 (100.4–102.3) | 100.3 (99.1–102.6) | -35.3% |
+
+| # | Threshold | Result |
+|---|---|---|
+| 1 | Echo CPU at least -40% | Pass, -83.6% |
+| 2 | Wait-only CPU at least -25% | Pass, -79.1% |
+| 3 | p99 at most +10% | Pass, +9.96%, -39.2%, -30.9% |
+| 4 | cpu-and-wait events per second not lower | Pass, +61.9% |
+| 5 | Peak memory at most +20% | Pass, -35.3% to -40.9% |
+
+### 14.3 Findings
+
+- The final branch keeps the gains of the PoC. The PoC Rust run in section 6.3 had 78.3 µs of echo CPU, 1,602 wait-only events per second and 866 cpu-and-wait events per second. The values here are 86.5, 1,511 and 815. That run used a different VM on a different day, so the comparison shows only a direction.
+- Echo stays the weak case. Echo has 7.3% fewer events per second than `python-optimized`, and the p99 is +9.96%, close to the threshold of +10%. The p50 is 60% lower, so the cause is in the tail.
+- In both scenarios with a wait, the plain Google client delivers only 323 to 396 events per second. Its callback thread pool limits it. FastPubSub with the native core delivers 3.8 to 4.7 times more.
+- The native core uses about 40% less memory than each version with the Google Python client.
