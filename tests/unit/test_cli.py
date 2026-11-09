@@ -3,6 +3,7 @@ from dataclasses import asdict
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import click
 import pytest
 import uvicorn.importer
 from typer.testing import CliRunner
@@ -164,7 +165,7 @@ class TestApplicationRunner:
         )
 
         assert result.exit_code == 2
-        assert "--network-threads" in result.output
+        assert "--network-threads" in click.unstyle(result.output)
         mock_runner.assert_not_called()
 
     @patch(
