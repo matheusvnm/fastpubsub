@@ -1,5 +1,6 @@
 import os
 from dataclasses import asdict
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -212,6 +213,19 @@ class TestApplicationRunner:
             server_config=MagicMock(spec=ServerConfiguration),
         )
         runner_instance.validate()
+
+    def test_translate_pypath_to_posix_does_not_depend_on_the_path_separator(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(os.path, "pathsep", ";")
+        runner_instance = ApplicationRunner(
+            MagicMock(spec=AppConfiguration),
+            MagicMock(spec=ServerConfiguration),
+        )
+
+        posix_path = runner_instance._translate_pypath_to_posix("app.main:app")
+
+        assert posix_path == Path("app") / "main"
 
     def test_translate_pypath_to_posix_invalid_format(self):
         runner_instance = ApplicationRunner(

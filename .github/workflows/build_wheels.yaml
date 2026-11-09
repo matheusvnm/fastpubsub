@@ -1,0 +1,194 @@
+name: Build Wheels
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: The git ref to build.
+        type: string
+        default: ""
+  pull_request:
+    branches:
+      - dev
+      - main
+    paths:
+      - fastpubsub-core/**
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/build_wheels.yaml
+      - .github/workflows/release_pypi.yaml
+
+env:
+  UV_LINK_MODE: "copy"
+
+jobs:
+  package:
+    name: fastpubsub wheel and sdist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Install uv command
+        uses: astral-sh/setup-uv@v7
+      - name: Build the package
+        run: uv build --package fastpubsub --out-dir dist
+      - name: Check that the wheel is pure Python
+        run: ls dist/fastpubsub-*-py3-none-any.whl
+      - name: Upload the package
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: dist
+
+  core-sdist:
+    name: fastpubsub-core sdist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Build the sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          working-directory: fastpubsub-core
+          args: --out dist
+      - name: Check that the sdist has the stub
+        run: tar tzf fastpubsub-core/dist/fastpubsub_core-*.tar.gz | grep fastpubsub_core.pyi
+      - name: Upload the sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-sdist
+          path: fastpubsub-core/dist
+
+  core-wheels:
+    name: fastpubsub-core ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64-manylinux
+            runner: ubuntu-latest
+            target: x86_64
+            manylinux: "2_28"
+          - platform: linux-x86_64-musllinux
+            runner: ubuntu-latest
+            target: x86_64
+            manylinux: musllinux_1_2
+          - platform: linux-aarch64-manylinux
+            runner: ubuntu-24.04-arm
+            target: aarch64
+            manylinux: "2_28"
+          - platform: linux-aarch64-musllinux
+            runner: ubuntu-24.04-arm
+            target: aarch64
+            manylinux: musllinux_1_2
+          - platform: macos-arm64
+            runner: macos-14
+            target: aarch64
+            manylinux: ""
+          - platform: windows-x86_64
+            runner: windows-latest
+            target: x64
+            manylinux: ""
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Install the Python interpreters
+        if: matrix.manylinux == ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.12
+            3.14t
+            3.15t
+      - name: Build the wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          working-directory: fastpubsub-core
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux || 'auto' }}
+          args: --profile release --out dist --interpreter 3.12 3.14t 3.15t
+      - name: Upload the wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-wheels-${{ matrix.platform }}
+          path: fastpubsub-core/dist
+
+  test-core-wheels:
+    name: test fastpubsub-core ${{ matrix.platform }} ${{ matrix.python-version }}
+    needs: core-wheels
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux-x86_64-manylinux, linux-aarch64-manylinux, macos-arm64, windows-x86_64]
+        python-version: ["3.12", "3.14t"]
+        include:
+          - platform: linux-x86_64-manylinux
+            runner: ubuntu-latest
+          - platform: linux-aarch64-manylinux
+            runner: ubuntu-24.04-arm
+          - platform: macos-arm64
+            runner: macos-14
+          - platform: windows-x86_64
+            runner: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          sparse-checkout: fastpubsub-core/tests
+      - name: Install uv command
+        uses: astral-sh/setup-uv@v7
+      - name: Download the wheels
+        uses: actions/download-artifact@v4
+        with:
+          name: core-wheels-${{ matrix.platform }}
+          path: wheels
+      - name: Install the wheel in a clean environment
+        shell: bash
+        run: |
+          uv venv --python ${{ matrix.python-version }} test-environment
+          uv pip install --python test-environment --no-index --find-links wheels fastpubsub-core
+          uv pip install --python test-environment pytest pytest-asyncio pytest-timeout
+      - name: Import the core and run its tests
+        shell: bash
+        env:
+          PYTHON_GIL: "0"
+        run: |
+          python_path=test-environment/bin/python
+          if [ -f test-environment/Scripts/python.exe ]; then
+            python_path=test-environment/Scripts/python.exe
+          fi
+          "$python_path" -c "import fastpubsub_core; print(fastpubsub_core.__file__)"
+          "$python_path" -m pytest fastpubsub-core/tests -p no:cacheprovider
+
+  test-core-musllinux:
+    name: test fastpubsub-core ${{ matrix.platform }}
+    needs: core-wheels
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64-musllinux
+            runner: ubuntu-latest
+          - platform: linux-aarch64-musllinux
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Download the wheels
+        uses: actions/download-artifact@v4
+        with:
+          name: core-wheels-${{ matrix.platform }}
+          path: wheels
+      - name: Import the core on Alpine Linux
+        run: |
+          docker run --rm --volume "$PWD/wheels:/wheels" python:3.12-alpine \
+            sh -c "pip install --no-index --find-links /wheels fastpubsub-core && python -c 'import fastpubsub_core'"

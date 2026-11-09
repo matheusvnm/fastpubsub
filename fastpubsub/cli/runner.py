@@ -117,7 +117,7 @@ class ApplicationRunner:
             ImportFromStringError: The application path has a wrong format.
         """
         try:
-            module, _ = pypath.split(os.path.pathsep)
+            module, _ = pypath.split(":")
             posix_text_path = module.replace(os.path.extsep, os.path.sep)
             return Path(posix_text_path)
         except Exception as e:
