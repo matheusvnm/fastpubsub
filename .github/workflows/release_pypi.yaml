@@ -60,13 +60,13 @@ jobs:
       - name: Install uv command
         uses: astral-sh/setup-uv@v7
       - name: Download the core wheels and sdist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: core-*
           path: dist/core
           merge-multiple: true
       - name: Download the fastpubsub package
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: package
           path: dist/package
