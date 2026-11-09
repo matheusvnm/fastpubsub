@@ -49,6 +49,33 @@ Configure dead-letter routing directly in the subscriber declaration:
 | `max_delivery_attempts` | Retry ceiling before reroute | Start with `5` (the minimum), increase only if transient failures are common. |
 | `autocreate` | Creates resources at startup | Keep `True` in local or dev environment but decide by platform policy in prod. |
 
+## Permissions
+
+On the Pub/Sub service, the Pub/Sub service agent of your project forwards the failed messages. It needs two roles:
+
+- `roles/pubsub.publisher` on the dead-letter topic.
+- `roles/pubsub.subscriber` on the source subscription.
+
+Without these roles, Pub/Sub does not forward the message. It keeps sending it to your handler after `max_delivery_attempts`, and the dead-letter topic receives nothing. FastPubSub does not grant the roles, because they are a security decision for your project. The emulator does not check them.
+
+The service agent has the name `service-PROJECT_NUMBER@gcp-sa-pubsub.iam.gserviceaccount.com`. Get the project number with `gcloud projects describe PROJECT_ID --format="value(projectNumber)"`. Then grant the roles:
+
+```bash
+gcloud pubsub topics add-iam-policy-binding DEAD_LETTER_TOPIC \
+    --member="serviceAccount:service-PROJECT_NUMBER@gcp-sa-pubsub.iam.gserviceaccount.com" \
+    --role="roles/pubsub.publisher"
+```
+
+```bash
+gcloud pubsub subscriptions add-iam-policy-binding SUBSCRIPTION \
+    --member="serviceAccount:service-PROJECT_NUMBER@gcp-sa-pubsub.iam.gserviceaccount.com" \
+    --role="roles/pubsub.subscriber"
+```
+
+!!! note "Delivery attempt counter"
+
+    Pub/Sub counts the delivery attempts only for a subscription with a dead-letter policy. Without one, `message.delivery_attempt` is `0` on the service. The emulator counts the attempts for every subscription.
+
 ## Retry Dynamics and Backoff
 
 Dead-letter topics are most effective when paired with deliberate retry pacing.

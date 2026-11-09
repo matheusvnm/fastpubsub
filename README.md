@@ -51,7 +51,7 @@ The key features are:
 
 ### Installation
 
-FastPubSub works on Linux, macOS, Windows and most Unix-style operating systems. You can install it with `pip` as usual:
+FastPubSub has ready wheels for Linux, macOS (arm64) and Windows, for CPython 3.12 and later and for free-threaded Python. You can install it with `pip` as usual:
 
 ```shell
 pip install fastpubsub

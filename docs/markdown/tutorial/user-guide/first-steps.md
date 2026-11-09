@@ -14,6 +14,20 @@ Install FastPubSub with pip:
 pip install fastpubsub
 ```
 
+FastPubSub needs Python 3.12 or later. pip also installs `fastpubsub-core`, the compiled part of FastPubSub that runs the Pub/Sub network I/O. It has ready wheels for these platforms:
+
+| Platform | Architectures |
+|----------|---------------|
+| Linux (glibc 2.28 or later, and musl) | x86_64, aarch64 |
+| macOS | arm64 |
+| Windows | x86_64 |
+
+The wheels support CPython 3.12 and later, and the free-threaded builds 3.14t and 3.15t.
+
+!!! note "Other platforms"
+
+    On a platform without a wheel, pip builds `fastpubsub-core` from its source. The build needs a Rust toolchain, version 1.91 or later. Install it with [rustup](https://rustup.rs), then run `pip install fastpubsub` again.
+
 ---
 
 ## Prerequisites
