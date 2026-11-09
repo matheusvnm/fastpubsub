@@ -4,7 +4,6 @@ site_description = "A high-performance, asyncio-native framework for Google Clou
 site_author = "Sandro Matheus Vila Nova Marques"
 site_url = "https://docs.fastpubsub.dev"
 
-repo = "fontawesome/brands/github"
 repo_name = "matheusvnm/fastpubsub"
 repo_url = "https://github.com/matheusvnm/fastpubsub"
 copyright = "Copyright &copy; 2026 FastPubSub"
@@ -129,6 +128,9 @@ accent = "indigo"
 toggle.icon = "material/brightness-4"
 toggle.name = "Switch to light mode"
 
+
+[project.theme.icon]
+repo = "fontawesome/brands/github"
 
 [project.theme.font]
 text = "Helvetica"

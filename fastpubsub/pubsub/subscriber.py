@@ -50,8 +50,8 @@ class Subscriber:
             dead_letter_policy: The dead-letter policy for the subscription.
             middlewares: A sequence of middlewares to apply.
             project_id: An alternative project id to create a subscription
-            and consume messages from.
-            If set the broker's project id will be ignored.
+                and consume messages from. If set, the broker project id is
+                ignored.
         """
         self.func = func
         self.project_id = project_id
