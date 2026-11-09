@@ -64,6 +64,7 @@ class TestSubscriptionFeatures:
         assert received.empty()
 
     @pytest.mark.asyncio
+    @pytest.mark.timeout(60)
     async def test_ordering_key_keeps_the_publish_order(
         self,
         unique_topic: str,

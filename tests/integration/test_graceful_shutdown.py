@@ -112,6 +112,7 @@ class TestGracefulShutdown:
         import time
 
         received_messages: list[str] = []
+        handler_started = asyncio.Event()
 
         broker = broker_factory(shutdown_timeout=2.0)
 
@@ -124,11 +125,12 @@ class TestGracefulShutdown:
         async def very_slow_handler(msg: Message) -> None:
             """Handler that takes longer than timeout."""
             received_messages.append(msg.data.decode())
+            handler_started.set()
             await asyncio.sleep(10.0)
 
         await broker.start()
         await broker.publish(topic_name=unique_topic, data=b"test-message")
-        await asyncio.sleep(0.5)
+        await asyncio.wait_for(handler_started.wait(), 15)
 
         start_time = time.time()
         await broker.shutdown()

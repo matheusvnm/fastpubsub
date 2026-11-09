@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from fastpubsub import Message
+from fastpubsub._internal.connection import Connection
 from tests.integration.conftest import managed_broker
 
 if TYPE_CHECKING:
@@ -48,7 +49,9 @@ class TestMessageConsumption:
             assert isinstance(result, Message)
             assert result.data == b"Hello, PubSub!"
             assert result.subscriber_name == "handler"
-            assert result.delivery_attempt == 1
+            assert result.delivery_attempt == (
+                1 if Connection.is_emulator() else 0
+            )
             assert result.topic_name == unique_topic
             assert not result.attributes
 
