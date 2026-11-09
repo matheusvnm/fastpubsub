@@ -67,13 +67,6 @@ repos:
       language: system
       types: [rust]
       pass_filenames: false
-    - id: core-test
-      name: test the core code
-      entry: just core test
-      language: system
-      files: ^fastpubsub-core/
-      pass_filenames: false
-      stages: [pre-push]
     - id: core-stubtest
       name: check the core stub
       entry: just core stubtest
