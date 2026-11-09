@@ -58,7 +58,7 @@ The `subscriber` register function has a variety of configuration you can set to
 )
 ```
 
-Most of the configuration is directly mapped from the Google's Pub/Sub Python SDK. The few exceptions are configuration used for lifecycle control and consumer behavior as we describe them below.
+Most of the configuration maps directly to the settings of the Pub/Sub subscription. The few exceptions are the settings for lifecycle control and consumer behavior, as described below.
 
 
 ### Lifecycle Control

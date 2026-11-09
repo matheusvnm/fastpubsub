@@ -136,7 +136,7 @@ Sometimes you need to add metadata to give context to your message events withou
 
 ### Publishing with Ordering
 
-For ordered message delivery, enable the `enable_message_ordering` on the receiving subscriber and provide an ordering key while publishing the message. FastPubSub's internal engine will handle all the Publisher configuration required to enable message ordering on Google's SDK. With that the messages with the same ordering key will be delivered in the order they were published.
+For ordered message delivery, enable `enable_message_ordering` on the receiving subscriber and give an ordering key when you publish the message. FastPubSub sends the ordering key with each message, and needs no other publisher setting. Pub/Sub then delivers the messages with the same ordering key in the order that you published them.
 
 
 === "Via `broker.publish` function"

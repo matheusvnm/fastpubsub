@@ -36,18 +36,33 @@
 ## Features
 
 
-FastPubSub is a high-performance framework for building applications that streaming message events on Google Pub/Sub. It combines the Google Pub/Sub Python SDK with FastAPI, Pydantic, and Uvicorn to provide an easy-to-use development experience.
+FastPubSub is a high-performance framework for building applications that process message events on Google Pub/Sub. A compiled core, written in Rust, runs all Pub/Sub network I/O. FastAPI, Pydantic and Uvicorn give it an easy-to-use development experience in Python.
 
 The key features are:
 
-- **Fast:** Built on top of [**FastAPI**](https://fastapi.tiangolo.com/), [**uvicorn**](https://uvicorn.dev/) and the [**Google Pub/Sub Python SDK**](https://github.com/googleapis/python-pubsub) for high throughput.
+- **Fast:** A compiled core runs the streams, the batches and the acknowledgements outside the Python interpreter. It is written in Rust, on Google's official [Rust client for Pub/Sub](https://github.com/googleapis/google-cloud-rust). Your handlers stay plain Python.
 - **Intuitive**: It is designed to be intuitive and easy to use, even for beginners.
 - **Typed**: Provides great editor support and less time reading docs.
 - **Robust**: Get production-ready code with sensible default values helping you avoid common pitfalls.
 - **Asynchronous:** It is built on top of asyncio, which allows it to run on fully asynchronous code.
 - **Batteries Included**: Provides its own CLI and other widely used tools such as [**pydantic**](https://docs.pydantic.dev/) for data validation and log contextualization.
 
+## Performance
 
+The Rust core is the reason that FastPubSub is fast. It receives, acknowledges and publishes messages on its own threads, without the Python GIL. It gives the received messages to the asyncio event loop in batches, so Python does only the work of your handlers.
+
+We compared FastPubSub with the Google Python client (`google-cloud-pubsub` with a non-blocking callback) on real Pub/Sub. The runs used a 4-vCPU VM in the same region, 2 CPUs for each run and 100 messages in flight. Each value is the median of 5 runs:
+
+| Scenario | Metric | Google Python client | FastPubSub |
+|---|---|---|---|
+| Echo (receive and publish) | CPU per message | 276 µs | 87 µs |
+| Echo (receive and publish) | Messages per second | 1,032 | 1,005 |
+| Handler waits 100 ms | Messages per second | 396 | 1,511 |
+| Handler waits 100 ms | CPU per message | 666 µs | 94 µs |
+| Handler uses 1 ms of CPU and waits 100 ms | Messages per second | 393 | 815 |
+| All scenarios | Peak memory | 100 to 106 MB | 62 to 69 MB |
+
+The more time a handler spends waiting, the larger the gain. When the handler does almost nothing, as in echo, the network sets the limit and the throughput is about the same. The CPU and the memory are lower in all scenarios.
 
 ## Quick Start
 
