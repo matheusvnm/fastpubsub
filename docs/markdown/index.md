@@ -36,18 +36,16 @@
 ## Features
 
 
-FastPubSub is a high-performance framework for building applications that streaming message events on Google Pub/Sub. It combines the Google Pub/Sub Python SDK with FastAPI, Pydantic, and Uvicorn to provide an easy-to-use development experience.
+FastPubSub is a high-performance framework for building applications that process message events on Google Pub/Sub. A compiled core, written in Rust, runs all Pub/Sub network I/O. FastAPI, Pydantic and Uvicorn give it an easy-to-use development experience in Python.
 
 The key features are:
 
-- **Fast:** Built on top of [**FastAPI**](https://fastapi.tiangolo.com/), [**uvicorn**](https://uvicorn.dev/) and the [**Google Pub/Sub Python SDK**](https://github.com/googleapis/python-pubsub) for high throughput.
+- **Fast:** A compiled core runs the streams, the batches and the acknowledgements outside the Python interpreter. It is written in Rust, on Google's official [Rust client for Pub/Sub](https://github.com/googleapis/google-cloud-rust). Your handlers stay plain Python.
 - **Intuitive**: It is designed to be intuitive and easy to use, even for beginners.
 - **Typed**: Provides great editor support and less time reading docs.
 - **Robust**: Get production-ready code with sensible default values helping you avoid common pitfalls.
 - **Asynchronous:** It is built on top of asyncio, which allows it to run on fully asynchronous code.
 - **Batteries Included**: Provides its own CLI and other widely used tools such as [**pydantic**](https://docs.pydantic.dev/) for data validation and log contextualization.
-
-
 
 ## Quick Start
 
