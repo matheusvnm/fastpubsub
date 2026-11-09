@@ -161,6 +161,35 @@ Each worker is a separate Python process with its own event loop, allowing true 
 
     A common recommendation is `(2 * CPU_CORES) + 1`. For a 4-core machine: `(2 * 4) + 1 = 9` workers.
 
+### Network Threads
+
+FastPubSub has a compiled core that runs all Pub/Sub network I/O: the message streams, the publish batches and the topic and subscription calls. The core runs this work on its own network threads, next to the asyncio event loop.
+
+Set the number of network threads in each worker process with `--network-threads`:
+
+```bash
+fastpubsub run my_project.main:app --workers 4 --network-threads 2
+```
+
+| Option | Environment variable | Default | Minimum |
+|--------|---------------------|---------|---------|
+| `--network-threads` | `FASTPUBSUB_NETWORK_THREADS` | `2` | `1` |
+
+The network threads are threads, not processes. Each worker process has its own network threads, so the command above runs `4 x 2 = 8` network threads in total.
+
+Each worker process has these threads:
+
+- The asyncio event loop thread. It runs your `async def` handlers.
+- The network threads of the core.
+- One bridge thread. It gives the received messages and the publish results to the event loop in batches.
+- The worker threads for `def` handlers, from the anyio thread pool.
+
+!!! tip "Choosing the number"
+
+    Keep the default for most applications. Your handlers use much more CPU than the network threads. In our benchmarks with 100 messages in flight, 1, 2 and 4 network threads gave the same throughput. Add network threads only when a profile shows that the threads named `fastpubsub-network-N` use all their CPU.
+
+The core reads `FASTPUBSUB_NETWORK_THREADS` when it starts, at the first Pub/Sub call. If you do not use the CLI, set the variable before your application starts.
+
 ### Host and Port
 
 Configure the network binding:

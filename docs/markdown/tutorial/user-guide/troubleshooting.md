@@ -10,32 +10,34 @@ This guide helps you resolve common issues when working with FastPubSub.
 
 ### Authentication and Credentials
 
-#### "Could not load the default credentials"
+#### "Could not create default credentials"
 
 **Error:**
 ```
-google.auth.exceptions.DefaultCredentialsError: Could not automatically determine credentials.
+fastpubsub_core.CoreError: could not create default credentials
 ```
+
+FastPubSub did not find credentials for the Pub/Sub service.
 
 **Solutions:**
 
-1. **For local development with emulator:**
+1. **For local development with the emulator:**
    ```bash
    export PUBSUB_EMULATOR_HOST="localhost:8085"
    ```
+   With this variable, FastPubSub connects to the emulator and uses no credentials.
 
-2. **For production/cloud:**
+2. **For production or cloud:**
    ```bash
    export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account-key.json"
    ```
+   On Google Cloud (Cloud Run, GKE, Compute Engine), FastPubSub uses the service account of the workload. You do not need a key file there.
 
-3. **Verify credentials:**
-   ```python
-   from google.auth import default
-
-   credentials, project = default()
-   print(f"Using project: {project}")
+3. **Check your local credentials:**
+   ```bash
+   gcloud auth application-default print-access-token
    ```
+   If the command fails, run `gcloud auth application-default login`.
 
 ---
 
@@ -43,7 +45,7 @@ google.auth.exceptions.DefaultCredentialsError: Could not automatically determin
 
 **Error:**
 ```
-google.api_core.exceptions.PermissionDenied: 403 User not authorized
+fastpubsub_core.CoreError: the service reports an error with code PERMISSION_DENIED described as: ...
 ```
 
 **Required permissions:**
@@ -54,7 +56,18 @@ google.api_core.exceptions.PermissionDenied: 403 User not authorized
 | Publishers | `pubsub.topics.publish` |
 | Autocreate | `pubsub.topics.create`, `pubsub.subscriptions.create` |
 
-**Solution:** Check if you Service Account has enough permissions.
+**Solution:** Check that your service account has these permissions.
+
+---
+
+#### "Requested project not found"
+
+**Error:**
+```
+fastpubsub_core.NotFoundError: the service reports an error with code NOT_FOUND described as: Requested project not found or user does not have access to it
+```
+
+**Solution:** Use the project ID, not the display name of the project. Also check that your credentials can access the project.
 
 ---
 
@@ -114,6 +127,16 @@ google.api_core.exceptions.PermissionDenied: 403 User not authorized
    ```
 
 See [Message Lifecycle](lifecycle.md) for Drop/Retry behavior and [Performance Tuning](../../advanced/tuning.md) for ack deadline guidance.
+
+---
+
+#### Messages never reach the dead-letter topic
+
+**Symptom:** A message fails more times than `max_delivery_attempts`, but Pub/Sub keeps sending it again. The dead-letter topic receives nothing.
+
+**Cause:** The Pub/Sub service agent of your project cannot forward the message. It needs the publisher role on the dead-letter topic and the subscriber role on the source subscription. The emulator does not check these permissions, so the problem occurs only on the real service.
+
+**Solution:** Grant the two roles. See [Dead-Letter Topics: Permissions](../../advanced/dlt.md#permissions).
 
 ---
 

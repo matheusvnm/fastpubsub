@@ -1,27 +1,33 @@
 """Internal middlewares for handling and publishing messages."""
 
-from typing import Any
+import inspect
+from typing import Any, ClassVar, cast
 
-from fastpubsub.clients.pubsub import PubSubClient
+from fastpubsub._internal.clients import PubSubClient
+from fastpubsub._internal.concurrency import apply_async
 from fastpubsub.datastructures import Message
+from fastpubsub.exceptions import NotFoundError
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.types import AsyncCallable
+from fastpubsub.types import MessageHandler
 
 
 class HandleMessageSerializerMiddleware(BaseMiddleware):
     """A special middleware for handling incoming messages serialization."""
 
     def __init__(
-        self, next_call: BaseMiddleware | None, target: AsyncCallable
+        self, next_call: BaseMiddleware | None, target: MessageHandler
     ):
         """Initializes the HandleMessageSerializerMiddleware.
 
         Args:
             next_call: The next call to the middleware chain.
-            target: The target callable to handle the message.
+            target: The target callable to handle the message. An async
+                function runs on the event loop. A sync function runs in
+                the thread pool.
         """
         super().__init__(next_call)
         self.target = target
+        self.is_async_target = inspect.iscoroutinefunction(target)
 
     async def on_message(self, message: Message) -> Any:
         """Handles a message.
@@ -32,11 +38,16 @@ class HandleMessageSerializerMiddleware(BaseMiddleware):
         Returns:
             The result of the target callable.
         """
-        return await self.target(message)
+        if self.is_async_target:
+            return await self.target(message)
+
+        return await apply_async(self.target, message)
 
 
 class PublishMessageSerializerMiddleware(BaseMiddleware):
     """A special middleware for publishing messages serialization."""
+
+    _created_topics: ClassVar[set[tuple[str, str]]] = set()
 
     def __init__(
         self,
@@ -57,6 +68,22 @@ class PublishMessageSerializerMiddleware(BaseMiddleware):
         self.project_id = project_id
         self.topic_name = topic_name
         self.autocreate = autocreate
+        self._client_factory: Any = None
+        self._client: Any = None
+
+    def _get_client(self) -> PubSubClient:
+        """Gets the Pub/Sub client of this middleware.
+
+        The method makes a new client when the ``PubSubClient`` class
+        changes, so test patches of the class take effect.
+
+        Returns:
+            The cached Pub/Sub client.
+        """
+        if self._client_factory is not PubSubClient:
+            self._client_factory = PubSubClient
+            self._client = PubSubClient(project_id=self.project_id)
+        return cast(PubSubClient, self._client)
 
     async def on_publish(
         self, data: bytes, ordering_key: str, attributes: dict[str, str] | None
@@ -68,13 +95,19 @@ class PublishMessageSerializerMiddleware(BaseMiddleware):
             ordering_key: The ordering key for the message.
             attributes: A dictionary of message attributes.
         """
-        client = PubSubClient(project_id=self.project_id)
-        if self.autocreate:
+        client = self._get_client()
+        topic_key = (self.project_id, self.topic_name)
+        if self.autocreate and topic_key not in self._created_topics:
             await client.create_topic(self.topic_name)
+            self._created_topics.add(topic_key)
 
-        return await client.publish(
-            topic_name=self.topic_name,
-            data=data,
-            ordering_key=ordering_key,
-            attributes=attributes,
-        )
+        try:
+            return await client.publish(
+                topic_name=self.topic_name,
+                data=data,
+                ordering_key=ordering_key,
+                attributes=attributes,
+            )
+        except NotFoundError:
+            self._created_topics.discard(topic_key)
+            raise

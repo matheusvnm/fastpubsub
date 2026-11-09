@@ -29,6 +29,7 @@ class TestExceptionHandling:
     ) -> None:
         max_attempts = 3
         received: asyncio.Queue[int] = asyncio.Queue(maxsize=1)
+        deliveries: list[str] = []
 
         @connected_broker.subscriber(
             alias="test-drop",
@@ -37,10 +38,13 @@ class TestExceptionHandling:
             autocreate=True,
             ack_deadline_seconds=10,
             max_delivery_attempts=max_attempts,
+            min_backoff_delay_secs=0,
+            max_backoff_delay_secs=1,
         )
         async def handler(msg: Message) -> None:
-            if msg.delivery_attempt >= max_attempts:
-                await received.put(msg.delivery_attempt)
+            deliveries.append(msg.id)
+            if len(deliveries) >= max_attempts:
+                await received.put(len(deliveries))
                 return
 
             raise Retry("Intentionally dropping message")

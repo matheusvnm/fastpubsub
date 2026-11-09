@@ -3,10 +3,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from fastpubsub.concurrency.manager import AsyncTaskManager
+from fastpubsub._internal.delivery.task_manager import AsyncTaskManager
 
-PUBSUB_POLL_TASK_MODULE_PATH = "fastpubsub.concurrency.tasks"
-ASYNC_TASK_MANAGER_MODULE_PATH = "fastpubsub.concurrency.manager"
+PUBSUB_POLL_TASK_MODULE_PATH = "fastpubsub._internal.delivery.streaming_pull"
+ASYNC_TASK_MANAGER_MODULE_PATH = "fastpubsub._internal.delivery.task_manager"
 
 
 class TestAsyncTaskManager:
@@ -133,12 +133,10 @@ class TestAsyncTaskManagerShutdown:
             task_manager.create_task(MagicMock())
             task_manager.create_task(MagicMock())
 
-            # Verify tasks were added
             assert len(task_manager._tasks) == 2
 
             await task_manager.shutdown()
 
-            # Verify tasks list is cleared
             assert len(task_manager._tasks) == 0
 
     @pytest.mark.asyncio
@@ -154,7 +152,6 @@ class TestAsyncTaskManagerShutdown:
 
             await task_manager.shutdown()
 
-            # Verify factory close_all was called
             mock_factory.close_all.assert_called_once()
 
     @pytest.mark.asyncio
@@ -165,7 +162,6 @@ class TestAsyncTaskManagerShutdown:
         ) as mock_factory:
             mock_factory.close_all = AsyncMock()
 
-            # Set task_alive to return False
             task.return_value.task_alive.return_value = False
 
             task_manager = AsyncTaskManager()
@@ -173,7 +169,6 @@ class TestAsyncTaskManagerShutdown:
 
             await task_manager.shutdown()
 
-            # Verify shutdown was not called on dead task
             task.return_value.shutdown.assert_not_called()
 
     @pytest.mark.asyncio

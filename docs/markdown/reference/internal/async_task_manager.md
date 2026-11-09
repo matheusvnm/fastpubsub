@@ -1,4 +1,4 @@
 # `AsyncTaskManager` class
 
 
-::: fastpubsub.concurrency.manager.AsyncTaskManager
+::: fastpubsub._internal.delivery.task_manager.AsyncTaskManager

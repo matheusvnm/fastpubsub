@@ -16,13 +16,24 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class ServerConfiguration:
-    """Server configuration."""
+    """Server configuration.
+
+    Attributes:
+        host: The host to bind to.
+        port: The port to bind to.
+        workers: The number of worker processes.
+        reload: Whether to enable auto-reloading.
+        log_level: The server (uvicorn) log level.
+        network_threads: The number of network threads of the core in
+            each worker process.
+    """
 
     host: str
     port: int
     workers: int
     reload: bool
     log_level: str
+    network_threads: int = 2
 
 
 @dataclass(frozen=True)
@@ -63,6 +74,9 @@ class ApplicationRunner:
         os.environ["FASTPUBSUB_SUBSCRIBERS"] = ",".join(
             self.app_config.subscribers
         )
+        os.environ["FASTPUBSUB_NETWORK_THREADS"] = str(
+            self.server_config.network_threads
+        )
         configure()
 
     def validate(self) -> None:
@@ -90,8 +104,20 @@ class ApplicationRunner:
         logger.info("FastPubSub app terminated.")
 
     def _translate_pypath_to_posix(self, pypath: str) -> Path:
+        """Converts an application path to the path of its module file.
+
+        Args:
+            pypath: The application path, in the format
+                ``<module>:<attribute>``.
+
+        Returns:
+            The relative file path of the module, without the extension.
+
+        Raises:
+            ImportFromStringError: The application path has a wrong format.
+        """
         try:
-            module, _ = pypath.split(os.path.pathsep)
+            module, _ = pypath.split(":")
             posix_text_path = module.replace(os.path.extsep, os.path.sep)
             return Path(posix_text_path)
         except Exception as e:
@@ -101,6 +127,14 @@ class ApplicationRunner:
             ) from e
 
     def _resolve_application_posix_path(self, posix_path: Path) -> None:
+        """Adds the directories that import the application to ``sys.path``.
+
+        The method adds the current directory, and the parent directory of
+        the top package that contains the module.
+
+        Args:
+            posix_path: The path of the application module.
+        """
         module_path = posix_path.resolve()
         if module_path.is_file() and module_path.stem == "__init__":
             module_path = module_path.parent

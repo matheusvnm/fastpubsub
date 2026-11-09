@@ -214,6 +214,45 @@ class TestPublisher:
         assert publisher.middlewares[0].cls == first_middleware
         assert publisher.middlewares[1].cls == second_middleware
 
+    def test_callstack_is_built_once_for_each_autocreate_value(
+        self, publisher: Publisher
+    ):
+        autocreate_callstack = publisher._get_callstack(autocreate=True)
+        no_autocreate_callstack = publisher._get_callstack(autocreate=False)
+
+        assert (
+            publisher._get_callstack(autocreate=True) is autocreate_callstack
+        )
+        assert (
+            publisher._get_callstack(autocreate=False)
+            is no_autocreate_callstack
+        )
+        assert autocreate_callstack is not no_autocreate_callstack
+
+    def test_include_middleware_rebuilds_callstack(
+        self, publisher: Publisher, first_middleware: type[BaseMiddleware]
+    ):
+        old_callstack = publisher._get_callstack(autocreate=True)
+
+        publisher.include_middleware(first_middleware)
+
+        new_callstack = publisher._get_callstack(autocreate=True)
+        assert new_callstack is not old_callstack
+        assert callstack_matches(
+            new_callstack,
+            [first_middleware, PublishMessageSerializerMiddleware],
+        )
+
+    def test_set_project_id_rebuilds_callstack(self):
+        publisher = Publisher(topic_name="topic")
+        old_callstack = publisher._get_callstack(autocreate=True)
+
+        publisher._set_project_id("new-project")
+
+        new_callstack = publisher._get_callstack(autocreate=True)
+        assert new_callstack is not old_callstack
+        assert new_callstack.project_id == "new-project"
+
 
 class TestPublisherSerialization:
     @pytest.mark.asyncio

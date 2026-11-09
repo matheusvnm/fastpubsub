@@ -42,3 +42,6 @@ docs/_build
 
 # Integration planning docs
 integration*.md
+
+# Core build output
+fastpubsub-core/target

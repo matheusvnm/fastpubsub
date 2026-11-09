@@ -340,7 +340,6 @@ class TestInspectSubscribersTable:
         assert result.exit_code == 0
         assert "handler_a" in result.stdout
         assert "topic-a" in result.stdout
-        # subscription column should NOT appear
         assert "sub-a" not in result.stdout
 
     @patch("fastpubsub.cli.main.import_app")

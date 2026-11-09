@@ -12,6 +12,7 @@ The objective is not maximum raw throughput in isolation, but stable throughput 
 | Parameter | Scope | Primary Effect |
 |----------|-------|----------------|
 | `max_messages` | Subscriber client-side | Concurrency and memory pressure |
+| `--network-threads` | Worker process | Threads for the Pub/Sub network I/O |
 | `ack_deadline_seconds` | Subscription server-side | Processing window before redelivery |
 | `min_backoff_delay_secs` / `max_backoff_delay_secs` | Subscription server-side | Retry pacing under failure |
 | `max_delivery_attempts` + `dead_letter_topic` | Subscription server-side | Bounded failure handling |
@@ -33,6 +34,17 @@ Apply tuning in a controlled loop:
 ```python
 --8<-- "advanced/e1_06_tuning.py:high_concurrency"
 ```
+
+### Flow Control
+
+FastPubSub applies `max_messages` in two places:
+
+- **On the client:** FastPubSub runs at most `max_messages` handlers at the same time for the subscriber. The other received messages wait in a queue in memory.
+- **On the server:** FastPubSub tells Pub/Sub to send at most `2 x max_messages` messages that are not acknowledged yet.
+
+The server limit is twice the client limit for a reason. When a client reaches the exact server limit, Pub/Sub stops the stream for about 500 milliseconds each time. With the extra room, the next messages are already in the queue when a handler finishes. In our benchmarks on Pub/Sub, this removed the latency spikes of the exact limit.
+
+So a subscriber can hold up to `2 x max_messages` messages in memory, but only `max_messages` handlers run. During a shutdown, FastPubSub nacks the messages in the queue at once, so Pub/Sub can send them to a different instance.
 
 A compact load-probe setup for this parameter:
 
@@ -127,6 +139,16 @@ Effective theoretical concurrency is:
 `workers x max_messages`
 
 Monitor total memory because each worker process has independent state.
+
+## Network Threads
+
+Each worker process has its own network threads for the Pub/Sub I/O. The default is 2. See [Network Threads](../tutorial/user-guide/cli.md#network-threads) for the thread model.
+
+```bash
+fastpubsub run myapp:app --workers 4 --network-threads 2
+```
+
+Keep the default unless a profile shows that the `fastpubsub-network-N` threads use all their CPU. More network threads do not make your handlers faster.
 
 ## Integrated Configuration Example
 

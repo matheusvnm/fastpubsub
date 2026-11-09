@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import ConfigDict, validate_call
 
-from fastpubsub.concurrency.utils import ensure_async_middleware
+from fastpubsub._internal.concurrency import ensure_async_middleware
 from fastpubsub.datastructures import (
     DeadLetterPolicy,
     LifecyclePolicy,
@@ -18,7 +18,7 @@ from fastpubsub.middlewares import (
     Middleware,
 )
 from fastpubsub.middlewares.base import BaseMiddleware
-from fastpubsub.types import AsyncCallable
+from fastpubsub.types import MessageHandler
 
 
 class Subscriber:
@@ -26,7 +26,7 @@ class Subscriber:
 
     def __init__(
         self,
-        func: AsyncCallable,
+        func: MessageHandler,
         topic_name: str,
         subscription_name: str,
         retry_policy: MessageRetryPolicy,
@@ -50,8 +50,8 @@ class Subscriber:
             dead_letter_policy: The dead-letter policy for the subscription.
             middlewares: A sequence of middlewares to apply.
             project_id: An alternative project id to create a subscription
-            and consume messages from.
-            If set the broker's project id will be ignored.
+                and consume messages from. If set, the broker project id is
+                ignored.
         """
         self.func = func
         self.project_id = project_id
@@ -63,6 +63,7 @@ class Subscriber:
         self.dead_letter_policy = dead_letter_policy
         self.control_flow_policy = control_flow_policy
         self.middlewares: MutableSequence[Middleware] = []
+        self._callstack: BaseMiddleware | None = None
 
         if middlewares and isinstance(middlewares, Sequence):
             for middleware, args, kwargs in middlewares:
@@ -86,8 +87,24 @@ class Subscriber:
             return
 
         self.middlewares.append(wrapper_middleware)
+        self._callstack = None
+
+    @property
+    def callstack(self) -> BaseMiddleware:
+        """The middleware chain that handles each message.
+
+        The chain is built once and reused for all messages.
+        """
+        if self._callstack is None:
+            self._callstack = self._build_callstack()
+        return self._callstack
 
     def _build_callstack(self) -> BaseMiddleware:
+        """Builds the middleware chain that ends with the handler.
+
+        Returns:
+            The first middleware of the chain.
+        """
         callstack: BaseMiddleware = HandleMessageSerializerMiddleware(
             None, self.func
         )
@@ -101,10 +118,20 @@ class Subscriber:
         return getattr(self.func, "__name__", "")
 
     def _set_project_id(self, project_id: str) -> None:
+        """Sets the project ID if the subscriber has none.
+
+        Args:
+            project_id: The project ID of the router.
+        """
         if not self.project_id:
             self.project_id = project_id
 
     def _add_prefix(self, new_prefix: str) -> None:
+        """Replaces the prefix of the subscription name.
+
+        Args:
+            new_prefix: The full prefix of the router.
+        """
         subscription_name = self.subscription_name.split(".")[-1]
         self.subscription_name = f"{new_prefix}.{subscription_name}"
 

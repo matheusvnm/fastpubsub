@@ -108,7 +108,7 @@ The most performant option. Establishes a long-lived, bidirectional gRPC stream 
 
 !!! info "FastPubSub Uses Streaming Pull"
 
-    FastPubSub implements the streaming pull pattern with an asyncio-based approach, providing high performance with Python's async/await model.
+    FastPubSub uses streaming pull. A compiled core, written in Rust, runs the stream, the flow control and the acknowledgements on its own threads. It gives the messages to your handlers on the asyncio event loop in batches, so your handlers stay in normal Python async/await code.
 
 ---
 

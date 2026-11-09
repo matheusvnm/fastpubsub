@@ -1,0 +1,36 @@
+[build-system]
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
+
+[project]
+name = "fastpubsub-core"
+version = "0.10.0"
+description = "The compiled Pub/Sub transport of FastPubSub"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [
+    { name = "Sandro Matheus Vila Nova Marques", email = "sandro-matheus@hotmail.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: Free Threading :: 2 - Beta",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Rust",
+    "Typing :: Typed",
+]
+
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "Cargo.toml" },
+    { file = "Cargo.lock" },
+    { file = "fastpubsub_core.pyi" },
+    { file = "crates/**/*.rs" },
+    { file = "crates/**/Cargo.toml" },
+]
+
+[tool.maturin]
+manifest-path = "crates/bindings/Cargo.toml"
+profile = "local"
+include = [{ path = "fastpubsub_core.pyi", format = "sdist" }]
+features = ["pyo3/extension-module"]

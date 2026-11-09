@@ -3,15 +3,32 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import TYPE_CHECKING
 
 import pytest
+from fastpubsub_core import AdminClient, CoreError
+
+from fastpubsub._internal.connection import Connection
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable
 
     from fastpubsub.broker import PubSubBroker
+
+
+def delete_resources(
+    project_id: str, topic_name: str, subscription_name: str
+) -> None:
+    """Remove a test topic and a test subscription, if they exist."""
+    connection = Connection(project_id)
+    admin_client = AdminClient(Connection.read_endpoint())
+    with suppress(CoreError):
+        admin_client.delete_topic(connection.topic_path(topic_name))
+    with suppress(CoreError):
+        admin_client.delete_subscription(
+            connection.subscription_path(subscription_name)
+        )
 
 
 @pytest.fixture
@@ -26,27 +43,9 @@ async def cleanup_resources(
     any created topics and subscriptions.
     """
     yield
-
-    # Import here to avoid issues when emulator is not available
-    from google.cloud.pubsub_v1 import PublisherClient, SubscriberClient
-
-    # Cleanup topic
-    try:
-        pub_client = PublisherClient()
-        topic_path = pub_client.topic_path(project_id, unique_topic)
-        pub_client.delete_topic(request={"topic": topic_path})
-    except Exception:
-        pass  # Ignore cleanup errors
-
-    # Cleanup subscription
-    try:
-        sub_client = SubscriberClient()
-        sub_path = sub_client.subscription_path(
-            project_id, unique_subscription
-        )
-        sub_client.delete_subscription(request={"subscription": sub_path})
-    except Exception:
-        pass  # Ignore cleanup errors
+    await asyncio.to_thread(
+        delete_resources, project_id, unique_topic, unique_subscription
+    )
 
 
 @pytest.fixture
@@ -61,28 +60,11 @@ async def connected_broker(
     This fixture creates a broker, yields it for the test,
     then shuts it down and cleans up resources.
     """
-
     broker = broker_factory()
     yield broker
-
-    from google.cloud.pubsub_v1 import PublisherClient, SubscriberClient
-
-    try:
-        pub_client = PublisherClient()
-        topic_path = pub_client.topic_path(project_id, unique_topic)
-        pub_client.delete_topic(request={"topic": topic_path})
-    except Exception:
-        pass  # Ignore cleanup errors
-
-    # Cleanup subscription
-    try:
-        sub_client = SubscriberClient()
-        sub_path = sub_client.subscription_path(
-            project_id, unique_subscription
-        )
-        sub_client.delete_subscription(request={"subscription": sub_path})
-    except Exception:
-        pass  # Ignore cleanup errors
+    await asyncio.to_thread(
+        delete_resources, project_id, unique_topic, unique_subscription
+    )
 
 
 @asynccontextmanager

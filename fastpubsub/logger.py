@@ -158,6 +158,16 @@ class DefaultFormatter(logging.Formatter):
         return formatted_message
 
     def _get_colored_levelname(self, level_num: int, level_name: str) -> str:
+        """Colors a level name for the terminal.
+
+        Args:
+            level_num: The numeric log level.
+            level_name: The name of the log level.
+
+        Returns:
+            The level name with the color of the level, or the name without
+            color for an unknown level.
+        """
         get_colored_name: Callable[[str], str] = self.level_name_colors.get(
             level_num, lambda x: str(x)
         )

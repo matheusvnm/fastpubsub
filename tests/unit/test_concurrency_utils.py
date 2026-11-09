@@ -1,8 +1,13 @@
+import threading
+from concurrent.futures import Future
+
 import pytest
 
-from fastpubsub.concurrency.utils import (
+from fastpubsub._internal.concurrency import (
     ensure_async_callable_function,
     ensure_async_middleware,
+    ensure_function,
+    wait_future,
 )
 from fastpubsub.middlewares.base import BaseMiddleware
 
@@ -58,3 +63,37 @@ class TestEnsureAsyncMiddleware:
         self, first_middleware: type[BaseMiddleware]
     ):
         ensure_async_middleware(first_middleware)
+
+
+class TestEnsureFunction:
+    @pytest.mark.parametrize("invalid_object", ["a string", 123, object()])
+    def test_with_invalid_types_raises_exception(self, invalid_object):
+        with pytest.raises(TypeError):
+            ensure_function(invalid_object)
+
+
+class TestWaitFuture:
+    @pytest.mark.asyncio
+    async def test_returns_result_of_done_future(self):
+        future: Future[str] = Future()
+        future.set_result("message-id")
+
+        assert await wait_future(future) == "message-id"
+
+    @pytest.mark.asyncio
+    async def test_returns_result_set_by_other_thread(self):
+        future: Future[str] = Future()
+        timer = threading.Timer(0.01, future.set_result, args=["message-id"])
+        timer.start()
+
+        assert await wait_future(future) == "message-id"
+
+    @pytest.mark.asyncio
+    async def test_raises_exception_of_future(self):
+        future: Future[str] = Future()
+        threading.Timer(
+            0.01, future.set_exception, args=[ValueError("failed")]
+        ).start()
+
+        with pytest.raises(ValueError, match="failed"):
+            await wait_future(future)

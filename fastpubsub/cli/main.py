@@ -16,6 +16,7 @@ from fastpubsub.cli.options import (
     AppLogColorizeOption,
     AppLogLevelOption,
     AppLogSerializeOption,
+    AppNetworkThreadsOption,
     AppNumWorkersOption,
     AppPortOption,
     AppSelectedSubscribersOption,
@@ -48,31 +49,6 @@ app = typer.Typer(
 )
 
 app.add_typer(inspect_app)
-
-# V2: this command and its subcommands will be released on the future"
-"""
-pubsub = typer.Typer(
-    name="pubsub",
-    help="Commands for interacting with Google Cloud Pub/Sub.",
-    rich_markup_mode="markdown",
-)
-
-pubsub_cloud = typer.Typer(
-    name="cloud",
-    help="Subcommand to interact with Cloud-based Pub/Sub.",
-    rich_markup_mode="markdown",
-)
-
-pubsub_local = typer.Typer(
-    name="local",
-    help="Subcommand to interact with Pub/Sub locally (e.g., emulator).",
-    rich_markup_mode="markdown",
-)
-
-pubsub.add_typer(pubsub_cloud)
-pubsub.add_typer(pubsub_local)
-app.add_typer(pubsub)
-"""
 
 
 @app.callback()
@@ -123,6 +99,7 @@ def main(
 def run(
     app: AppArgument,
     workers: AppNumWorkersOption = 1,
+    network_threads: AppNetworkThreadsOption = 2,
     subscribers: AppSelectedSubscribersOption = [],
     reload: AppHotReloadOption = False,
     host: AppHostOption = "127.0.0.1",
@@ -137,6 +114,8 @@ def run(
     Args:
         app: The application to run.
         workers: The number of worker processes.
+        network_threads: The number of network threads in each worker
+            process.
         subscribers: The subscribers to run.
         reload: Whether to enable auto-reloading.
         host: The host to bind to.
@@ -159,6 +138,7 @@ def run(
         host=host,
         port=port,
         workers=workers,
+        network_threads=network_threads,
         reload=reload,
         log_level=server_log_level.lower(),
     )

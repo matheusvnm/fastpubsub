@@ -1,0 +1,125 @@
+"""Concurrency utilities."""
+
+import asyncio
+import functools
+import inspect
+from collections.abc import Callable
+from concurrent.futures import Future
+from types import FunctionType
+from typing import TYPE_CHECKING, Any
+
+import anyio
+import anyio.to_thread
+
+from fastpubsub.types import AsyncCallable, AsyncDecoratedCallable
+
+if TYPE_CHECKING:
+    from fastpubsub.middlewares.base import BaseMiddleware
+
+
+def ensure_async_callable_function(
+    callable_object: Callable[[], Any]
+    | AsyncCallable
+    | AsyncDecoratedCallable,
+) -> None:
+    """Ensures that a callable is an async function.
+
+    Args:
+        callable_object: The callable to check.
+    """
+    if not isinstance(callable_object, FunctionType):
+        raise TypeError(
+            f"The object must be a function type but it is {callable_object}."
+        )
+
+    if not inspect.iscoroutinefunction(callable_object):
+        raise TypeError(f"The function {callable_object} must be async.")
+
+
+def ensure_function(callable_object: object) -> None:
+    """Ensures that an object is a function.
+
+    The function can be sync or async.
+
+    Args:
+        callable_object: The object to check.
+    """
+    if not isinstance(callable_object, FunctionType):
+        raise TypeError(
+            f"The object must be a function type but it is {callable_object}."
+        )
+
+
+def ensure_async_middleware(middleware: type["BaseMiddleware"]) -> None:
+    """Ensures that a middleware is an async middleware.
+
+    Args:
+        middleware: The middleware to check.
+    """
+    from fastpubsub.middlewares.base import BaseMiddleware
+
+    if not issubclass(middleware, BaseMiddleware):
+        raise TypeError(
+            f"The object {middleware} must be a {BaseMiddleware.__name__}."
+        )
+
+    if not inspect.iscoroutinefunction(middleware.on_message):
+        raise TypeError(
+            f"The on_message method must be async on {middleware}."
+        )
+
+    if not inspect.iscoroutinefunction(middleware.on_publish):
+        raise TypeError(
+            f"The on_publish method must be async on {middleware}."
+        )
+
+
+async def apply_async[**P, T](
+    func: Callable[P, T], *args: P.args, **kwargs: P.kwargs
+) -> T:
+    """Transforms a blocking sync callable into a async callable.
+
+    Args:
+        func: The sync callable to be transformed.
+        *args: The positional arguments used on the callable.
+        **kwargs: The keyword arguments used on the callable.
+
+    Returns:
+        The same return of the callable but after awaiting for
+        its computation.
+    """
+    func = functools.partial(func, *args, **kwargs)
+    return await anyio.to_thread.run_sync(func, abandon_on_cancel=False)
+
+
+async def apply_async_cancellable[**P, T](
+    func: Callable[P, T], *args: P.args, **kwargs: P.kwargs
+) -> T:
+    """Transforms a blocking sync callable into a async cancellable callable.
+
+    Args:
+        func: The sync callable to be transformed.
+        *args: The positional arguments used on the callable.
+        **kwargs: The keyword arguments used on the callable.
+
+    Returns:
+        The same return of the callable but after awaiting for
+        its computation.
+    """
+    func = functools.partial(func, *args, **kwargs)
+    return await anyio.to_thread.run_sync(func, abandon_on_cancel=True)
+
+
+async def wait_future[T](future: Future[T]) -> T:
+    """Waits for a concurrent future without a blocked thread.
+
+    Args:
+        future: The future to wait for.
+
+    Returns:
+        The result of the future.
+    """
+    if future.done():
+        return future.result()
+
+    return await asyncio.wrap_future(future)

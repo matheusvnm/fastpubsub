@@ -1,4 +1,4 @@
 # `PubSubStreamingPullTask` class
 
 
-::: fastpubsub.concurrency.tasks.PubSubStreamingPullTask
+::: fastpubsub._internal.delivery.streaming_pull.PubSubStreamingPullTask

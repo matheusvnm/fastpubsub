@@ -1,10 +1,16 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.15'",
     "python_full_version == '3.14.*'",
     "python_full_version < '3.14'",
+]
+
+[manifest]
+members = [
+    "fastpubsub",
+    "fastpubsub-core",
 ]
 
 [[package]]
@@ -571,6 +577,20 @@ wheels = [
 ]
 
 [[package]]
+name = "docstr-coverage"
+version = "2.3.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "pyyaml" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/75/86/d3f02e5baf426eac0f039849272204649137449f050d3fe0eb104c6f399c/docstr-coverage-2.3.2.tar.gz", hash = "sha256:e99a28c502ed21ae8a310cb9e14e8de2d7cff44d365b46fa6dca6de05bf156a0", size = 26750, upload-time = "2024-05-07T16:54:33.514Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/db/f7/7923d915a80aa2e04939260f7a000e1a353b25c7ffcf7771cd777559c27a/docstr_coverage-2.3.2-py3-none-any.whl", hash = "sha256:37a885d6560ad87e289b23bf0e54527885bacbf6b17cf55278d514dd0fef8ff5", size = 25816, upload-time = "2024-05-07T16:54:31.636Z" },
+]
+
+[[package]]
 name = "email-validator"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -645,13 +665,12 @@ standard-no-fastapi-cloud-cli = [
 
 [[package]]
 name = "fastpubsub"
-version = "0.9.9"
+version = "0.10.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "fastapi", extra = ["standard-no-fastapi-cloud-cli"] },
-    { name = "google-api-core" },
-    { name = "google-cloud-pubsub" },
+    { name = "fastpubsub-core" },
     { name = "pydantic-settings" },
     { name = "rich-toolkit" },
     { name = "typer" },
@@ -662,10 +681,15 @@ dependencies = [
 bench = [
     { name = "psutil" },
 ]
+bench-google = [
+    { name = "google-cloud-pubsub" },
+]
 dev = [
     { name = "bandit" },
     { name = "codespell" },
     { name = "coverage" },
+    { name = "docstr-coverage" },
+    { name = "google-cloud-pubsub" },
     { name = "mypy" },
     { name = "pre-commit" },
     { name = "psutil" },
@@ -685,6 +709,7 @@ docs = [
 lint = [
     { name = "bandit" },
     { name = "codespell" },
+    { name = "docstr-coverage" },
     { name = "mypy" },
     { name = "ruff" },
 ]
@@ -703,8 +728,7 @@ test = [
 requires-dist = [
     { name = "click", specifier = ">=8.2.1" },
     { name = "fastapi", extras = ["standard-no-fastapi-cloud-cli"], specifier = ">=0.120.2" },
-    { name = "google-api-core", specifier = ">=2.25.1" },
-    { name = "google-cloud-pubsub", specifier = ">=2.31.1" },
+    { name = "fastpubsub-core", directory = "fastpubsub-core" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },
     { name = "rich-toolkit", specifier = ">=0.15.0" },
     { name = "typer", specifier = ">=0.16.0" },
@@ -713,10 +737,13 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 bench = [{ name = "psutil", specifier = ">=6.0.0" }]
+bench-google = [{ name = "google-cloud-pubsub", specifier = ">=2.31.1" }]
 dev = [
     { name = "bandit", specifier = "==1.9.4" },
     { name = "codespell", specifier = "==2.4.3" },
     { name = "coverage", specifier = ">=7.10.0" },
+    { name = "docstr-coverage", specifier = "==2.3.2" },
+    { name = "google-cloud-pubsub", specifier = ">=2.31.1" },
     { name = "mypy", specifier = "==2.4.1" },
     { name = "pre-commit", specifier = "==4.7.0" },
     { name = "psutil", specifier = ">=6.0.0" },
@@ -736,6 +763,7 @@ docs = [
 lint = [
     { name = "bandit", specifier = "==1.9.4" },
     { name = "codespell", specifier = "==2.4.3" },
+    { name = "docstr-coverage", specifier = "==2.3.2" },
     { name = "mypy", specifier = "==2.4.1" },
     { name = "ruff", specifier = "==0.17.4" },
 ]
@@ -749,6 +777,11 @@ test = [
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
 ]
+
+[[package]]
+name = "fastpubsub-core"
+version = "0.10.0"
+source = { directory = "fastpubsub-core" }
 
 [[package]]
 name = "filelock"
@@ -2315,6 +2348,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/1c/b8/63a75cfb27a17c38550e44025d3a6e7be64516fd8608a3b75703bf37d81b/tomli-2.5.0-cp315-cp315t-win_amd64.whl", hash = "sha256:f3fcbc57b1791fa6cbe5d8434179d51de12be1a4811469529f47f6e7487a2571", size = 117281, upload-time = "2026-10-07T12:23:34.648Z" },
     { url = "https://files.pythonhosted.org/packages/72/01/e8c1debb2173973372934c68fc8e46170ab60ef23ed4592dff4dec6e8993/tomli-2.5.0-cp315-cp315t-win_arm64.whl", hash = "sha256:d2ba24db8a9376921b5e87b4762b9adb0f3f1deaea68f2b8b0bb2c11efb9c3e7", size = 115069, upload-time = "2026-10-07T12:23:35.77Z" },
     { url = "https://files.pythonhosted.org/packages/60/3f/3e3f8fd0919249b0200c80fbc4f9a1e70be19f9883da71dfb7f8b9ab8aca/tomli-2.5.0-py3-none-any.whl", hash = "sha256:32a7b79ac57a2e83670ce329ccf675798bc5a2094783a63676866b70503f2e2b", size = 14765, upload-time = "2026-10-07T12:23:36.875Z" },
+]
+
+[[package]]
+name = "tqdm"
+version = "4.70.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0d/ea/b2a5bd54b28a324dae8211928b2d730b6547500342c7e6c6dea08bd0a485/tqdm-4.70.1.tar.gz", hash = "sha256:cefd0eca11b2a37a3aee776544d4f4ae913f02688135b5556b8788dfa474afc4", size = 171846, upload-time = "2026-09-11T07:25:16.601Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a7/03/921a3d3c75785aca9ebfbfcabfbc3a1be12e2ab5265deb026d55a5a3f83e/tqdm-4.70.1-py3-none-any.whl", hash = "sha256:c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73", size = 80199, upload-time = "2026-09-11T07:25:14.599Z" },
 ]
 
 [[package]]

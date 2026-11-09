@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from fastpubsub import Message
+from fastpubsub._internal.connection import Connection
 from tests.integration.conftest import managed_broker
 
 if TYPE_CHECKING:
@@ -48,7 +49,9 @@ class TestMessageConsumption:
             assert isinstance(result, Message)
             assert result.data == b"Hello, PubSub!"
             assert result.subscriber_name == "handler"
-            assert result.delivery_attempt == 1
+            assert result.delivery_attempt == (
+                1 if Connection.is_emulator() else 0
+            )
             assert result.topic_name == unique_topic
             assert not result.attributes
 
@@ -108,7 +111,6 @@ class TestMessageConsumption:
             autocreate=True,
         )
         async def handler(msg: Message) -> None:
-            # Simulate processing
             await asyncio.sleep(2)
             received.append(msg.data.decode())
 
@@ -118,10 +120,8 @@ class TestMessageConsumption:
                 await connected_broker.publish(
                     topic_name=unique_topic, data=f"Message {i}"
                 )
-            # Give some time to start processing
             await asyncio.sleep(2)
 
-        # After context exit, all messages should be processed
         assert len(received) == message_quantity
         for i, message in enumerate(received):
             assert f"Message {i}" in message

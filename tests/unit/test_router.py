@@ -152,7 +152,6 @@ class TestPrefixValidation:
         ["a", "1", "a.b", "a_b", "a/b", "a.b_c/d"],
     )
     def test_valid_prefix(self, prefix):
-        # Should not raise
         PubSubRouter(prefix=prefix)
 
     @pytest.mark.parametrize(

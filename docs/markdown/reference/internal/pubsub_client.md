@@ -1,4 +1,4 @@
 # `PubSubClient` class
 
 
-::: fastpubsub.clients.pubsub.PubSubClient
+::: fastpubsub._internal.clients.PubSubClient

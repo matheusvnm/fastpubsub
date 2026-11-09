@@ -1,0 +1,26 @@
+[package]
+name = "fastpubsub-core"
+description = "The Python bindings of the FastPubSub core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "fastpubsub_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+fastpubsub-google-pubsub.workspace = true
+fastpubsub-messaging.workspace = true
+futures.workspace = true
+pyo3 = { workspace = true, features = ["extension-module"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "sync", "macros"] }
+
+[features]
+default = ["abi3"]
+abi3 = ["pyo3/abi3-py312"]
+
+[lints]
+workspace = true

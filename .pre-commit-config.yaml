@@ -1,4 +1,6 @@
 fail_fast: true
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+default_stages: [pre-commit]
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v6.0.0
@@ -14,28 +16,64 @@ repos:
   hooks:
     - id: format
       name: format and sort imports
-      entry: just format
+      entry: just public format
       language: system
       types: [python]
       pass_filenames: false
     - id: lint
       name: lint and type check
-      entry: just lint
+      entry: just public lint
       language: system
       types: [python]
       pass_filenames: false
     - id: typo
       name: typos check
-      entry: just typo
+      entry: just public typo
       language: system
       types: [python]
       pass_filenames: false
     - id: security
       name: security check
-      entry: just securitize
+      entry: just public securitize
       language: system
       types: [python]
       pass_filenames: false
+    - id: docstrings
+      name: docstring check
+      entry: just public docstrings
+      language: system
+      types_or: [python, pyi]
+      pass_filenames: false
+    - id: no-python-comments
+      name: forbid Python comments
+      language: pygrep
+      entry: '^\s*#(?!!|\s*(type: ignore|noqa|pragma|fmt:))'
+      types_or: [python, pyi]
+      exclude: ^docs/
+    - id: no-rust-comments
+      name: forbid Rust comments
+      language: pygrep
+      entry: '^\s*//(?![/!])'
+      types: [rust]
+    - id: core-format
+      name: format the core code
+      entry: just core format
+      language: system
+      types: [rust]
+      pass_filenames: false
+    - id: core-lint
+      name: lint the core code
+      entry: just core lint
+      language: system
+      types: [rust]
+      pass_filenames: false
+    - id: core-stubtest
+      name: check the core stub
+      entry: just core stubtest
+      language: system
+      files: ^fastpubsub-core/.*\.(rs|pyi)$
+      pass_filenames: false
+      stages: [pre-push]
 
 
 - repo: https://github.com/compilerla/conventional-pre-commit

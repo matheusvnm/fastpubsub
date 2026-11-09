@@ -30,6 +30,18 @@ AppNumWorkersOption = Annotated[
     ),
 ]
 
+AppNetworkThreadsOption = Annotated[
+    int,
+    typer.Option(
+        "--network-threads",
+        min=1,
+        show_default=True,
+        help="The number of network threads in each worker process. "
+        "They run all Pub/Sub network I/O.",
+        envvar="FASTPUBSUB_NETWORK_THREADS",
+    ),
+]
+
 AppSelectedSubscribersOption = Annotated[
     list[str],
     typer.Option(

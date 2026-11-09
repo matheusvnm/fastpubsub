@@ -20,6 +20,7 @@ services:
       resources:
         limits:
           memory: 2G
+          cpus: "${BENCHMARK_CPUS:-0}"
     networks:
       - pubsub-net
     security_opt:
@@ -49,6 +50,7 @@ services:
       resources:
         limits:
           memory: 2G
+          cpus: "${BENCHMARK_CPUS:-0}"
     networks:
       - pubsub-net
 
