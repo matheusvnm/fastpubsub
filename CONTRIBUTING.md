@@ -35,7 +35,7 @@ fastpubsub-core/            the compiled core (Rust, PyO3, maturin)
   crates/google-pubsub/     the Google Pub/Sub adapter, without PyO3
   crates/bindings/          the PyO3 bindings, one file for each class
   tests/                    pytest tests for the bindings
-just/                       the just modules core, public and dev
+scripts/                    the just modules core, public and dev
 ```
 
 Directories in `fastpubsub/` group features. Do not name a module or a directory after a language.

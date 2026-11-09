@@ -30,13 +30,13 @@ export PYTHONPATH := "docs/snippets:${PYTHONPATH}"
 # MODULES
 
 [doc("Rust commands for the compiled core in fastpubsub-core/")]
-mod core "just/core.just"
+mod core "scripts/core.just"
 
 [doc("Python commands for the fastpubsub package")]
-mod public "just/public.just"
+mod public "scripts/public.just"
 
 [doc("Development commands: infrastructure, benchmarks, setup, git and docs")]
-mod dev "just/dev.just"
+mod dev "scripts/dev.just"
 
 [doc("All commands information")]
 @default:
