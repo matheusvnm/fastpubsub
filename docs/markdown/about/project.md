@@ -38,7 +38,7 @@ The core does all the Pub/Sub work:
 
 The core runs this work on its own threads, without the Python GIL. It gives the received messages and the publish results to the asyncio event loop in batches. It takes the GIL one time for each batch. So the Python interpreter runs only your handlers and the FastPubSub middlewares.
 
-A Python client library does the same Pub/Sub work in Python. It decodes each message, manages the leases and runs the callbacks in Python threads, and each of these steps needs the GIL. In our benchmarks on real Pub/Sub, FastPubSub used 1.7 to 7 times less CPU per message than the Google Python client. It also used 32% to 41% less memory. The gain is smallest when the handler itself uses much CPU. With handlers that wait for I/O, FastPubSub processed 2 to 4 times more messages per second.
+A Python client library does the same Pub/Sub work in Python. It decodes each message, manages the leases and runs the callbacks in Python threads, and each of these steps needs the GIL. In our benchmarks on real Pub/Sub, FastPubSub used 1.7 to 7 times less CPU per message than the Google Python client. It also used 32% to 41% less memory. The raw results are in [`benchmarks/results/runs.csv`](https://github.com/matheusvnm/fastpubsub/blob/main/benchmarks/results/runs.csv).
 
 ## Links
 
