@@ -17,11 +17,13 @@ jobs:
       - name: Install uv command
         uses: astral-sh/setup-uv@v7
       - name: Upgrade locked dependencies
-        run: uv lock --upgrade
+        run: |
+          uv lock --upgrade
+          cargo update --manifest-path fastpubsub-core/Cargo.toml
       - name: Check for lock file changes
         id: lock
         run: |
-          if git diff --quiet uv.lock; then
+          if git diff --quiet uv.lock fastpubsub-core/Cargo.lock; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
@@ -30,8 +32,17 @@ jobs:
         if: steps.lock.outputs.has_changes == 'true'
         id: version
         run: |
-          uv version --bump patch
-          echo "version=$(uv version --short)" >> "$GITHUB_OUTPUT"
+          current_version=$(uv version --short)
+          uv version --bump patch --frozen
+          new_version=$(uv version --short)
+          uv version "$new_version" --package fastpubsub-core --frozen
+          sed -i "s/\"fastpubsub-core==$current_version\"/\"fastpubsub-core==$new_version\"/" pyproject.toml
+          sed -i "0,/^version = \"$current_version\"/s//version = \"$new_version\"/" fastpubsub-core/Cargo.toml
+          grep -q "\"fastpubsub-core==$new_version\"" pyproject.toml
+          grep -q "^version = \"$new_version\"" fastpubsub-core/Cargo.toml
+          uv lock
+          cargo update --workspace --manifest-path fastpubsub-core/Cargo.toml
+          echo "version=$new_version" >> "$GITHUB_OUTPUT"
       - name: Open pull request
         if: steps.lock.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@v8
@@ -42,7 +53,7 @@ jobs:
           commit-message: "build(deps): upgrade dependencies and bump version to ${{ steps.version.outputs.version }}"
           title: "build(deps): upgrade dependencies and bump version to ${{ steps.version.outputs.version }}"
           body: |
-            Weekly upgrade of the locked dependencies (`uv lock --upgrade`).
-            Bumps the project version to `${{ steps.version.outputs.version }}`.
+            Weekly upgrade of the locked dependencies (`uv lock --upgrade` and `cargo update`).
+            Bumps the version of `fastpubsub` and `fastpubsub-core` to `${{ steps.version.outputs.version }}`.
             The merge to `main` creates the tag `v${{ steps.version.outputs.version }}` and publishes the release.
           labels: dependencies
