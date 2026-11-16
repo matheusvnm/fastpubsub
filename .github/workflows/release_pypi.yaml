@@ -16,6 +16,7 @@ jobs:
     outputs:
       tag: ${{ steps.version.outputs.tag }}
       should_publish: ${{ steps.release.outputs.should_publish }}
+      should_publish_core: ${{ steps.core.outputs.should_publish_core }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -39,6 +40,16 @@ jobs:
             gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --generate-notes
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
           fi
+      - name: Check if PyPI has the core version
+        id: core
+        run: |
+          core_version=$(uv version --short --package fastpubsub-core)
+          if curl --silent --fail --output /dev/null "https://pypi.org/pypi/fastpubsub-core/$core_version/json"; then
+            echo "PyPI has fastpubsub-core $core_version. No new core release."
+            echo "should_publish_core=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish_core=true" >> "$GITHUB_OUTPUT"
+          fi
 
   build:
     needs: tag
@@ -49,7 +60,7 @@ jobs:
 
   publish-core:
     needs: [tag, build]
-    if: needs.tag.outputs.should_publish == 'true'
+    if: needs.tag.outputs.should_publish == 'true' && needs.tag.outputs.should_publish_core == 'true'
     runs-on: ubuntu-latest
     environment:
       name: pypi-core
@@ -69,8 +80,12 @@ jobs:
         run: uv publish --trusted-publishing always dist/core/*
 
   publish:
-    needs: [tag, publish-core]
-    if: needs.tag.outputs.should_publish == 'true'
+    needs: [tag, build, publish-core]
+    if: >-
+      !cancelled()
+      && needs.tag.outputs.should_publish == 'true'
+      && needs.build.result == 'success'
+      && contains(fromJSON('["success", "skipped"]'), needs.publish-core.result)
     runs-on: ubuntu-latest
     environment:
       name: pypi
