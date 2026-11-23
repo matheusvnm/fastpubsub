@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "fastpubsub-core"
-version = "0.10.1"
+version = "0.10.2"
 description = "The compiled Pub/Sub transport of FastPubSub"
 requires-python = ">=3.12"
 license = "Apache-2.0"
